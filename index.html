@@ -8,7 +8,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=29">
+<link rel="stylesheet" href="styles.css?v=43">
 </head>
 <body>
 
@@ -365,6 +365,45 @@
   </div>
 </div>
 
+<!-- Product pop-up (layout follows the MKP quick view: the product page itself in a floating panel) -->
+<div class="pdp" id="pdp" hidden>
+  <div class="pdp__card" role="dialog" aria-modal="true" aria-labelledby="pdpTitle">
+    <div class="pdp__top">
+      <p class="pdp__crumb" id="pdpCrumb"></p>
+      <a class="pdp__full" id="pdpFull" target="_blank" rel="noopener">Open full page &#8599;</a>
+      <button class="pdp__x" id="pdpClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+    </div>
+    <div class="pdp__scroll" id="pdpScroll">
+      <div class="pdp__grid">
+        <div class="pdp__left">
+          <div class="pdp__gallery">
+            <div class="pdp__main" id="pdpMain"></div>
+            <button class="pdp__nav pdp__nav--prev" id="pdpPrev" type="button" aria-label="Previous photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></button>
+            <button class="pdp__nav pdp__nav--next" id="pdpNext" type="button" aria-label="Next photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></button>
+            <span class="pdp__count" id="pdpCount"></span>
+          </div>
+          <div class="pdp__thumbs" id="pdpThumbs"></div>
+          <div class="pdp__body" id="pdpBody"></div>
+        </div>
+        <aside class="pdp__right">
+          <span class="pdp__badge" id="pdpBadge"></span>
+          <h3 class="pdp__title" id="pdpTitle"></h3>
+          <p class="pdp__sub" id="pdpSub"></p>
+          <p class="pdp__price" id="pdpPrice"></p>
+                    <p class="pdp__fit" id="pdpFit"></p>
+          <div class="pdp__chips" id="pdpOpts"></div>
+          <div class="pdp__ctas">
+            <button class="btn btn--amber btn--full" id="pdpAdd" type="button">Add to build</button>
+            <button class="btn btn--black btn--full" id="pdpBook" type="button">Book the install <i>&rarr;</i></button>
+          </div>
+          <ul class="pdp__perks" id="pdpPerks"></ul>
+          <div class="pdp__specs" id="pdpSpecs"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Booking modal -->
 <div class="modal" id="modal" hidden>
   <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -386,6 +425,6 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="main.js?v=29"></script>
+<script src="main.js?v=43"></script>
 </body>
 </html>
