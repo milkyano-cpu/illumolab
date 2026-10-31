@@ -1175,3 +1175,24 @@ html{scroll-behavior:auto}
 .orb__ink{position:absolute;inset:0;border-radius:inherit;background:#1d1d1f;opacity:0;will-change:opacity}
 .orb span{display:none}
 .build{will-change:transform}
+
+/* iOS: popups never pan sideways. Safari gives date inputs an intrinsic width wider than the card,
+   which made the booking card scroll horizontally and show white on the right. */
+.modal__card,.pdp__scroll,.build__panel,.menu{overflow-x:hidden;overscroll-behavior:contain}
+.modal,.pdp,.modal__card,.pdp__scroll{touch-action:pan-y}
+.modal input,.modal textarea{box-sizing:border-box;max-width:100%;min-width:0}
+.modal input[type=date]{-webkit-appearance:none;appearance:none;min-height:50px;text-align:left}
+.modal input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+html:has(body.locked){overflow:hidden}
+body.locked{overscroll-behavior:none}
+/* phones: heavy full-screen blur behind popups costs frames; a darker scrim looks the same */
+@media (max-width:760px){.modal{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,10,12,.72)}}
+
+/* Visit the lab on phones: keep Directions on the right like Call; the address wraps instead */
+.visit .loc li{flex-wrap:nowrap}
+.visit .loc li>div{flex:1;min-width:0}
+.visit .loc li>.pill{flex:none}
+
+/* 360 parts panel: JS drives a GPU-only fade/rise; no CSS slide, and no heavy blur on phones */
+.viewer__panel{animation:none;will-change:opacity,transform;contain:layout paint}
+@media (max-width:720px){.viewer__panel{-webkit-backdrop-filter:none;backdrop-filter:none;background:#1c1c1f}}

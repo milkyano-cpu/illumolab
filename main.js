@@ -473,21 +473,37 @@
     drawSpots();
   };
 
+  // Panel motion: GPU-only fade + rise (sideways on desktop overlay); switching parts crossfades the contents
+  const vPanel = $('#viewerPanel');
+  const panelShift = () => matchMedia('(max-width:720px)').matches ? 'translateY(14px)' : 'translateX(18px)';
   const openPanel = k => {
+    const wasOpen = !vPanel.hidden && openPart !== null;
     openPart = k;
     const [title, kick, ids] = view.parts[k];
     $('#viewerKick').textContent = kick;
     $('#viewerTitle').textContent = title;
     $('#viewerItems').innerHTML = ids.map(id => { const p = ALL[id]; const on = build.includes(id); return `<div class="vitem"><img src="${src(p.img)}" alt="" data-pdp="${id}"><div class="vitem__t" data-pdp="${id}">${p.title}<small>${p.brand}</small></div><div class="vitem__row"><b>${p.from ? 'from ' : ''}${money(p.price)}</b><button class="add${on ? ' is-in' : ''}" data-add="${id}">${on ? 'Added ✓' : 'Add to build'}</button></div></div>`; }).join('');
-    $('#viewerPanel').hidden = false;
+    if (vPanel._a) { vPanel._a.cancel(); vPanel._a = null; }
+    vPanel.hidden = false;
+    if (!reduce) {
+      if (wasOpen) $$('#viewerKick, #viewerTitle, #viewerItems').forEach(el => el.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.22,1,.36,1)' }));
+      else vPanel.animate([{ opacity: 0, transform: panelShift() }, { opacity: 1, transform: 'none' }], { duration: 440, easing: 'cubic-bezier(.22,1,.36,1)' });
+    }
     drawSpots();
   };
-  const closePanel = () => { openPart = null; $('#viewerPanel').hidden = true; drawSpots(); };
-  $('#viewerPanelClose').addEventListener('click', closePanel);
+  const closePanel = instant => {
+    openPart = null; drawSpots();
+    if (vPanel.hidden) return;
+    if (instant === true || reduce) { if (vPanel._a) vPanel._a.cancel(); vPanel.hidden = true; return; }
+    const a = vPanel._a = vPanel.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: panelShift() }], { duration: 240, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+    const done = () => { clearTimeout(a._t); if (vPanel._a !== a) return; vPanel._a = null; if (openPart === null) vPanel.hidden = true; a.cancel(); };
+    a.onfinish = done; a._t = setTimeout(done, 400); // safety net if frames are paused (background tab)
+  };
+  $('#viewerPanelClose').addEventListener('click', () => closePanel());
   vSpots.addEventListener('click', e => { const b = e.target.closest('[data-part]'); if (b) openPanel(b.dataset.part); });
 
   const showViewer = id => {
-    closePanel();
+    closePanel(true);
     imgs = [];
     view = VIEWS[id] || null;
     if (!view) {
