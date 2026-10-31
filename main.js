@@ -140,7 +140,11 @@
 
   /* ---------- Promo bar + countdown ---------- */
   const promo = $('#promo');
-  const setBar = () => document.documentElement.style.setProperty('--bar-h', document.body.classList.contains('no-promo') ? '0px' : promo.offsetHeight + 'px');
+  // only write when it changes: iOS fires resize constantly while the toolbar collapses mid-scroll
+  let barH = '';
+  const setBar = () => { const v = document.body.classList.contains('no-promo') ? '0px' : promo.offsetHeight + 'px'; if (v !== barH) document.documentElement.style.setProperty('--bar-h', barH = v); };
+  // mirror body.locked onto <html> (cheaper than an html:has() rule, which restyles the page on every class change)
+  new MutationObserver(() => document.documentElement.classList.toggle('locked', document.body.classList.contains('locked'))).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   if (store.get('promoClosed')) document.body.classList.add('no-promo');
   $('#promoClose').addEventListener('click', () => { document.body.classList.add('no-promo'); store.set('promoClosed', true); setBar(); });
   setBar(); addEventListener('resize', setBar);
@@ -470,7 +474,7 @@
     imgs[frame].classList.remove('is-on'); frame = n; imgs[frame].classList.add('is-on');
     if (view.photo) $('#viewerBg').style.backgroundImage = `url(assets/${view.frames[frame][0]})`;
     $('#viewerDeg').textContent = view.photo ? `${frame + 1} / ${len}` : Math.round(frame * 360 / len) + '°';
-    drawSpots();
+    if (!dragging && !spinning) drawSpots();
   };
 
   // Panel motion: GPU-only fade + rise (sideways on desktop overlay); switching parts crossfades the contents
@@ -522,23 +526,44 @@
     $('#viewerNote').textContent = view.frames.length > 1 ? `${view.frames.length} angles of the ${VEHICLES[id][0]} ${VEHICLES[id][1]}. Drag to turn it, tap any dot to see what fits there.` : `Tap any dot to see what fits your ${VEHICLES[id][0]} ${VEHICLES[id][1]}.`;
     layout(); requestAnimationFrame(layout);
     // one slow intro turn so people see it moves
-    if (!reduce) { let k = 0; const spin = setInterval(() => { if (dragging || ++k > view.frames.length) { clearInterval(spin); if (!dragging) setFrame(0); return; } setFrame(k); }, 260); }
+    if (!reduce && view.frames.length > 1) introSpin();
+  };
+  let spinning = false, spinIO;
+  const introSpin = () => {
+    if (spinIO) spinIO.disconnect();
+    spinIO = new IntersectionObserver(([en]) => {
+      if (!en.isIntersecting) return; spinIO.disconnect();
+      let k = 0; spinning = true; viewer.classList.add('is-dragging');
+      const stop = () => { clearInterval(spin); spinning = false; viewer.classList.remove('is-dragging'); };
+      const spin = setInterval(() => { if (dragging) return stop(); if (++k > view.frames.length) { stop(); setFrame(0); return; } setFrame(k); }, 260);
+    }, { threshold: .6 });
+    spinIO.observe(vStage);
   };
   new ResizeObserver(layout).observe(vStage);
 
-  let dragging = false, dx0 = 0, f0 = 0;
+  let dragging = false, pending = null, dx0 = 0, f0 = 0;
+  const startDrag = e => {
+    pending = null; dragging = true; f0 = frame; viewer.classList.add('is-dragging');
+    $('#viewerHint').classList.add('is-gone');
+    if (e.pointerType === 'mouse') vStage.setPointerCapture(e.pointerId);
+  };
   vStage.addEventListener('pointerdown', e => {
     if (e.target.closest('.spot,.viewer__panel,.viewer__ctrl')) return;
-    dragging = true; dx0 = e.clientX; f0 = frame; viewer.classList.add('is-dragging');
-    $('#viewerHint').classList.add('is-gone');
-    vStage.setPointerCapture(e.pointerId);
+    dx0 = e.clientX;
+    if (e.pointerType === 'mouse') startDrag(e); else pending = { x: e.clientX, y: e.clientY };
   });
   vStage.addEventListener('pointermove', e => {
+    if (pending) {
+      const ax = Math.abs(e.clientX - pending.x), ay = Math.abs(e.clientY - pending.y);
+      if (ay > 8 && ay > ax) pending = null; // it's a scroll: leave it alone
+      else if (ax > 10) { dx0 = e.clientX; startDrag(e); }
+      return;
+    }
     if (!dragging) return;
     const step = Math.max(40, vStage.clientWidth / (view.frames.length * 1.5));
     setFrame(f0 - Math.round((e.clientX - dx0) / step));
   });
-  const endDrag = () => { if (!dragging) return; dragging = false; viewer.classList.remove('is-dragging'); drawSpots(); };
+  const endDrag = () => { pending = null; if (!dragging) return; dragging = false; viewer.classList.remove('is-dragging'); drawSpots(); };
   vStage.addEventListener('pointerup', endDrag);
   vStage.addEventListener('pointercancel', endDrag);
   $('#viewerPrev').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); setFrame(frame - 1); });
