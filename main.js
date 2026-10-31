@@ -140,6 +140,11 @@
 
   /* ---------- Promo bar + countdown ---------- */
   const promo = $('#promo');
+  // touch devices: freeze looping decorative animations while the page is moving, resume when it settles
+  if (matchMedia('(hover:none)').matches) {
+    let st, on = false;
+    addEventListener('scroll', () => { if (!on) { on = true; document.documentElement.classList.add('is-scrolling'); } clearTimeout(st); st = setTimeout(() => { on = false; document.documentElement.classList.remove('is-scrolling'); }, 180); }, { passive: true });
+  }
   // only write when it changes: iOS fires resize constantly while the toolbar collapses mid-scroll
   let barH = '';
   const setBar = () => { const v = document.body.classList.contains('no-promo') ? '0px' : promo.offsetHeight + 'px'; if (v !== barH) document.documentElement.style.setProperty('--bar-h', barH = v); };
@@ -978,6 +983,8 @@
   // then size it by visual weight so wide wordmarks and square badges look equally big.
   (() => {
     const imgs = $$('.ticker .tl img');
+    // equal visual weight: area stays constant, height kept between 13px and 27px
+    const logoH = ratio => Math.max(13, Math.min(27, 20 * Math.sqrt(3.2 / ratio)));
     const cache = {};
     const process = img => new Promise(res => {
       const src = img.getAttribute('src');
@@ -999,9 +1006,13 @@
         }
         x.putImageData(d, 0, 0);
         if (x1 <= x0) return res(null);
-        const tw = x1 - x0 + 1, th = y1 - y0 + 1, t = document.createElement('canvas'); t.width = tw; t.height = th;
-        t.getContext('2d').drawImage(c, x0, y0, tw, th, 0, 0, tw, th);
-        res(cache[src] = { url: t.toDataURL('image/png'), ratio: tw / th });
+        // store it at display size x3 (sharp on any screen), not the 240px working size: a 2000px logo
+        // shown 70px wide x30 in a moving strip is a big redraw cost on phones
+        const tw = x1 - x0 + 1, th = y1 - y0 + 1, ratio = tw / th;
+        const oh = Math.min(th, Math.ceil(logoH(ratio) * 3)), ow = Math.max(1, Math.round(oh * ratio));
+        const t = document.createElement('canvas'); t.width = ow; t.height = oh;
+        const tx = t.getContext('2d'); tx.imageSmoothingQuality = 'high'; tx.drawImage(c, x0, y0, tw, th, 0, 0, ow, oh);
+        res(cache[src] = { url: t.toDataURL('image/png'), ratio });
       };
       im.onerror = () => res(null);
       im.src = src;
@@ -1009,9 +1020,7 @@
     Promise.all(imgs.map(img => process(img).then(r => {
       if (!r) return;
       img.src = r.url;
-      // equal visual weight: area stays constant, height kept between 13px and 27px
-      const h = Math.max(13, Math.min(27, 20 * Math.sqrt(3.2 / r.ratio)));
-      img.style.height = h.toFixed(1) + 'px';
+      img.style.height = logoH(r.ratio).toFixed(1) + 'px';
     }))).then(() => $('.ticker').classList.add('is-ready'));
   })();
 

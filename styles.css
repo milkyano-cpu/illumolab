@@ -1225,3 +1225,10 @@ body.locked{overscroll-behavior:none}
 }
 /* hover-lift layers are desktop-only; on phones dozens of promoted cards eat GPU memory mid-scroll */
 @media (hover:none),(max-width:760px){.card,.veh,.svc,.insta__grid a,.card__img img,.insta__grid img{will-change:auto;backface-visibility:visible}}
+
+/* Hero: no zoom on any screen, just a calm crossfade between photos */
+.hero__slide,.hero__slide.is-on{transform:none;inset:0;transition:opacity 1.2s ease}
+@media (hover:none),(max-width:760px){.hero__slide,.hero__slide.is-on{will-change:auto;transform:none}}
+/* while a finger is scrolling, looping decorations hold still (resume ~0.2s after) */
+.is-scrolling .ticker__track,.is-scrolling .spot::after,.is-scrolling .stock i::after,.is-scrolling .soon::before,.is-scrolling .visit__now i{animation-play-state:paused}
+.ticker{contain:paint}
