@@ -1202,3 +1202,26 @@ body.locked{overscroll-behavior:none}
   .hero__slide,.hero__slide.is-on{transform:translateZ(0);transition:opacity 1.2s ease;inset:0;will-change:opacity;backface-visibility:hidden}
   .story__img.parallax>img{transform:none!important}
 }
+
+/* ===== Phones: smooth scrolling first =====
+   Live backdrop blur is redrawn every scroll frame on iOS (fixed header, ticker over a moving marquee,
+   glass dots on the 360 car...). Swap it for slightly denser fills that look the same at phone size. */
+@media (hover:none),(max-width:760px){
+  *,*::before,*::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .top::before{background:rgba(22,22,24,.94)}
+  .ticker{background:rgba(16,16,18,.94)}
+  .spot{background:rgba(255,255,255,.6)}
+  .spot__tip,.viewer__hint,.viewer__ctrl{background:rgba(20,20,22,.9)}
+  .garage__panel{background:rgba(22,22,24,.97)}
+  .btn--ghost,.pill--dark{background:rgba(255,255,255,.18)}
+  .badge::before{background:rgba(0,0,0,.62)}
+  .club__perks li{background:rgba(255,255,255,.8)}
+  .pdp{background:rgba(10,10,12,.72)}
+  /* sections fade in place instead of sliding up under your finger */
+  .reveal{transform:none;transition:opacity .6s ease}
+  /* constant repaint animations off */
+  .stock--special{animation:none}
+  .viewer__frames img:not(.is-on){visibility:hidden}
+}
+/* hover-lift layers are desktop-only; on phones dozens of promoted cards eat GPU memory mid-scroll */
+@media (hover:none),(max-width:760px){.card,.veh,.svc,.insta__grid a,.card__img img,.insta__grid img{will-change:auto;backface-visibility:visible}}
