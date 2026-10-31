@@ -2,6 +2,12 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Screen height, measured once. Mobile browsers resize the page while their toolbar slides away
+  // mid-scroll; anything sized with vh/svh then resizes too (hero photo "zooms", everything below jumps).
+  // Only re-measure when the width changes (rotation), never on toolbar-driven height changes.
+  let vhW = 0;
+  const setVh = () => { if (innerWidth === vhW) return; vhW = innerWidth; document.documentElement.style.setProperty('--screen-h', innerHeight + 'px'); };
+  setVh(); addEventListener('resize', setVh);
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem('iilumo:' + k)); } catch { return null; } },
     set(k, v) { try { localStorage.setItem('iilumo:' + k, JSON.stringify(v)); } catch {} }

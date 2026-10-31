@@ -1232,3 +1232,9 @@ body.locked{overscroll-behavior:none}
 /* while a finger is scrolling, looping decorations hold still (resume ~0.2s after) */
 .is-scrolling .ticker__track,.is-scrolling .spot::after,.is-scrolling .stock i::after,.is-scrolling .soon::before,.is-scrolling .visit__now i{animation-play-state:paused}
 .ticker{contain:paint}
+
+/* Stable heights: --screen-h is set once by JS (re-set only on rotation), so the mobile toolbar
+   sliding away mid-scroll can't resize the hero or shift the page */
+.hero{min-height:max(640px,var(--screen-h,100svh))}
+.hero__body{padding-bottom:calc(clamp(40px,calc(var(--screen-h,100svh) * .07),90px) + 58px)}
+.view{min-height:calc(var(--screen-h,100svh) * .8)}
