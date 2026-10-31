@@ -1196,3 +1196,9 @@ body.locked{overscroll-behavior:none}
 /* 360 parts panel: JS drives a GPU-only fade/rise; no CSS slide, and no heavy blur on phones */
 .viewer__panel{animation:none;will-change:opacity,transform;contain:layout paint}
 @media (max-width:720px){.viewer__panel{-webkit-backdrop-filter:none;backdrop-filter:none;background:#1c1c1f}}
+
+/* Phones: no zoom on hero photos (it stutters while iOS scrolls / the toolbar collapses); plain crossfade on its own layer */
+@media (max-width:760px),(hover:none){
+  .hero__slide,.hero__slide.is-on{transform:translateZ(0);transition:opacity 1.2s ease;inset:0;will-change:opacity;backface-visibility:hidden}
+  .story__img.parallax>img{transform:none!important}
+}

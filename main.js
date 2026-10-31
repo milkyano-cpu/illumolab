@@ -1032,7 +1032,7 @@
   }), { threshold: .6 });
   $$('[data-count]').forEach(el => cio.observe(el));
 
-  if (!reduce) {
+  if (!reduce && !matchMedia('(max-width:760px), (hover:none)').matches) { // scroll-linked motion lags on phones; desktop only
     const px = $$('.parallax');
     const par = () => px.forEach(el => {
       const r = el.getBoundingClientRect(), c = r.top + r.height / 2 - innerHeight / 2;
