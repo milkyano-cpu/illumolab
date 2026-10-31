@@ -6,6 +6,31 @@
     get(k) { try { return JSON.parse(localStorage.getItem('iilumo:' + k)); } catch { return null; } },
     set(k, v) { try { localStorage.setItem('iilumo:' + k, JSON.stringify(v)); } catch {} }
   };
+  // One scroll motion for every in-page jump: eased glide, length scales with distance
+  let glideRaf = 0;
+  const glide = (el, done) => {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) return;
+    const offset = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0) + 76;
+    const from = scrollY, to = Math.max(0, el.getBoundingClientRect().top + scrollY - offset), dist = to - from;
+    cancelAnimationFrame(glideRaf);
+    if (reduce || Math.abs(dist) < 2) { scrollTo(0, to); done && done(); return; }
+    const dur = Math.min(1100, Math.max(550, Math.abs(dist) * .35)), t0 = performance.now();
+    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const stop = () => { cancelAnimationFrame(glideRaf); clearTimeout(glide._t); };
+    addEventListener('wheel', stop, { once: true, passive: true }); addEventListener('touchstart', stop, { once: true, passive: true });
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      scrollTo(0, from + dist * ease(k));
+      if (k < 1) glideRaf = requestAnimationFrame(step); else { clearTimeout(glide._t); done && done(); }
+    };
+    glideRaf = requestAnimationFrame(step);
+    // safety net: if the browser throttles frames (background tab), still land on the target
+    clearTimeout(glide._t);
+    glide._t = setTimeout(() => { if (Math.abs(scrollY - to) > 2) { cancelAnimationFrame(glideRaf); scrollTo(0, to); done && done(); } }, dur + 150);
+  };
+  function escH(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  const src = x => /^https?:/.test(x) ? x : 'assets/' + x;
   const money = n => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 
   /* ---------- Data ---------- */
@@ -84,6 +109,21 @@
   ].map(([title, cat, sub, img, from], i) => ({ id: 'i' + i, brand: 'iilumolab install', title, cat, sub, img, price: from, from: true, fits: '*' }));
 
   const ALL = Object.fromEntries([...PARTS, ...INSTALLS].map(p => [p.id, p]));
+
+  // Shopify-ready settings per product.
+  // stock: 'in' | 'out' | 'special'  (live: variant.available + inventory_quantity, special = inventory_policy "continue" / custom.lead_time metafield)
+  // manual: PDF url (live: custom.instructions_pdf metafield). No PDF = email request form.
+  // Values below are demo values so every state can be seen.
+  const STOCK = { p0: 'special', p4: 'special', p5: 'special', p6: 'special', p14: 'out' };
+  const MANUALS = { p10: '#', p17: '#' };
+  // reviews: filled from the store's review source (Shopify review app / Google reviews), per product:
+  // REVIEWS.p0 = [{ name, rating, date, text, source: 'Google' }]. Empty = "Be the first to write a review".
+  const REVIEWS = {};
+  // iilumo mascot (3D render) for the special-order banner. Not supplied yet, so the banner shows without it.
+  const MASCOT = null;
+  const stockOf = id => STOCK[id] || 'in';
+  const STOCK_TXT = { in: 'In stock', out: 'Out of stock', special: 'Special order' };
+  const stockBadge = (id, cls = '') => { const st = stockOf(id); return `<span class="stock stock--${st} ${cls}" title="${st === 'special' ? 'Made for you, ships in 2 to 4 weeks' : STOCK_TXT[st]}"><i></i>${STOCK_TXT[st]}${st === 'special' ? '<small> · 2 to 4 weeks</small>' : ''}</span>`; };
   const vName = (id, y) => id && VEHICLES[id] ? `${y ? y + ' ' : ''}${VEHICLES[id][0]} ${VEHICLES[id][1]}` : '';
   // Always name the exact model and chassis (M2 F87 and M2 G87 are different cars)
   const modelName = id => `${VEHICLES[id][0]} ${VEHICLES[id][1]}`;
@@ -94,6 +134,7 @@
   };
   const fitsLabel = p => p.fits === '*' ? 'Fits all vehicles' : 'Fits ' + (p.fits.length > 5 ? fitsList(p.fits.slice(0, 5)) + ` +${p.fits.length - 5} more` : fitsList(p.fits));
 
+  Object.entries(store.get('buildMeta') || {}).forEach(([id, p]) => { if (!ALL[id]) ALL[id] = p; });
   let build = (store.get('build') || []).filter(id => ALL[id]);
   let buildOpt = store.get('buildOpt') || {};
 
@@ -115,7 +156,7 @@
 
   /* ---------- Top bar ---------- */
   const top = $('#top');
-  const onScroll = () => top.classList.toggle('is-solid', scrollY > 40);
+  const onScroll = () => top.classList.toggle('is-solid', scrollY > 40 || document.body.classList.contains('on-view'));
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
 
   /* ---------- Menu ---------- */
@@ -129,11 +170,14 @@
   };
   burger.addEventListener('click', () => setMenu(!menu.classList.contains('is-open')));
   $$('.menu__nav a').forEach(a => a.addEventListener('click', e => {
+    const href = a.getAttribute('href');
     e.preventDefault();
     setMenu(false); // unlock scroll first, then jump
-    requestAnimationFrame(() => $(a.getAttribute('href')).scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }));
+    if (href.startsWith('#/')) { location.hash = href; return; }
+    if (typeof current !== 'undefined' && current !== 'home') { history.pushState(null, '', '#/'); showView('home'); scrollTo(0, 0); }
+    requestAnimationFrame(() => href === '#finder' ? goFinder() : glide(href));
   }));
-  const sectionIds = $$('.menu__nav a').map(a => a.getAttribute('href').slice(1));
+  const sectionIds = $$('.menu__nav a').map(a => a.getAttribute('href').slice(1)).filter(id => !id.startsWith('/'));
   const io = new IntersectionObserver(entries => entries.forEach(en => {
     if (en.isIntersecting) $$('.menu__nav a').forEach(a => a.classList.toggle('is-current', a.getAttribute('href') === '#' + en.target.id));
   }), { rootMargin: '-45% 0px -50% 0px' });
@@ -184,6 +228,10 @@
 
   let vehicle = store.get('vehicle'); // {id, year}
   if (vehicle && !VEHICLES[vehicle.id]) vehicle = null;
+  // My garage: every car they've searched, newest first
+  let garage = (store.get('garage') || []).filter(g => VEHICLES[g.id]);
+  if (vehicle && !garage.some(g => g.id === vehicle.id && g.year === vehicle.year)) garage.unshift(vehicle);
+  const saveGarage = () => { garage = garage.slice(0, 8); store.set('garage', garage); };
 
   $('#searchForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -197,10 +245,11 @@
 
   const setVehicle = (id, year, scroll) => {
     vehicle = { id, year }; store.set('vehicle', vehicle);
+    garage = [vehicle, ...garage.filter(g => !(g.id === id && g.year === year))]; saveGarage();
     selMake.value = VEHICLES[id][0]; fillModels(selMake.value); selModel.value = id; fillYears(id); selYear.value = year;
     filter = 'All';
     renderResults(); updateVehicleUI(); showViewer(id);
-    if (scroll) $('#results').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    if (scroll) glide('#results');
   };
 
   const matches = () => (mode === 'parts' ? PARTS : INSTALLS).filter(p => p.fits === '*' || p.fits.includes(vehicle.id));
@@ -210,10 +259,11 @@
     const photo = p.img.startsWith('s-');
     return `<article class="card" data-pdp="${p.id}" tabindex="0" aria-label="View ${p.brand} ${p.title}">
       ${p.tag ? `<span class="tag">${p.tag}</span>` : ''}
-      <div class="card__img${photo ? ' card__img--photo' : ''}"><img src="assets/${p.img}" alt="${p.brand} ${p.title}" loading="lazy"></div>
+      <div class="card__img${photo ? ' card__img--photo' : ''}"><img src="${src(p.img)}" alt="${escH(p.brand + ' ' + p.title)}" loading="lazy"></div>
       <p class="card__brand">${p.brand}</p>
       <h4 class="card__title">${p.title}</h4>
       <p class="card__fit">${p.sub || fitsLabel(p)}</p>
+      ${p.from ? '' : stockBadge(p.id, 'card__stock')}
       <div class="card__row">
         <span class="card__price">${p.from ? '<small>from</small>' : ''}${money(p.price)}</span>
         <button class="add${inBuild ? ' is-in' : ''}" data-add="${p.id}">${inBuild ? 'Added ✓' : 'Add to build'}</button>
@@ -233,22 +283,71 @@
     $('#resultsGrid').innerHTML = shown.length ? shown.map(card).join('') : `<div class="empty">Nothing listed yet. Call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</div>`;
   };
   $('#chips').addEventListener('click', e => { const c = e.target.closest('[data-cat]'); if (c) { filter = c.dataset.cat; renderResults(); } });
-  $('#resultsClear').addEventListener('click', () => {
+  const resetFinder = () => {
     $('#results').hidden = true; showViewer(null); vehicle = null; store.set('vehicle', null);
-    selMake.value = ''; fillModels(''); updateVehicleUI();
-    $('#finder').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); setTimeout(() => selMake.focus({ preventScroll: true }), 500);
+    selMake.value = ''; fillModels(''); updateVehicleUI(); syncClear();
+  };
+  $('#resultsClear').addEventListener('click', () => {
+    resetFinder();
+    glide('#finder', () => selMake.focus({ preventScroll: true }));
   });
+  // Clear only shows once something is picked
+  const syncClear = () => { $('#searchClear').hidden = !selMake.value; };
+  [selMake, selModel, selYear].forEach(sel => sel.addEventListener('change', syncClear));
+  $('#searchClear').addEventListener('click', () => { resetFinder(); selMake.focus({ preventScroll: true }); });
 
   const updateVehicleUI = () => {
     const btn = $('#myVehicleBtn');
     btn.classList.toggle('has-veh', !!vehicle);
-    $('#myVehicleLabel').textContent = vehicle ? modelName(vehicle.id) : 'Add my vehicle';
+    $('#myVehicleLabel').textContent = vehicle ? modelName(vehicle.id) : garage.length ? 'My garage' : 'Add my vehicle';
+    const n = $('#garageCount'); n.hidden = garage.length < 2; n.textContent = garage.length;
+    renderGarage(); if (typeof syncClear === 'function') syncClear();
     $('#buildVeh').textContent = vehicle ? 'For your ' + vName(vehicle.id, vehicle.year) : 'Your build';
   };
-  $('#myVehicleBtn').addEventListener('click', () => {
-    $(vehicle ? '#results' : '#finder').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
-    if (!vehicle) setTimeout(() => selMake.focus({ preventScroll: true }), 600);
+  const garagePanel = $('#garagePanel'), garageBtn = $('#myVehicleBtn');
+  const goFinder = () => glide('#finder', () => selMake.focus({ preventScroll: true }));
+  const renderGarage = () => {
+    $('#garageList').innerHTML = garage.map((g, i) => {
+      const on = vehicle && vehicle.id === g.id && vehicle.year === g.year;
+      return `<li class="garage__item${on ? ' is-on' : ''}">
+        <button class="garage__pick" type="button" data-garage="${i}"><span class="garage__name">${g.year} ${VEHICLES[g.id][0]} ${VEHICLES[g.id][1]}</span>${on ? '<span class="garage__now">Current</span>' : ''}</button>
+        <button class="garage__del" type="button" data-garage-del="${i}" aria-label="Remove ${g.year} ${VEHICLES[g.id][0]} ${VEHICLES[g.id][1]}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
+      </li>`;
+    }).join('');
+  };
+  const setGarage = open => {
+    garageBtn.setAttribute('aria-expanded', open);
+    clearTimeout(garagePanel._t);
+    if (open) {
+      garagePanel.hidden = false; void garagePanel.offsetWidth;
+      $$('.garage__item, .garage__add', garagePanel).forEach((el, i) => el.style.setProperty('--i', i));
+      garagePanel.classList.add('is-open');
+    } else {
+      garagePanel.classList.remove('is-open');
+      garagePanel._t = setTimeout(() => { garagePanel.hidden = true; }, reduce ? 0 : 260);
+    }
+  };
+  garageBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!garage.length) return goFinder();
+    renderGarage(); setGarage(garagePanel.hidden);
   });
+  garagePanel.addEventListener('click', e => {
+    e.stopPropagation();
+    const del = e.target.closest('[data-garage-del]');
+    if (del) {
+      const g = garage[+del.dataset.garageDel];
+      garage.splice(+del.dataset.garageDel, 1); saveGarage();
+      if (vehicle && g.id === vehicle.id && g.year === vehicle.year) resetFinder(); else updateVehicleUI();
+      if (!garage.length) setGarage(false);
+      return;
+    }
+    const pick = e.target.closest('[data-garage]');
+    if (pick) { const g = garage[+pick.dataset.garage]; setGarage(false); setVehicle(g.id, g.year, true); }
+  });
+  $('#garageAdd').addEventListener('click', () => { setGarage(false); resetFinder(); goFinder(); });
+  document.addEventListener('click', () => { if (!garagePanel.hidden) setGarage(false); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !garagePanel.hidden) setGarage(false); });
 
 
   /* ---------- 360 viewer ---------- */
@@ -379,7 +478,7 @@
     const [title, kick, ids] = view.parts[k];
     $('#viewerKick').textContent = kick;
     $('#viewerTitle').textContent = title;
-    $('#viewerItems').innerHTML = ids.map(id => { const p = ALL[id]; const on = build.includes(id); return `<div class="vitem"><img src="assets/${p.img}" alt="" data-pdp="${id}"><div class="vitem__t" data-pdp="${id}">${p.title}<small>${p.brand}</small></div><div class="vitem__row"><b>${p.from ? 'from ' : ''}${money(p.price)}</b><button class="add${on ? ' is-in' : ''}" data-add="${id}">${on ? 'Added ✓' : 'Add to build'}</button></div></div>`; }).join('');
+    $('#viewerItems').innerHTML = ids.map(id => { const p = ALL[id]; const on = build.includes(id); return `<div class="vitem"><img src="${src(p.img)}" alt="" data-pdp="${id}"><div class="vitem__t" data-pdp="${id}">${p.title}<small>${p.brand}</small></div><div class="vitem__row"><b>${p.from ? 'from ' : ''}${money(p.price)}</b><button class="add${on ? ' is-in' : ''}" data-add="${id}">${on ? 'Added ✓' : 'Add to build'}</button></div></div>`; }).join('');
     $('#viewerPanel').hidden = false;
     drawSpots();
   };
@@ -499,7 +598,7 @@
     $('#pdpAdd').textContent = on ? (buildOpt[pdpId] !== pdpOpt && d && d.opts.length ? 'Update option in build' : 'Added to build ✓') : 'Add to build';
   };
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const openPdp = id => {
+  const openPdpNow = (id, asPage) => {
     const p = ALL[id], d = PDP[id] || {};
     pdpId = id;
     const gal = d.gal || [p.img];
@@ -507,12 +606,16 @@
     const fitIds = p.fits === '*' ? [] : p.fits;
     const fitsMine = vehicle && (p.fits === '*' || p.fits.includes(vehicle.id));
     $('#pdpCrumb').textContent = `${p.from ? 'Installs' : 'Parts'} / ${p.cat} / ${title}`;
-    const full = $('#pdpFull'); full.hidden = !d.url; if (d.url) full.href = d.url;
-    $('#pdpMain').innerHTML = gal.map((g, i) => `<img src="assets/${g}" alt="${esc(p.brand + ' ' + p.title)}, photo ${i + 1}"${g.startsWith('s-') ? ' class="cover"' : ''}>`).join('');
+    const full = $('#pdpFull'); full.hidden = !!asPage; full.href = '#/product/' + encodeURIComponent(id);
+    $('#pdpMain').innerHTML = gal.map((g, i) => `<img src="${src(g)}" alt="${esc(p.brand + ' ' + p.title)}, photo ${i + 1}"${g.startsWith('s-') ? ' class="cover"' : ''}>`).join('');
     $('#pdpThumbs').style.setProperty('--n', gal.length);
-    $('#pdpThumbs').innerHTML = gal.length > 1 ? gal.map((g, i) => `<button aria-label="Photo ${i + 1}"><img src="assets/${g}" alt=""></button>`).join('') : '';
+    $('#pdpThumbs').innerHTML = gal.length > 1 ? gal.map((g, i) => `<button aria-label="Photo ${i + 1}"><img src="${src(g)}" alt=""></button>`).join('') : '';
     $('#pdpPrev').hidden = $('#pdpNext').hidden = $('#pdpCount').hidden = gal.length < 2;
     $('#pdpBadge').textContent = p.tag || p.cat;
+    $('#pdpSpecial').hidden = p.from || stockOf(id) !== 'special';
+    $('#soSteps').hidden = true; $('#soMore').setAttribute('aria-expanded', 'false'); $('#soMore').firstChild.textContent = 'Learn more ';
+    if (MASCOT) { $('#soMascot').hidden = false; $('#soMascot').innerHTML = `<img src="${MASCOT}" alt="iilumo mascot">`; }
+    $('#pdpStock').outerHTML = p.from ? '<span class="stock" id="pdpStock" hidden></span>' : stockBadge(id).replace('<span class="stock', '<span id="pdpStock" class="stock');
     $('#pdpTitle').textContent = title;
     $('#pdpSub').textContent = [p.brand, d.type || p.cat].filter(Boolean).join(' · ');
     // fitment card
@@ -537,12 +640,94 @@
       (d.hl && d.hl.length ? `<h4>Highlights</h4><ul>${d.hl.map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : '') +
       `<h4>Fitted at the lab</h4><p>Book it in at <b>22 Atlantic Drive, Keysborough VIC 3173</b>. Monday to Friday 9am to 5pm, Saturday 10am to 2pm. Or call or text <a href="tel:0483939304"><b>0483 939 304</b></a>.</p>` +
       `<div class="pdp__tags">${[...new Set(tags)].map(t => `<span>${esc(t)}</span>`).join('')}</div>`;
+    const man = MANUALS[id];
+    $('#pdpInst').innerHTML = man ? `
+      <div class="inst inst--pdf">
+        <div class="inst__icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg></div>
+        <div class="inst__copy"><b>Installation guide</b><span>PDF · ${esc(p.brand)} · ${esc(title)}</span></div>
+        <a class="btn btn--amber" href="${man}" data-manual download>Download</a>
+      </div>
+      <p class="inst__note">Rather we fit it? <button type="button" class="link" data-book-this>Book the install</button></p>` : `
+      <div class="inst inst--ask">
+        <div class="inst__icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></div>
+        <div class="inst__copy"><b>Get the install guide</b><span>We'll email you instructions for this part, matched to your car.</span></div>
+        <form class="inst__form" novalidate>
+          <input type="email" required placeholder="Your email" aria-label="Email for install guide" autocomplete="email">
+          <button class="btn btn--black" type="submit">Send me the guide</button>
+        </form>
+        <p class="inst__fine">You'll also join the iilumolab list for new releases and offers. Unsubscribe anytime.</p>
+      </div>`;
+    const revs = REVIEWS[id] || [];
+    const avg = revs.length ? revs.reduce((t, r) => t + r.rating, 0) / revs.length : 0;
+    const stars = n => '★★★★★'.slice(0, Math.round(n)) + '<i>' + '★★★★★'.slice(Math.round(n)) + '</i>';
+    const revForm = `<button type="button" class="btn btn--black" data-rev-open>Write a review</button>
+        <form class="rev__form" hidden>
+          <div class="rev__rate" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-rate="${n}" aria-label="${n} stars">★</button>`).join('')}</div>
+          <input required placeholder="Your name" aria-label="Your name">
+          <textarea required rows="3" placeholder="How did it go?" aria-label="Your review"></textarea>
+          <button class="btn btn--amber" type="submit">Post review</button>
+        </form>`;
+    $('#pdpRev').innerHTML = revs.length ? `
+      <div class="rev rev--has">
+        <div class="rev__sum"><span class="rev__stars">${stars(avg)}</span><b>${avg.toFixed(1)}</b><span>${revs.length} review${revs.length > 1 ? 's' : ''}</span></div>
+        <ul class="rev__list">${revs.map(r => `<li><div class="rev__top"><b>${esc(r.name)}</b><span class="rev__stars">${stars(r.rating)}</span></div><p>${esc(r.text)}</p><small>${esc(r.date || '')}${r.source ? ' · via ' + esc(r.source) : ''}</small></li>`).join('')}</ul>
+        ${revForm}
+      </div>` : `
+      <div class="rev">
+        <div class="rev__stars" aria-hidden="true"><i>★★★★★</i></div>
+        <b>No reviews yet</b>
+        <span>Be the first to write a review for this part.</span>
+        ${revForm}
+      </div>`;
+    setTab('desc');
     pdpShow(0); pdpPaint();
-    clearTimeout(pdpEl._t); pdpEl.hidden = false; document.body.classList.add('locked');
+    if (asPage) { setTab('desc'); pdpShow(0); return; }
+    clearTimeout(pdpEl._t); pdpEl.hidden = false; document.body.classList.add('locked'); setTab('desc');
     void pdpEl.offsetWidth; requestAnimationFrame(() => pdpEl.classList.add('open'));
     $('#pdpScroll').scrollTop = 0;
     setTimeout(() => $('#pdpClose').focus({ preventScroll: true }), 300);
   };
+  function setTab(t) {
+    const tabs = $$('.pdp__tabs [data-tab]');
+    tabs.forEach(b => { const on = b.dataset.tab === t; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', on); });
+    $$('.pdp__pane').forEach(p => { p.hidden = p.dataset.pane !== t; });
+    const on = tabs.find(b => b.dataset.tab === t), th = $('.pdp__tabthumb');
+    if (on && on.offsetWidth) { th.style.width = on.offsetWidth + 'px'; th.style.transform = `translateX(${on.offsetLeft - th.offsetLeft}px)`; }
+  }
+  $('.pdp__tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+  pdpEl.addEventListener('submit', e => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.classList.contains('inst__form')) {
+      const em = f.querySelector('input');
+      if (!/^\S+@\S+\.\S+$/.test(em.value)) { em.focus(); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); return; }
+      f.closest('.inst').innerHTML = `<div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><div class="inst__copy"><b>On its way</b><span>We'll send the guide for ${esc(ALL[pdpId].title)} to ${esc(em.value)}.</span></div>`;
+      toast('Guide requested. Check your inbox.');
+    }
+    if (f.classList.contains('rev__form')) { f.closest('.rev').innerHTML = '<b>Thanks for the review</b><span>It will show here once the team has approved it.</span>'; }
+  });
+  pdpEl.addEventListener('click', e => {
+    if (e.target.closest('[data-manual]')) { e.preventDefault(); toast('In the live store this opens the PDF from Shopify.'); }
+    if (e.target.closest('[data-book-this]')) $('#pdpBook').click();
+    if (e.target.closest('[data-rev-open]')) { const b = e.target.closest('[data-rev-open]'); b.hidden = true; b.nextElementSibling.hidden = false; b.nextElementSibling.querySelector('input').focus(); }
+    const r = e.target.closest('[data-rate]');
+    if (r) $$('[data-rate]', r.parentElement).forEach(x => x.classList.toggle('is-on', +x.dataset.rate <= +r.dataset.rate));
+  });
+  $('#soMore').addEventListener('click', () => {
+    const open = $('#soSteps').hidden;
+    $('#soSteps').hidden = !open; $('#soMore').setAttribute('aria-expanded', open);
+    $('#soMore').firstChild.textContent = open ? 'Show less ' : 'Learn more ';
+  });
+  const ensureDetail = async id => {
+    const p = ALL[id];
+    if (!p || PDP[id] || !p.h) return;
+    try {
+      const d = await fetch('assets/data/p/' + p.h + '.json').then(r => r.json());
+      PDP[id] = { full: p.full || p.title, gal: d.gal.map(u => u + '?width=1000'), opts: d.opts, type: d.type, sku: d.sku, paras: d.paras, hl: d.hl, url: d.url };
+      if (d.ft) PDP[id].full = d.ft;
+    } catch (e) {}
+  };
+  const openPdp = async id => { await ensureDetail(id); openPdpNow(id); };
   const closePdp = () => { if (!pdpEl.classList.contains('open')) return; pdpEl.classList.remove('open'); clearTimeout(pdpEl._t); pdpEl._t = setTimeout(() => { pdpEl.hidden = true; }, reduce ? 0 : 420); if (menu.classList.contains('is-open') || !$('#modal').hidden) return; document.body.classList.remove('locked'); };
   $('#pdpClose').addEventListener('click', closePdp);
   pdpEl.addEventListener('click', e => { if (e.target === pdpEl) closePdp(); });
@@ -573,25 +758,113 @@
   const buildEl = $('#build');
   const renderBuild = (pop) => {
     store.set('build', build); store.set('buildOpt', buildOpt);
-    buildEl.hidden = !build.length;
+    store.set('buildMeta', Object.fromEntries(build.filter(id => ALL[id] && ALL[id].remote).map(id => [id, ALL[id]])));
+    const appearing = buildEl.hidden && build.length > 0;
+    const emptying = !buildEl.hidden && !build.length;
+    if (emptying && !reduce) {
+      // outro: the bar folds back into a black circle, then drops away
+      buildEl.classList.remove('is-open'); buildEl.style.pointerEvents = 'none';
+      clearTimeout(buildEl._t);
+      const parts = [...$('.build__bar').children];
+      parts.forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' }));
+      const cl = barClip(), C = cl.cap, FULL = cl.full;
+      buildEl.animate([
+        // hold while the contents fade, fold smoothly (ease in + out) into a tall capsule, then drop away
+        { clipPath: FULL, webkitClipPath: FULL, transform: 'translateY(0) scale(1)', opacity: 1, offset: 0 },
+        { clipPath: FULL, webkitClipPath: FULL, transform: 'translateY(0) scale(1)', opacity: 1, offset: .18, easing: 'cubic-bezier(.65,0,.3,1)' },
+        { clipPath: C, webkitClipPath: C, transform: 'translateY(0) scale(1)', opacity: 1, offset: .72, easing: 'cubic-bezier(.5,0,.75,0)' },
+        { clipPath: C, webkitClipPath: C, transform: 'translateY(30px) scale(.8)', opacity: 0, offset: 1 }
+      ], { duration: 900, easing: 'linear', fill: 'forwards' }).onfinish = function () {
+        if (!build.length) buildEl.hidden = true;
+        buildEl.style.pointerEvents = ''; this.cancel();
+        parts.forEach(el => el.getAnimations().forEach(a => a.cancel()));
+      };
+    } else {
+      buildEl.hidden = !build.length;
+    }
+    // the bar rises in once, only when it first appears (the add-to-build orb does its own reveal)
+    if (appearing && !buildEl._fromOrb && !reduce) buildEl.animate([{ transform: 'translateY(30px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 500, easing: 'cubic-bezier(.16,1,.3,1)' });
     if (!build.length) buildEl.classList.remove('is-open');
     $('#buildCount').textContent = build.length;
     if (pop) { const d = $('#buildCount'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop'); }
     const total = build.reduce((s, id) => s + priceOf(id), 0);
     $('#buildTotal').textContent = (build.some(id => ALL[id].from) ? 'from ' : '') + money(total);
-    $('#buildList').innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="assets/${p.img}" alt=""><span>${p.brand} ${p.title}${optName(id) ? `<small style="display:block;color:var(--grey)">${optName(id)}</small>` : ''}</span><b>${money(priceOf(id))}</b><button data-remove="${id}" aria-label="Remove">&times;</button></li>`; }).join('');
+    $('#buildList').innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="${src(p.img)}" alt=""><span>${p.brand} ${p.title}${optName(id) ? `<small style="display:block;color:var(--grey)">${optName(id)}</small>` : ''}</span><b>${money(priceOf(id))}</b><button data-remove="${id}" aria-label="Remove">&times;</button></li>`; }).join('');
     $$('[data-add]').forEach(b => { const on = build.includes(b.dataset.add); b.classList.toggle('is-in', on); b.textContent = on ? 'Added ✓' : 'Add to build'; });
+  };
+  // Add to build: the button squeezes into an amber circle, is thrown down to the bottom middle,
+  // turns black as it lands, then stretches out into the My build bar (or bounces it if already there).
+  const barClip = () => {
+    const w = buildEl.offsetWidth || 520, h = buildEl.offsetHeight || 58, x = Math.max(0, (w - 46) / 2), y = Math.max(0, (h - 46) / 2);
+    const cx = Math.max(0, (w - 38) / 2); // closing shape: a tall capsule (full bar height, 38px wide)
+    return { full: 'inset(0px 0px 0px 0px round 999px)', dot: `inset(${y}px ${x}px ${y}px ${x}px round 999px)`, cap: `inset(0px ${cx}px 0px ${cx}px round 999px)` };
+  };
+  const flyToBuild = (btn, update) => {
+    buildEl.getAnimations().forEach(x => x.cancel()); buildEl.style.pointerEvents = '';
+    const wasHidden = buildEl.hidden;
+    if (reduce || !btn.getBoundingClientRect) { update(); return; }
+    const r = btn.getBoundingClientRect(), D = 46;
+    // 1) do all the DOM work now, before anything moves (keeps the landing frame-perfect)
+    buildEl._fromOrb = true; update(); buildEl._fromOrb = false;
+    if (wasHidden) buildEl.style.visibility = 'hidden';
+    const bar = buildEl.getBoundingClientRect();
+    const sx = r.left + r.width / 2, sy = r.top + r.height / 2, tx = bar.left + bar.width / 2, ty = bar.top + bar.height / 2;
+    // 2) the orb flies on the compositor: transform + opacity only
+    const orb = document.createElement('div');
+    orb.className = 'orb';
+    orb.innerHTML = '<i class="orb__ink"></i>';
+    document.body.appendChild(orb);
+    const cx = sx + (tx - sx) * .15, cy = ty, N = 28, DUR = 640;
+    const ease = t => 1 - Math.pow(1 - t, 3.2);                // fast start, soft landing
+    const frames = [], ink = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N, k = ease(u);
+      const x = (1 - k) * (1 - k) * sx + 2 * (1 - k) * k * cx + k * k * tx;
+      const y = (1 - k) * (1 - k) * sy + 2 * (1 - k) * k * cy + k * k * ty;
+      const sc = u < .18 ? .55 + .45 * (u / .18) : 1;           // pops out of the button as it leaves
+      frames.push({ offset: u, transform: `translate3d(${(x - D / 2).toFixed(2)}px,${(y - D / 2).toFixed(2)}px,0) scale(${sc.toFixed(3)})` });
+      ink.push({ offset: u, opacity: Math.max(0, Math.min(1, (k - .35) / .5)) });
+    }
+    const fly = orb.animate(frames, { duration: DUR, easing: 'linear', fill: 'forwards' });
+    orb.firstChild.animate(ink, { duration: DUR, easing: 'linear', fill: 'forwards' });
+    btn.animate([{ transform: 'scale(1)' }, { transform: 'scale(.92)' }, { transform: 'scale(1)' }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    // 3) landing: nothing to compute, just reveal / bounce
+    let landed = false;
+    const land = () => {
+      if (landed) return; landed = true;
+      if (wasHidden) {
+        buildEl.style.visibility = '';
+        const cl = barClip();
+        // ease in AND out: gentle start, smooth middle, soft settle
+        buildEl.animate([{ clipPath: cl.dot, webkitClipPath: cl.dot }, { clipPath: cl.full, webkitClipPath: cl.full }], { duration: 760, easing: 'cubic-bezier(.65,0,.3,1)' });
+      } else {
+        buildEl.animate([
+          { transform: 'scale(1)', offset: 0, easing: 'cubic-bezier(.45,0,.55,1)' },
+          { transform: 'scale(1.05)', offset: .4, easing: 'cubic-bezier(.45,0,.55,1)' },
+          { transform: 'scale(.995)', offset: .75, easing: 'cubic-bezier(.45,0,.55,1)' },
+          { transform: 'scale(1)', offset: 1 }
+        ], { duration: 700, easing: 'linear' });
+        const d = $('#buildCount'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+      }
+      orb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: wasHidden ? 120 : 160, easing: 'ease-out', fill: 'forwards' }).onfinish = () => orb.remove();
+      setTimeout(() => orb.remove(), 400);
+    };
+    // hand over just before the orb settles, so there's no pause
+    setTimeout(land, DUR * .82);
+    fly.onfinish = land;
   };
   document.addEventListener('click', e => {
     const a = e.target.closest('[data-add]');
     if (a) {
       const id = a.dataset.add;
-      if (build.includes(id)) build = build.filter(x => x !== id);
-      else { build.push(id); toast(`${ALL[id].title} added to your build`); }
-      renderBuild(true);
+      if (build.includes(id)) {
+        build = build.filter(x => x !== id); delete buildOpt[id]; renderBuild();
+        if (build.length && !reduce) buildEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(.955)' }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+      }
+      else { build.push(id); flyToBuild(a, () => renderBuild(false)); }
     }
     const r = e.target.closest('[data-remove]');
-    if (r) { build = build.filter(x => x !== r.dataset.remove); delete buildOpt[r.dataset.remove]; renderBuild(); }
+    if (r) { build = build.filter(x => x !== r.dataset.remove); delete buildOpt[r.dataset.remove]; renderBuild(); if (build.length && !reduce) buildEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(.955)' }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' }); }
   });
   $('#buildToggle').addEventListener('click', () => {
     const open = !buildEl.classList.contains('is-open');
@@ -606,18 +879,41 @@
     if (service && !items.includes(service)) items.unshift(service);
     $('#bfWork').value = items.join('\n');
     const d = new Date(); d.setDate(d.getDate() + 2); $('#bfDate').min = new Date().toISOString().slice(0, 10); $('#bfDate').value = d.toISOString().slice(0, 10);
-    modal.hidden = false; document.body.classList.add('locked');
+    clearTimeout(modal._t); modal.hidden = false; void modal.offsetWidth; modal.classList.add('open'); document.body.classList.add('locked');
     buildEl.classList.remove('is-open');
     setTimeout(() => ($('#bfVehicle').value ? $('#bfWork') : $('#bfVehicle')).focus(), 50);
   };
-  const closeModal = () => { modal.hidden = true; if (!menu.classList.contains('is-open')) document.body.classList.remove('locked'); };
+  const closeModal = () => { modal.classList.remove('open'); clearTimeout(modal._t); modal._t = setTimeout(() => { modal.hidden = true; }, reduce ? 0 : 320); if (!menu.classList.contains('is-open') && pdpEl.hidden) document.body.classList.remove('locked'); };
+  // "Add your vehicle" step: jump to the finder and open Make
+  $$('[data-step="vehicle"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); goFinder(); }));
   $$('[data-book]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); openModal(b.dataset.service); }));
   $('#pdpBook').addEventListener('click', () => { const id = pdpId, p = ALL[id]; closePdp(); openModal(p.brand + ' ' + p.title + (PDP[id] && PDP[id].opts[pdpOpt] ? ` (${PDP[id].opts[pdpOpt][0]})` : '')); });
   $('#modalClose').addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   $('#bookForm').addEventListener('submit', e => { e.preventDefault(); closeModal(); toast('Request sent. The lab will call you within one business day.'); });
 
-  $('#joinBtn').addEventListener('click', e => { e.preventDefault(); toast('Welcome to iilumo Club. 5% back starts on your next order.'); });
+  // iilumo Club early access (coming soon): email capture pop-up
+  const cm = $('#clubModal');
+  const openClub = () => {
+    clearTimeout(cm._t); cm.hidden = false; void cm.offsetWidth; cm.classList.add('open');
+    document.body.classList.add('locked');
+    setTimeout(() => { const i = $('#cmForm input'); if (i) i.focus({ preventScroll: true }); }, 350);
+  };
+  const closeClub = () => {
+    if (cm.hidden) return;
+    cm.classList.remove('open'); cm._t = setTimeout(() => { cm.hidden = true; }, reduce ? 0 : 380);
+    if (pdpEl.hidden && $('#modal').hidden && !menu.classList.contains('is-open')) document.body.classList.remove('locked');
+  };
+  document.addEventListener('click', e => { if (e.target.closest('[data-club]')) { e.preventDefault(); openClub(); } });
+  $('#cmClose').addEventListener('click', closeClub);
+  cm.addEventListener('click', e => { if (e.target === cm) closeClub(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !cm.hidden) { e.stopImmediatePropagation(); closeClub(); } }, true);
+  cm.addEventListener('submit', e => {
+    e.preventDefault();
+    const f = $('#cmForm'), em = f.querySelector('input');
+    if (!/^\S+@\S+\.\S+$/.test(em.value)) { em.focus(); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); return; }
+    $('#cmBody').innerHTML = `<div class="cm__done"><div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><b>You're on the list</b><span>We'll email ${esc(em.value)} the moment iilumo Club opens.</span></div>`;
+  });
   $('#newsForm').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast("You're on the list."); });
 
   addEventListener('keydown', e => {
@@ -627,6 +923,56 @@
     else if (menu.classList.contains('is-open')) setMenu(false);
     else buildEl.classList.remove('is-open');
   });
+
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || a.hasAttribute('data-book') || a.matches('.menu__nav a') || a.dataset.step) return;
+    const id = a.getAttribute('href');
+    if (id.length < 2 || id.startsWith('#/') || !document.querySelector(id)) return;
+    e.preventDefault();
+    if (id === '#finder') goFinder(); else glide(id);
+  });
+
+  // Brand strip: turn every logo into clean transparent white, trim its empty edges,
+  // then size it by visual weight so wide wordmarks and square badges look equally big.
+  (() => {
+    const imgs = $$('.ticker .tl img');
+    const cache = {};
+    const process = img => new Promise(res => {
+      const src = img.getAttribute('src');
+      if (cache[src]) return res(cache[src]);
+      const im = new Image();
+      im.onload = () => {
+        const S = 240 / im.naturalHeight, W = Math.round(im.naturalWidth * S) || 240, H = 240;
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, W, H);
+        const d = x.getImageData(0, 0, W, H), p = d.data, mode = img.dataset.mode;
+        let x0 = W, y0 = H, x1 = 0, y1 = 0;
+        for (let i = 0; i < p.length; i += 4) {
+          const a = p[i + 3] / 255, l = (p[i] * .299 + p[i + 1] * .587 + p[i + 2] * .114) / 255;
+          let o = mode === 'light' ? a * (1 - l) : mode === 'dark' ? a * l : mode === 'thresh' ? (l - .55) / .3 : mode === 'bright' ? a * (l - .3) / .4 : a;
+          o = Math.max(0, Math.min(1, o)) * (mode === 'light' || mode === 'dark' ? 1 : 1);
+          if (mode === 'light' || mode === 'dark') o = o < .12 ? 0 : Math.min(1, (o - .12) / .7);
+          p[i] = p[i + 1] = p[i + 2] = 255; p[i + 3] = Math.round(o * 255);
+          if (o > .08) { const k = i / 4, px = k % W, py = (k / W) | 0; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; }
+        }
+        x.putImageData(d, 0, 0);
+        if (x1 <= x0) return res(null);
+        const tw = x1 - x0 + 1, th = y1 - y0 + 1, t = document.createElement('canvas'); t.width = tw; t.height = th;
+        t.getContext('2d').drawImage(c, x0, y0, tw, th, 0, 0, tw, th);
+        res(cache[src] = { url: t.toDataURL('image/png'), ratio: tw / th });
+      };
+      im.onerror = () => res(null);
+      im.src = src;
+    });
+    Promise.all(imgs.map(img => process(img).then(r => {
+      if (!r) return;
+      img.src = r.url;
+      // equal visual weight: area stays constant, height kept between 13px and 27px
+      const h = Math.max(13, Math.min(27, 20 * Math.sqrt(3.2 / r.ratio)));
+      img.style.height = h.toFixed(1) + 'px';
+    }))).then(() => $('.ticker').classList.add('is-ready'));
+  })();
 
   /* ---------- Toast ---------- */
   let tt;
@@ -679,11 +1025,219 @@
     addEventListener('scroll', par, { passive: true }); par();
   }
 
+  // live open / closed badge (Melbourne lab hours)
+  (() => {
+    const now = new Date(), d = now.getDay(), hr = now.getHours() + now.getMinutes() / 60;
+    const HRS = { 0: null, 6: [10, 14] }; for (let i = 1; i <= 5; i++) HRS[i] = [9, 17];
+    const fmt = h => (h > 12 ? h - 12 : h) + (h >= 12 ? 'pm' : 'am');
+    const t = HRS[d], el = $('#openNow');
+    if (t && hr >= t[0] && hr < t[1]) { el.className = 'visit__now is-open'; el.innerHTML = `<i></i>Open now · until ${fmt(t[1])}`; }
+    else {
+      let k = 0, nd, nt; do { k++; nd = (d + k) % 7; nt = HRS[nd]; } while (!nt);
+      if (t && hr < t[0]) { nd = d; nt = t; k = 0; }
+      const day = k === 0 ? 'today' : k === 1 ? 'tomorrow' : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][nd];
+      el.className = 'visit__now'; el.innerHTML = `<i></i>Closed · opens ${day} ${fmt(nt[0])}`;
+    }
+  })();
   const today = new Date().getDay();
   $$('#hours [data-days]').forEach(el => el.classList.toggle('is-today', el.dataset.days.split(',').includes(String(today))));
+
+  /* ---------- Views: All parts + full product pages (hash routes, ready to map to Shopify templates) ---------- */
+  const views = { home: $('#home'), parts: $('#viewParts'), product: $('#viewProduct') };
+  let current = 'home', CAT = null, catLoading = null;
+  const loadCatalog = () => catLoading || (catLoading = fetch('assets/data/catalog.json').then(r => r.json()).then(j => {
+    const seen = new Set();
+    CAT = [];
+    j.rows.forEach(([id, h, b, t, pr, ci, fi, img, inStock, d]) => {
+      const fits = fi.map(k => j.veh[k]);
+      if (ALL[id] && !ALL[id].remote) {           // one of our curated products: keep its local data, widen its fitment
+        const p = ALL[id]; if (p.fits !== '*') p.fits = [...new Set([...p.fits, ...fits])];
+        p.h = p.h || h || null; p.date = d; CAT.push(p); seen.add(id); return;
+      }
+      const p = ALL[id] || (ALL[id] = { id, h: h || id, brand: b, title: t, price: pr, cat: j.cats[ci], fits, img: j.cdn + img + '?width=600', remote: true });
+      p.date = d; if (!inStock) STOCK[id] = 'out';
+      CAT.push(p); seen.add(id);
+    });
+    PARTS.forEach(p => { if (!seen.has(p.id)) CAT.push(p); });  // universal / curated extras
+    return CAT;
+  }));
+
+  // filter state
+  const F = { veh: null, cats: new Set(), brands: new Set(), stock: new Set(), min: null, max: null, sort: 'featured', q: '' };
+  let shown = 24;
+  const fitsCar = (p, v) => !v || p.fits === '*' || p.fits.includes(v);
+  const pass = (p, skip) => fitsCar(p, F.veh)
+    && (skip === 'cat' || !F.cats.size || F.cats.has(p.cat))
+    && (skip === 'brand' || !F.brands.size || F.brands.has(p.brand))
+    && (skip === 'stock' || !F.stock.size || F.stock.has(stockOf(p.id)))
+    && (F.min == null || p.price >= F.min) && (F.max == null || p.price <= F.max)
+    && (!F.q || (p.brand + ' ' + p.title + ' ' + p.cat).toLowerCase().includes(F.q));
+  const SORTS = {
+    featured: (a, b) => (b.id[0] === 'p' && /^\d+$/.test(b.id.slice(1))) - (a.id[0] === 'p' && /^\d+$/.test(a.id.slice(1))) || (stockOf(a.id) === 'out') - (stockOf(b.id) === 'out') || b.price - a.price,
+    low: (a, b) => a.price - b.price, high: (a, b) => b.price - a.price,
+    az: (a, b) => (a.brand + a.title).localeCompare(b.brand + b.title), new: (a, b) => (b.date || '').localeCompare(a.date || '')
+  };
+  const facet = (key, skip, label) => {
+    const counts = {};
+    CAT.forEach(p => { if (pass(p, skip)) { const k = key(p); counts[k] = (counts[k] || 0) + 1; } });
+    return counts;
+  };
+  const listHTML = (name, counts, set, opts = {}) => {
+    const keys = Object.keys(counts).sort((a, b) => opts.order ? opts.order.indexOf(a) - opts.order.indexOf(b) : counts[b] - counts[a]);
+    [...set].forEach(k => { if (!keys.includes(k)) keys.push(k); });
+    return keys.map((k, i) => `<label class="fl${i >= (opts.limit || 99) ? ' fl--more' : ''}"><input type="checkbox" data-f="${name}" value="${escH(k)}"${set.has(k) ? ' checked' : ''}><span>${escH(opts.label ? opts.label(k) : k)}</span><b>${counts[k] || 0}</b></label>`).join('');
+  };
+  const pvCarSelects = () => {
+    const mk = $('#pvMake'), md = $('#pvModel'), yr = $('#pvYear');
+    const makes = [...new Set(Object.values(VEHICLES).map(v => v[0]))].sort();
+    mk.innerHTML = '<option value="">All makes</option>' + makes.map(m => `<option>${m}</option>`).join('');
+    const sync = () => {
+      const v = F.veh ? VEHICLES[F.veh] : null;
+      mk.value = v ? v[0] : (mk.value || '');
+      md.innerHTML = '<option value="">' + (mk.value ? 'All models' : 'Model') + '</option>' + Object.entries(VEHICLES).filter(([, x]) => x[0] === mk.value).map(([id, x]) => `<option value="${id}">${x[1]}</option>`).join('');
+      md.disabled = !mk.value; md.value = F.veh || '';
+      yr.innerHTML = '<option value="">Year</option>' + (F.veh ? Array.from({ length: VEHICLES[F.veh][3] - VEHICLES[F.veh][2] + 1 }, (_, i) => VEHICLES[F.veh][3] - i).map(y => `<option>${y}</option>`).join('') : '');
+      yr.disabled = !F.veh; yr.value = vehicle && vehicle.id === F.veh ? vehicle.year : '';
+    };
+    mk.onchange = () => { F.veh = null; sync(); renderParts(true); };
+    md.onchange = () => { F.veh = md.value || null; sync(); renderParts(true); };
+    yr.onchange = () => { if (F.veh && yr.value) { setVehicle(F.veh, +yr.value, false); toast(`Saved ${vName(F.veh, +yr.value)} to My garage`); } };
+    pvCarSelects.sync = sync; sync();
+  };
+  const renderParts = resetPage => {
+    if (!CAT) return;
+    if (resetPage) shown = 24;
+    const list = CAT.filter(p => pass(p)).sort(SORTS[F.sort]);
+    const carTxt = F.veh ? (vehicle && vehicle.id === F.veh ? vName(F.veh, vehicle.year) : `${VEHICLES[F.veh][0]} ${VEHICLES[F.veh][1]}`) : '';
+    $('#pvCount').textContent = `${list.length.toLocaleString()} part${list.length === 1 ? '' : 's'}${carTxt ? ' for your ' + carTxt : ''}`;
+    $('#pvGrid').innerHTML = list.length ? list.slice(0, shown).map(card).join('') : `<div class="empty">No parts match yet. <button class="link" data-pv-reset>Clear filters</button> or call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</div>`;
+    $('#pvMore').hidden = shown >= list.length;
+    $('#pvShown').textContent = list.length ? `Showing ${Math.min(shown, list.length)} of ${list.length.toLocaleString()}` : '';
+    // facets (counts respect every other active filter)
+    $('#fCat').innerHTML = listHTML('cats', facet(p => p.cat, 'cat'), F.cats);
+    $('#fBrand').innerHTML = listHTML('brands', facet(p => p.brand, 'brand'), F.brands, { limit: 8 });
+    $('#fStock').innerHTML = listHTML('stock', facet(p => stockOf(p.id), 'stock'), F.stock, { order: ['in', 'special', 'out'], label: k => STOCK_TXT[k] });
+    $('#fBrandMore').hidden = $$('#fBrand .fl--more').length === 0;
+    // active chips
+    const chips = [];
+    if (F.veh) chips.push(['veh', '', carTxt]);
+    F.cats.forEach(c => chips.push(['cats', c, c]));
+    F.brands.forEach(b => chips.push(['brands', b, b]));
+    F.stock.forEach(k => chips.push(['stock', k, STOCK_TXT[k]]));
+    if (F.min != null || F.max != null) chips.push(['price', '', `${F.min != null ? money(F.min) : '$0'} to ${F.max != null ? money(F.max) : 'any'}`]);
+    if (F.q) chips.push(['q', '', `“${F.q}”`]);
+    $('#pvChips').innerHTML = chips.map(([k, v, t]) => `<button class="achip" data-chip="${k}" data-v="${escH(v)}">${escH(t)}<i>&times;</i></button>`).join('') + (chips.length > 1 ? '<button class="link" data-pv-reset>Clear all</button>' : '');
+    $('#pvApply').textContent = `Show ${list.length.toLocaleString()} result${list.length === 1 ? '' : 's'}`;
+    $('#pvFCount').textContent = chips.length ? chips.length : '';
+    $('#pvFCount').hidden = !chips.length;
+    // keep the URL shareable
+    const q = new URLSearchParams();
+    if (F.veh) q.set('car', F.veh); if (F.cats.size) q.set('cat', [...F.cats].join(',')); if (F.brands.size) q.set('brand', [...F.brands].join(','));
+    if (F.stock.size) q.set('stock', [...F.stock].join(',')); if (F.sort !== 'featured') q.set('sort', F.sort); if (F.q) q.set('q', F.q);
+    const h = '#/parts' + (q.toString() ? '?' + q : '');
+    if (location.hash !== h) history.replaceState(null, '', h);
+  };
+  const readPartsQuery = () => {
+    const q = new URLSearchParams((location.hash.split('?')[1] || ''));
+    F.veh = q.get('car') && VEHICLES[q.get('car')] ? q.get('car') : (vehicle ? vehicle.id : null);
+    F.cats = new Set((q.get('cat') || '').split(',').filter(Boolean)); F.brands = new Set((q.get('brand') || '').split(',').filter(Boolean));
+    F.stock = new Set((q.get('stock') || '').split(',').filter(Boolean)); F.sort = q.get('sort') || 'featured'; F.q = (q.get('q') || '').toLowerCase();
+    $('#pvSort').value = F.sort; $('#pvSearch').value = F.q;
+  };
+  const openParts = async () => {
+    $('#pvGrid').innerHTML = '<div class="pv__loading"><i></i><i></i><i></i></div>';
+    readPartsQuery();
+    await loadCatalog();
+    pvCarSelects(); renderParts(true);
+  };
+  // filter events
+  $('#viewParts').addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset.f) { const set = F[t.dataset.f]; t.checked ? set.add(t.value) : set.delete(t.value); renderParts(true); }
+    if (t.id === 'pvSort') { F.sort = t.value; renderParts(true); }
+    if (t.id === 'pvMin' || t.id === 'pvMax') { F.min = $('#pvMin').value ? +$('#pvMin').value : null; F.max = $('#pvMax').value ? +$('#pvMax').value : null; renderParts(true); }
+  });
+  let qT;
+  $('#pvSearch').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { F.q = e.target.value.trim().toLowerCase(); renderParts(true); }, 180); });
+  $('#viewParts').addEventListener('click', e => {
+    const c = e.target.closest('[data-chip]');
+    if (c) {
+      const k = c.dataset.chip, v = c.dataset.v;
+      if (k === 'veh') F.veh = null; else if (k === 'price') { F.min = F.max = null; $('#pvMin').value = $('#pvMax').value = ''; } else if (k === 'q') { F.q = ''; $('#pvSearch').value = ''; } else F[k].delete(v);
+      pvCarSelects.sync(); renderParts(true);
+    }
+    if (e.target.closest('[data-pv-reset]') || e.target.closest('#pvReset')) {
+      F.veh = null; F.cats.clear(); F.brands.clear(); F.stock.clear(); F.min = F.max = null; F.q = '';
+      $('#pvMin').value = $('#pvMax').value = $('#pvSearch').value = ''; pvCarSelects.sync(); renderParts(true);
+    }
+    if (e.target.closest('#pvMore')) { shown += 24; renderParts(); }
+    if (e.target.closest('#fBrandMore')) { $('#fBrand').classList.toggle('show-all'); e.target.closest('#fBrandMore').textContent = $('#fBrand').classList.contains('show-all') ? 'Show fewer' : 'Show all brands'; }
+    if (e.target.closest('[data-pv-garage]')) { const g = garage[+e.target.closest('[data-pv-garage]').dataset.pvGarage]; F.veh = g.id; setVehicle(g.id, g.year, false); pvCarSelects.sync(); renderParts(true); }
+    if (e.target.closest('#pvFOpen')) setDrawer(true);
+    if (e.target.closest('#pvFClose') || e.target.closest('#pvApply') || e.target === $('#pvScrim')) setDrawer(false);
+  });
+  const setDrawer = open => { $('#viewParts').classList.toggle('filters-open', open); document.body.classList.toggle('locked', open); };
+
+  // full product page = the same product layout, placed on the page instead of in the pop-up
+  const pdpCard = $('.pdp__card');
+  const openProductPage = async id => {
+    id = decodeURIComponent(id);
+    if (!ALL[id]) await loadCatalog();
+    if (!ALL[id]) { location.hash = '#/parts'; return; }
+    await ensureDetail(id);
+    if (!pdpEl.hidden) { pdpEl.classList.remove('open'); pdpEl.hidden = true; document.body.classList.remove('locked'); }
+    $('#ppSlot').appendChild(pdpCard); pdpCard.classList.add('pdp__card--page');
+    openPdpNow(id, true);
+    scrollTo(0, 0);
+    const p = ALL[id];
+    $('#ppCrumbs').innerHTML = `<a href="#/">Home</a><span>/</span><a href="#/parts">Parts</a><span>/</span><a href="#/parts?cat=${encodeURIComponent(p.cat)}">${escH(p.cat)}</a><span>/</span><b>${escH(p.title)}</b>`;
+    document.title = `${(PDP[id] && PDP[id].full) || p.title} | iilumolab`;
+    // more parts like this, for the same car where possible
+    await loadCatalog();
+    const v = vehicle && fitsCar(p, vehicle.id) ? vehicle.id : (p.fits !== '*' ? p.fits[0] : null);
+    const rel = CAT.filter(x => x.id !== id && fitsCar(x, v) && (x.cat === p.cat || x.brand === p.brand)).slice(0, 8);
+    $('#ppRelTitle').textContent = v ? `More for the ${VEHICLES[v][0]} ${VEHICLES[v][1]}` : 'You might also like';
+    $('#ppRel').innerHTML = rel.map(card).join('');
+    $('#ppRelWrap').hidden = !rel.length;
+  };
+  const leaveProductPage = () => {
+    if (pdpCard.parentElement !== pdpEl) { pdpCard.classList.remove('pdp__card--page'); pdpEl.appendChild(pdpCard); }
+    document.title = 'iilumolab | Custom Automotive Upgrades, Melbourne';
+  };
+
+  const showView = name => {
+    if (current === 'product' && name !== 'product') leaveProductPage();
+    Object.entries(views).forEach(([k, el]) => { el.hidden = k !== name; });
+    document.body.classList.toggle('on-view', name !== 'home');
+    $('#garagePanel') && !$('#garagePanel').hidden && garageBtn.click();
+    if (menu.classList.contains('is-open')) setMenu(false);
+    current = name;
+    onScroll();
+    if (name !== 'home' && !reduce) views[name].animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.16,1,.3,1)' });
+  };
+  const route = () => {
+    const h = location.hash;
+    if (h.startsWith('#/parts')) { const was = current; showView('parts'); if (was !== 'parts') scrollTo(0, 0); openParts(); }
+    else if (h.startsWith('#/product/')) { showView('product'); scrollTo(0, 0); openProductPage(h.slice(10)); }
+    else if (h === '#/' || h === '' || h === '#') { const was = current; showView('home'); if (was !== 'home') scrollTo(0, 0); }
+  };
+  addEventListener('hashchange', route);
+  // links to home sections from a parts / product page: go home first, then glide
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || current === 'home') return;
+    const id = a.getAttribute('href');
+    if (id.startsWith('#/') || a.hasAttribute('data-book') || !document.querySelector(id) || !views.home.contains(document.querySelector(id))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    history.pushState(null, '', '#/'); showView('home'); scrollTo(0, 0);
+    requestAnimationFrame(() => id === '#finder' ? goFinder() : glide(id));
+  }, true);
+  // close button on the full product page goes back
+  $('#pdpClose').addEventListener('click', e => { if (current === 'product') { e.stopImmediatePropagation(); history.length > 1 ? history.back() : (location.hash = '#/parts'); } }, true);
 
   /* ---------- Init ---------- */
   renderBuild();
   updateVehicleUI();
   if (vehicle) { setVehicle(vehicle.id, vehicle.year, false); }
+  route();
 })();

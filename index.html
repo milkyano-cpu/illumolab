@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><!-- staging: keep out of Google until it moves to Shopify -->
 <title>iilumolab | Custom Automotive Upgrades, Melbourne</title>
 <meta name="description" content="Ambient lighting, starlight roofs, body kits, exhausts, suspension and brakes. Find upgrades that fit your car and book an install at our Keysborough lab.">
 <link rel="icon" href="assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=43">
+<link rel="stylesheet" href="styles.css?v=94">
 </head>
 <body>
 
@@ -33,13 +34,20 @@
     <nav class="top__nav" aria-label="Main">
       <a href="#services">Services</a>
       <a href="#finder">Vehicles</a>
-      <a href="#parts">Parts</a>
+      <a href="#/parts">Parts</a>
       <a href="#brands">Brands</a>
       <a href="#visit">Visit</a>
     </nav>
     <div class="top__actions">
       <a href="#book" class="pill pill--dark" data-book>Book install</a>
-      <button class="pill pill--light" id="myVehicleBtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11m-14 0h14m-14 0a2 2 0 0 0-2 2v3h2m14-5a2 2 0 0 1 2 2v3h-2M5 16v2m14-2v2M7.5 14h.01M16.5 14h.01"/></svg><span id="myVehicleLabel">Add my vehicle</span></button>
+      <div class="garage" id="garage">
+        <button class="pill pill--light" id="myVehicleBtn" aria-expanded="false" aria-controls="garagePanel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11m-14 0h14m-14 0a2 2 0 0 0-2 2v3h2m14-5a2 2 0 0 1 2 2v3h-2M5 16v2m14-2v2M7.5 14h.01M16.5 14h.01"/></svg><span id="myVehicleLabel">Add my vehicle</span><span class="garage__count" id="garageCount" hidden></span></button>
+        <div class="garage__panel" id="garagePanel" hidden>
+          <div class="garage__head"><b>My garage</b><span>Cars you've searched</span></div>
+          <ul class="garage__list" id="garageList"></ul>
+          <button class="garage__add" id="garageAdd" type="button"><span>+</span> Add another car</button>
+        </div>
+      </div>
       <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
     </div>
   </div>
@@ -51,6 +59,7 @@
     <a href="#hero">Home</a>
     <a href="#finder">Find my fit</a>
     <a href="#services">Services</a>
+    <a href="#/parts">All parts</a>
     <a href="#parts">Popular parts</a>
     <a href="#vehicles">Vehicles</a>
     <a href="#club">iilumo Club</a>
@@ -63,7 +72,7 @@
   </div>
 </div>
 
-<main>
+<main id="home">
 
 <!-- Hero -->
 <section class="hero" id="hero">
@@ -91,7 +100,7 @@
 
 <!-- Ticker -->
 <div class="ticker" aria-label="Brands we fit"><span class="ticker__label">Official fitment partners</span>
-  <div class="ticker__track"><span>ADRO</span><span>Maxton Design</span><span>Invidia</span><span>H&amp;R</span><span>KW Suspensions</span><span>Eventuri</span><span>DIXCEL</span><span>XForce</span><span>Fi Exhaust</span><span>Brembo</span><span>Bilstein</span><span>BC Racing</span><span>Milltek</span><span>BlackVue</span><span>iilumo</span><span>ADRO</span><span>Maxton Design</span><span>Invidia</span><span>H&amp;R</span><span>KW Suspensions</span><span>Eventuri</span><span>DIXCEL</span><span>XForce</span><span>Fi Exhaust</span><span>Brembo</span><span>Bilstein</span><span>BC Racing</span><span>Milltek</span><span>BlackVue</span><span>iilumo</span></div>
+  <div class="ticker__view"><div class="ticker__track"><span class="tl"><img data-mode="alpha" src="assets/logos/adro.png" alt="ADRO"></span><span class="tl"><img data-mode="alpha" src="assets/logos/maxton.svg" alt="Maxton Design"></span><span class="tl"><img data-mode="light" src="assets/logos/invidia.jpg" alt="Invidia"></span><span class="tl"><img data-mode="thresh" src="assets/logos/hr.png" alt="H&amp;R"></span><span class="tl"><img data-mode="light" src="assets/logos/kw.png" alt="KW Suspensions"></span><span class="tl"><img data-mode="alpha" src="assets/logos/eventuri.svg" alt="Eventuri"></span><span class="tl"><img data-mode="alpha" src="assets/logos/dixcel.svg" alt="DIXCEL"></span><span class="tl"><img data-mode="dark" src="assets/logos/xforce.png" alt="XForce"></span><span class="tl"><img data-mode="alpha" src="assets/logos/fi.svg" alt="Fi Exhaust"></span><span class="tl"><img data-mode="alpha" src="assets/logos/brembo.svg" alt="Brembo"></span><span class="tl"><img data-mode="alpha" src="assets/logos/bilstein.svg" alt="Bilstein"></span><span class="tl"><img data-mode="bright" src="assets/logos/bcracing.svg" alt="BC Racing"></span><span class="tl"><img data-mode="alpha" src="assets/logos/milltek.png" alt="Milltek"></span><span class="tl"><img data-mode="alpha" src="assets/logos/blackvue.svg" alt="BlackVue"></span><span class="tl"><img data-mode="alpha" src="assets/logos/iilumo.png" alt="iilumo"><b>iilumo</b></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/adro.png" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/maxton.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="light" src="assets/logos/invidia.jpg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="thresh" src="assets/logos/hr.png" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="light" src="assets/logos/kw.png" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/eventuri.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/dixcel.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="dark" src="assets/logos/xforce.png" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/fi.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/brembo.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/bilstein.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="bright" src="assets/logos/bcracing.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/milltek.png" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/blackvue.svg" alt=""></span><span class="tl" aria-hidden="true"><img data-mode="alpha" src="assets/logos/iilumo.png" alt=""><b>iilumo</b></span></div></div>
 </div>
 
 <!-- Vehicle finder -->
@@ -106,7 +115,8 @@
       <button role="tab" aria-selected="false" data-mode="installs">Installs</button>
     </div>
 
-    <form class="search reveal" id="searchForm" autocomplete="off">
+    <form class="search reveal" id="searchForm" autocomplete="off" novalidate>
+      <button class="search__clear" id="searchClear" type="button" hidden>Clear <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
       <label class="search__field">
         <span class="search__label">Make</span>
         <select id="selMake" required><option value="">Select make</option></select>
@@ -199,7 +209,7 @@
   <div class="wrap">
     <div class="head">
       <h2 class="h2">Popular parts</h2>
-      <a href="#finder" class="pill pill--outline">Shop by vehicle <i>&rarr;</i></a>
+      <div class="head__actions"><a href="#finder" class="pill pill--outline">Shop by vehicle <i>&rarr;</i></a><a href="#/parts" class="pill pill--ink">View all <i>&rarr;</i></a></div>
     </div>
   </div>
   <div class="rail" data-rail>
@@ -226,10 +236,10 @@
 <section class="club" id="club">
   <div class="wrap club__wrap">
     <div class="club__copy">
-      <p class="eyebrow eyebrow--dark">iilumo Club</p>
+      <p class="eyebrow eyebrow--dark">iilumo Club <span class="soon">Coming soon</span></p>
       <h2 class="club__title reveal">Build more.<br>Pay less.</h2>
       <p class="club__lede">Free to join. Your garage, your perks, every visit.</p>
-      <a href="#club" class="btn btn--black" id="joinBtn">Join the club <i>&rarr;</i></a>
+      <button type="button" class="btn btn--black" data-club>Get early access <i>&rarr;</i></button>
     </div>
     <ul class="club__perks">
       <li><b>5%</b><span>back as lab credit on every order and install</span></li>
@@ -275,31 +285,37 @@
 
 <!-- Visit -->
 <section class="section visit" id="visit">
-  <div class="wrap visit__wrap">
-    <div>
+  <div class="wrap">
+    <div class="visit__head">
       <h2 class="h2">Visit the lab</h2>
-      <ul class="loc">
-        <li>
-          <div><b>Keysborough workshop</b><span>22 Atlantic Drive, Keysborough VIC 3173</span></div>
-          <a class="pill pill--outline" href="https://www.google.com/maps/dir/?api=1&destination=22+Atlantic+Drive+Keysborough+VIC+3173" target="_blank" rel="noopener">Directions <i>&rarr;</i></a>
-        </li>
-        <li>
-          <div><b>Call or text</b><span>0483 939 304 &middot; Intl +61 483 939 304</span></div>
-          <a class="pill pill--outline" href="tel:0483939304">Call <i>&rarr;</i></a>
-        </li>
-      </ul>
+      <span class="visit__now" id="openNow"></span>
     </div>
-    <div>
-      <h3 class="h3">Trading hours</h3>
-      <dl class="hours" id="hours">
-        <div data-days="1,2,3,4,5"><dt>Monday to Friday</dt><dd>9am to 5pm</dd></div>
-        <div data-days="6"><dt>Saturday</dt><dd>10am to 2pm</dd></div>
-        <div data-days="0"><dt>Sunday &amp; public holidays</dt><dd>Closed</dd></div>
-      </dl>
-      <div class="jobs">
-        <b>We're hiring.</b> Installers and auto electricians who care about the details.
-        <a href="https://iilumolab.com.au/pages/careers" class="link">See careers &rarr;</a>
+    <div class="visit__wrap">
+      <div class="visit__col">
+        <h3 class="h3">Find us</h3>
+        <ul class="loc">
+          <li>
+            <div><b>Keysborough workshop</b><span>22 Atlantic Drive, Keysborough VIC 3173</span></div>
+            <a class="pill pill--outline" href="https://www.google.com/maps/dir/?api=1&destination=22+Atlantic+Drive+Keysborough+VIC+3173" target="_blank" rel="noopener">Directions <i>&rarr;</i></a>
+          </li>
+          <li>
+            <div><b>Call or text</b><span>0483 939 304 &middot; Intl +61 483 939 304</span></div>
+            <a class="pill pill--outline" href="tel:0483939304">Call <i>&rarr;</i></a>
+          </li>
+        </ul>
       </div>
+      <div class="visit__col">
+        <h3 class="h3">Trading hours</h3>
+        <dl class="hours" id="hours">
+          <div data-days="1,2,3,4,5"><dt>Monday to Friday</dt><dd>9am to 5pm</dd></div>
+          <div data-days="6"><dt>Saturday</dt><dd>10am to 2pm</dd></div>
+          <div data-days="0"><dt>Sunday &amp; public holidays</dt><dd>Closed</dd></div>
+        </dl>
+      </div>
+    </div>
+    <div class="jobs">
+      <p><b>We're hiring.</b> Installers and auto electricians who care about the details.</p>
+      <a href="https://iilumolab.com.au/pages/careers" class="pill pill--outline">See careers <i>&rarr;</i></a>
     </div>
   </div>
 </section>
@@ -308,9 +324,9 @@
 <section class="band" id="book">
   <div class="wrap">
     <div class="band__steps">
-      <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11m-14 0h14m-14 0a2 2 0 0 0-2 2v3h2m14-5a2 2 0 0 1 2 2v3h-2"/></svg>Add your vehicle</span>
-      <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Choose your upgrade</span>
-      <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Book the lab</span>
+      <a class="band__step" href="#finder" data-step="vehicle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11m-14 0h14m-14 0a2 2 0 0 0-2 2v3h2m14-5a2 2 0 0 1 2 2v3h-2"/></svg><span>Add your vehicle</span><i>&rarr;</i></a>
+      <a class="band__step" href="#/parts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Choose your upgrade</span><i>&rarr;</i></a>
+      <a class="band__step" href="#book" data-book><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Book the lab</span><i>&rarr;</i></a>
       <a href="#finder" class="pill pill--light">Get building <i>&rarr;</i></a>
     </div>
     <div class="band__main">
@@ -325,6 +341,55 @@
 
 </main>
 
+<!-- All parts (collection view) -->
+<main id="viewParts" class="view" hidden>
+  <div class="wrap pv">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><b>Parts</b></nav>
+    <div class="pv__head">
+      <div><h1 class="h2">All parts</h1><p class="pv__count" id="pvCount">Loading parts…</p></div>
+      <label class="pv__search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input id="pvSearch" type="search" placeholder="Search parts or brands" aria-label="Search parts"></label>
+    </div>
+    <div class="pv__car" role="group" aria-label="Your car">
+      <span class="pv__carlabel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11m-14 0h14m-14 0a2 2 0 0 0-2 2v3h2m14-5a2 2 0 0 1 2 2v3h-2"/></svg>Your car</span>
+      <select id="pvMake" aria-label="Make"></select>
+      <select id="pvModel" aria-label="Model"></select>
+      <select id="pvYear" aria-label="Year"></select>
+    </div>
+    <div class="pv__layout">
+      <div class="pv__scrim" id="pvScrim"></div>
+      <aside class="pv__filters" aria-label="Filters">
+        <div class="pv__fhead"><b>Filters</b><button class="link" id="pvReset" type="button">Reset</button><button class="pv__close" id="pvFClose" type="button" aria-label="Close filters">&times;</button></div>
+        <details open><summary>Category</summary><div class="fgroup" id="fCat"></div></details>
+        <details open><summary>Brand</summary><div class="fgroup" id="fBrand"></div><button class="link fmore" id="fBrandMore" type="button">Show all brands</button></details>
+        <details open><summary>Availability</summary><div class="fgroup" id="fStock"></div></details>
+        <details><summary>Price</summary><div class="fprice"><label>Min<input id="pvMin" type="number" min="0" inputmode="numeric" placeholder="$0"></label><span>to</span><label>Max<input id="pvMax" type="number" min="0" inputmode="numeric" placeholder="Any"></label></div></details>
+        <button class="btn btn--black btn--full pv__apply" id="pvApply" type="button">Show results</button>
+      </aside>
+      <section class="pv__main">
+        <div class="pv__bar">
+          <button class="pill pill--outline pv__ftoggle" id="pvFOpen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Filters<span class="pv__fcount" id="pvFCount" hidden></span></button>
+          <div class="pv__chips" id="pvChips"></div>
+          <label class="pv__sort"><span>Sort</span><select id="pvSort"><option value="featured">Featured</option><option value="low">Price, low to high</option><option value="high">Price, high to low</option><option value="az">A to Z</option><option value="new">Newest</option></select></label>
+        </div>
+        <div class="grid pv__grid" id="pvGrid"></div>
+        <div class="pv__more"><p id="pvShown"></p><button class="btn btn--line" id="pvMore" type="button">Load more</button></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Full product page (same layout as the pop-up, on the page) -->
+<main id="viewProduct" class="view" hidden>
+  <div class="wrap pp">
+    <nav class="crumbs" id="ppCrumbs" aria-label="Breadcrumb"></nav>
+    <div id="ppSlot"></div>
+    <section class="pp__rel" id="ppRelWrap" hidden>
+      <div class="head"><h2 class="h2" id="ppRelTitle">More for your car</h2><a href="#/parts" class="pill pill--outline">View all <i>&rarr;</i></a></div>
+      <div class="grid" id="ppRel"></div>
+    </section>
+  </div>
+</main>
+
 <footer class="foot">
   <div class="wrap foot__grid">
     <div class="foot__brand">
@@ -336,7 +401,7 @@
       </form>
     </div>
     <div><h4>Services</h4><a href="#services">Ambient lighting</a><a href="#services">Starlight roofs</a><a href="#services">Body kits</a><a href="#services">Exhausts</a><a href="#services">Suspension</a></div>
-    <div><h4>Shop</h4><a href="#finder">Shop by vehicle</a><a href="#parts">Popular parts</a><a href="#brands">Brands</a><a href="https://www.iilumo.com/">iilumo lighting</a></div>
+    <div><h4>Shop</h4><a href="#finder">Shop by vehicle</a><a href="#/parts">All parts</a><a href="#brands">Brands</a><a href="https://www.iilumo.com/">iilumo lighting</a></div>
     <div><h4>Info</h4><a href="https://iilumolab.com.au/pages/about-us">About us</a><a href="https://iilumolab.com.au/pages/contact-us">Contact</a><a href="https://iilumolab.com.au/apps/help-center">FAQ</a><a href="https://iilumolab.com.au/pages/careers">Careers</a></div>
   </div>
   <div class="wrap foot__base">
@@ -383,10 +448,20 @@
             <span class="pdp__count" id="pdpCount"></span>
           </div>
           <div class="pdp__thumbs" id="pdpThumbs"></div>
-          <div class="pdp__body" id="pdpBody"></div>
+          <div class="pdp__tabs" role="tablist" aria-label="Product details">
+            <span class="pdp__tabthumb" aria-hidden="true"></span>
+            <button role="tab" type="button" data-tab="desc" class="is-on" aria-selected="true">Description</button>
+            <button role="tab" type="button" data-tab="specs" aria-selected="false">Specs</button>
+            <button role="tab" type="button" data-tab="inst" aria-selected="false">Instructions</button>
+            <button role="tab" type="button" data-tab="rev" aria-selected="false">Reviews</button>
+          </div>
+          <div class="pdp__pane pdp__body" id="pdpBody" data-pane="desc"></div>
+          <div class="pdp__pane pdp__specs" id="pdpSpecs" data-pane="specs" hidden></div>
+          <div class="pdp__pane" id="pdpInst" data-pane="inst" hidden></div>
+          <div class="pdp__pane" id="pdpRev" data-pane="rev" hidden></div>
         </div>
         <aside class="pdp__right">
-          <span class="pdp__badge" id="pdpBadge"></span>
+          <div class="pdp__badges"><span class="pdp__badge" id="pdpBadge"></span><span class="stock" id="pdpStock"></span></div>
           <h3 class="pdp__title" id="pdpTitle"></h3>
           <p class="pdp__sub" id="pdpSub"></p>
           <p class="pdp__price" id="pdpPrice"></p>
@@ -396,10 +471,56 @@
             <button class="btn btn--amber btn--full" id="pdpAdd" type="button">Add to build</button>
             <button class="btn btn--black btn--full" id="pdpBook" type="button">Book the install <i>&rarr;</i></button>
           </div>
-          <ul class="pdp__perks" id="pdpPerks"></ul>
-          <div class="pdp__specs" id="pdpSpecs"></div>
+          <ul class="pdp__perks" id="pdpPerks" hidden></ul>
+          <div class="clubmini">
+            <div class="clubmini__top"><b>iilumo Club</b><span class="soon">Coming soon</span></div>
+            <p class="clubmini__line">Build more. Pay less.</p>
+            <ul class="clubmini__perks">
+              <li><b>5%</b> back as lab credit on every order</li>
+              <li><b>Drops</b> member-only deals and new kits first</li>
+              <li><b>1-tap</b> saved car and rebooking</li>
+            </ul>
+            <button type="button" class="btn btn--black btn--full" data-club>Get early access <i>&rarr;</i></button>
+          </div>
+          <div class="so" id="pdpSpecial" hidden>
+            <div class="so__mascot" id="soMascot" hidden></div>
+            <div class="so__copy">
+              <b>What's a special order?</b>
+              <p>We order this part in for your car. It lands in 2 to 4 weeks, then we fit it at the lab.</p>
+              <button type="button" class="so__more" id="soMore" aria-expanded="false">Learn more <i>&rarr;</i></button>
+              <ol class="so__steps" id="soSteps" hidden>
+                <li><b>You order</b><span>Lock it in with your car details. We confirm fitment before anything is ordered.</span></li>
+                <li><b>We source it</b><span>Usually 2 to 4 weeks. We'll keep you posted along the way.</span></li>
+                <li><b>Fitted at the lab</b><span>We book your install the day it arrives in Keysborough.</span></li>
+              </ol>
+            </div>
+          </div>
         </aside>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- iilumo Club early access -->
+<div class="cm" id="clubModal" hidden>
+  <div class="cm__card" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+    <button class="pdp__x cm__x" id="cmClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+    <div class="cm__band">
+      <span class="soon">Coming soon</span>
+      <h3 id="cmTitle">iilumo Club</h3>
+      <p>Build more. Pay less.</p>
+    </div>
+    <div class="cm__body" id="cmBody">
+      <ul class="clubmini__perks">
+        <li><b>5%</b> back as lab credit on every order and install</li>
+        <li><b>Drops</b> member-only deals and first access to new kits</li>
+        <li><b>1-tap</b> saved car, saved builds, rebook in seconds</li>
+      </ul>
+      <form class="cm__form" id="cmForm" novalidate>
+        <input type="email" required placeholder="Your email" aria-label="Email for iilumo Club early access" autocomplete="email">
+        <button class="btn btn--amber" type="submit">Get early access</button>
+      </form>
+      <p class="cm__fine">We'll email you when the club opens, plus iilumolab news and offers. Unsubscribe anytime.</p>
     </div>
   </div>
 </div>
@@ -419,12 +540,13 @@
       </div>
       <label>Preferred day<input type="date" id="bfDate"></label>
       <button class="btn btn--amber btn--full" type="submit">Request booking <i>&rarr;</i></button>
+      <a class="btn btn--line btn--full" href="tel:0483939304">Speak with the team <svg class="btn__phone" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h3.5l1.8 4.4-2.3 1.4a12 12 0 0 0 6.2 6.2l1.4-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/></svg></a>
     </form>
   </div>
 </div>
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="main.js?v=43"></script>
+<script src="main.js?v=94"></script>
 </body>
 </html>
