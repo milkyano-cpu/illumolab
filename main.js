@@ -238,6 +238,14 @@
   $$('button', toggle).forEach(b => b.addEventListener('click', () => {
     mode = b.dataset.mode; toggle.dataset.mode = mode; filter = 'All';
     $$('button', toggle).forEach(x => { x.classList.toggle('is-on', x === b); x.setAttribute('aria-selected', x === b); });
+    // Say what the switch changed, even before a car is picked
+    const sub = $('#finderSub');
+    sub.style.opacity = 0;
+    setTimeout(() => {
+      sub.textContent = mode === 'parts' ? 'Shop genuine parts that fit your vehicle' : 'Book our team to fit it at the lab, any vehicle';
+      $('#searchGoLabel').textContent = mode === 'parts' ? 'Search parts' : 'Search installs';
+      sub.style.opacity = 1;
+    }, 180);
     if (vehicle) renderResults();
   }));
 

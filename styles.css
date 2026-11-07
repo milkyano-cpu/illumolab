@@ -1238,3 +1238,6 @@ body.locked{overscroll-behavior:none}
 .hero{min-height:max(640px,var(--screen-h,100svh))}
 .hero__body{padding-bottom:calc(clamp(40px,calc(var(--screen-h,100svh) * .07),90px) + 58px)}
 .view{min-height:calc(var(--screen-h,100svh) * .8)}
+
+/* Parts / Installs line swaps with a quick fade */
+#finderSub{transition:opacity .18s ease}
