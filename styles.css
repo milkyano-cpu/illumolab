@@ -1484,3 +1484,23 @@ body.locked{overscroll-behavior:none}
   .pg__cards--contact{grid-template-columns:1fr}
 }
 @media (max-width:420px){.pg__facts{grid-template-columns:1fr}.pg__ba{gap:8px}}
+
+/* Phones: the search field grows out of the magnifier button (clip + fade + settle), contents fade in after,
+   results slide down; closing shrinks it back into the button. Transform/opacity/clip only, no blur. */
+@media (max-width:760px){
+  .qs__box,.qs.is-open .qs__box{display:flex;position:absolute;top:calc(100% + 8px);left:16px;right:16px;width:auto;height:52px;padding:0 10px 0 16px;background:#fff;color:var(--ink);box-shadow:0 20px 50px -18px rgba(0,0,0,.5)}
+  .qs__box{visibility:hidden;opacity:0;pointer-events:none;transform:translateY(-12px);
+    clip-path:inset(0 var(--qs-r,70%) 0 var(--qs-l,18%) round 26px);
+    transition:clip-path .38s cubic-bezier(.4,0,.2,1),transform .38s cubic-bezier(.4,0,.2,1),opacity .22s ease .1s,visibility 0s linear .38s}
+  .qs.is-open .qs__box{visibility:visible;opacity:1;pointer-events:auto;transform:none;clip-path:inset(0 0 0 0 round 26px);
+    transition:clip-path .55s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1),opacity .18s ease,visibility 0s}
+  .qs__box > :not(.qs__panel){opacity:0;transform:translateX(-6px);transition:opacity .15s ease,transform .2s ease}
+  .qs.is-open .qs__box > :not(.qs__panel){opacity:1;transform:none;transition:opacity .3s ease .16s,transform .45s cubic-bezier(.22,1,.36,1) .16s}
+  .qs__x{display:block}
+  .qs.is-open .qs__panel:not([hidden]){animation:qsDrop .42s cubic-bezier(.22,1,.36,1) both}
+  .qs__icon{transition:background .3s ease,color .3s ease,transform .3s cubic-bezier(.34,1.56,.64,1)}
+  .qs__icon:active{transform:scale(.92)}
+  .qs.is-open .qs__icon{background:#fff;color:var(--ink)}
+}
+@keyframes qsDrop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.qs__box,.qs.is-open .qs__box,.qs__box > *{transition:none!important}.qs.is-open .qs__panel{animation:none}}

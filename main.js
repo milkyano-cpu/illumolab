@@ -1064,6 +1064,10 @@
     qsPanel.hidden = false;
   };
   const qsOpen = on => {
+    // phones: the field grows out of the magnifier, so tell the CSS where the button sits across the field
+    const b = $('#qsBtn').getBoundingClientRect(), x0 = 16, w = innerWidth - 32;
+    qs.style.setProperty('--qs-l', Math.max(0, (b.left - x0) / w * 100) + '%');
+    qs.style.setProperty('--qs-r', Math.max(0, (x0 + w - b.right) / w * 100) + '%');
     qs.classList.toggle('is-open', on); $('#qsBtn').setAttribute('aria-expanded', on);
     if (on) { qsIn.focus(); qsRender(); } else { qsPanel.hidden = true; qsIn.blur(); }
   };
