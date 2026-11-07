@@ -1063,46 +1063,16 @@
       + `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`;
     qsPanel.hidden = false;
   };
-  // Phones: the field grows out of the magnifier exactly like the build bar grows (pixel clip, same easing),
-  // run by the animation engine; closing shrinks it back into the button
-  const qsBox = $('.qs__box', qs), qsPhone = () => matchMedia('(max-width:760px)').matches;
-  let qsAnim, qsT, qsWant = false; // qsWant = open or closed as last asked, even while animating
-  const qsClip = () => {
-    const b = $('#qsBtn').getBoundingClientRect(), r = qsBox.getBoundingClientRect();
-    const l = Math.max(0, Math.round(b.left - r.left)), rr = Math.max(0, Math.round(r.right - b.right));
-    return { dot: `inset(0px ${rr}px 0px ${l}px round 26px)`, full: 'inset(0px 0px 0px 0px round 26px)' };
-  };
+  // Phones: the field grows out of the magnifier (CSS transition); tell it, in exact pixels, where the button sits
+  const qsBox = $('.qs__box', qs);
+  let qsWant = false; // open or closed as last asked, even mid-animation
   const qsOpen = on => {
-    const anim = qsPhone() && !reduce;
     qsWant = on;
-    $('#qsBtn').setAttribute('aria-expanded', on);
-    clearTimeout(qsT);
-    if (qsAnim) { qsAnim.onfinish = null; qsAnim.cancel(); qsAnim = null; }
-    if (on) {
-      qs.classList.add('is-open'); qsIn.focus(); qsRender();
-      if (anim) {
-        const c = qsClip();
-        qsAnim = qsBox.animate([
-          { clipPath: c.dot, webkitClipPath: c.dot, transform: 'translateY(-10px)', opacity: .5 },
-          { clipPath: c.full, webkitClipPath: c.full, transform: 'none', opacity: 1 }
-        ], { duration: 600, easing: 'cubic-bezier(.65,0,.3,1)' });
-        [...qsBox.children].filter(x => x !== qsPanel).forEach(x => x.animate(
-          [{ opacity: 0, transform: 'translateX(-6px)' }, { opacity: 1, transform: 'none' }],
-          { duration: 340, delay: 260, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' }));
-      }
-    } else {
-      qsPanel.hidden = true; qsIn.blur();
-      if (anim && qs.classList.contains('is-open')) {
-        const c = qsClip();
-        qsAnim = qsBox.animate([
-          { clipPath: c.full, webkitClipPath: c.full, transform: 'none', opacity: 1, offset: 0 },
-          { opacity: 1, offset: .55 },
-          { clipPath: c.dot, webkitClipPath: c.dot, transform: 'translateY(-10px)', opacity: 0, offset: 1 }
-        ], { duration: 380, easing: 'cubic-bezier(.65,0,.3,1)', fill: 'forwards' });
-        const done = () => { clearTimeout(qsT); if (!qsAnim) return; qs.classList.remove('is-open'); qsAnim.cancel(); qsAnim = null; };
-        qsAnim.onfinish = done; qsT = setTimeout(done, 450); // safety net if the finish event is skipped
-      } else qs.classList.remove('is-open');
-    }
+    const b = $('#qsBtn').getBoundingClientRect(), r = qsBox.getBoundingClientRect();
+    qs.style.setProperty('--qs-l', Math.max(0, Math.round(b.left - r.left)) + 'px');
+    qs.style.setProperty('--qs-r', Math.max(0, Math.round(r.right - b.right)) + 'px');
+    qs.classList.toggle('is-open', on); $('#qsBtn').setAttribute('aria-expanded', on);
+    if (on) { qsIn.focus(); qsRender(); } else { qsPanel.hidden = true; qsIn.blur(); }
   };
   $('#qsBtn').addEventListener('click', () => qsOpen(!qsWant));
   $('#qsClose').addEventListener('click', () => { qsIn.value = ''; qsOpen(false); });
