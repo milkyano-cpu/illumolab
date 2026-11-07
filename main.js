@@ -955,7 +955,60 @@
   $('#pdpBook').addEventListener('click', () => { const id = pdpId, p = ALL[id]; closePdp(); openModal(p.brand + ' ' + p.title + (PDP[id] && PDP[id].opts[pdpOpt] ? ` (${PDP[id].opts[pdpOpt][0]})` : '')); });
   $('#modalClose').addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-  $('#bookForm').addEventListener('submit', e => { e.preventDefault(); closeModal(); toast('Request sent. The lab will call you within one business day.'); });
+  // Book this build: the install details ride along to the same checkout (in Shopify, as cart notes the lab gets by email)
+  $('#bookForm').addEventListener('submit', e => {
+    e.preventDefault(); closeModal();
+    if (!build.length) { toast('Request sent. The lab will call you within one business day.'); return; }
+    const [name, phone] = $$('.two input', e.target).map(i => i.value.trim()), d = $('#bfDate').value;
+    openCheckout({ name, phone, day: d ? new Date(d + 'T00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '' });
+  });
+
+  /* ---------- Header search: bar on desktop, magnifier on phones ---------- */
+  const qs = $('#qs'), qsIn = $('#qsInput'), qsPanel = $('#qsPanel');
+  const qsHay = p => `${p.brand} ${p.title} ${p.cat} ${p.sub || ''} ${p.fits === '*' ? '' : p.fits.map(id => VEHICLES[id][0] + ' ' + VEHICLES[id][1]).join(' ')}`.toLowerCase();
+  const qsRender = () => {
+    const q = qsIn.value.trim();
+    if (!q) { qsPanel.hidden = true; return; }
+    const words = q.toLowerCase().split(/\s+/);
+    const hits = [...PARTS, ...INSTALLS].filter(p => { const h = qsHay(p); return words.every(w => h.includes(w)); }).slice(0, 6);
+    qsPanel.innerHTML = (hits.length
+      ? hits.map(p => `<button type="button" class="qs__item" data-pdp="${p.id}"><img src="${src(p.img)}" alt=""><span><small>${esc(p.brand)}</small>${esc(p.title)}</span><b>${p.from ? '<small>from</small> ' : ''}${money(p.price)}</b></button>`).join('')
+      : `<p class="qs__none">No quick matches. Call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</p>`)
+      + `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`;
+    qsPanel.hidden = false;
+  };
+  const qsOpen = on => {
+    qs.classList.toggle('is-open', on); $('#qsBtn').setAttribute('aria-expanded', on);
+    if (on) { qsIn.focus(); qsRender(); } else { qsPanel.hidden = true; qsIn.blur(); }
+  };
+  $('#qsBtn').addEventListener('click', () => qsOpen(!qs.classList.contains('is-open')));
+  $('#qsClose').addEventListener('click', () => { qsIn.value = ''; qsOpen(false); });
+  qsIn.addEventListener('input', qsRender);
+  qsIn.addEventListener('focus', qsRender);
+  qs.addEventListener('submit', e => { e.preventDefault(); const q = qsIn.value.trim(); if (!q) return; qsOpen(false); location.hash = '#/parts?q=' + encodeURIComponent(q); });
+  qsPanel.addEventListener('click', e => { if (e.target.closest('[data-pdp], .qs__all')) setTimeout(() => qsOpen(false)); });
+  document.addEventListener('click', e => { if (!qs.contains(e.target) && (!qsPanel.hidden || qs.classList.contains('is-open'))) qsOpen(false); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && (!qsPanel.hidden || qs.classList.contains('is-open'))) qsOpen(false); });
+
+  /* ---------- Checkout ---------- */
+  const co = $('#checkout');
+  const openCheckout = install => {
+    $('#coKick').textContent = install ? 'Book this build' : 'Secure checkout';
+    $('#coTitle').textContent = install ? 'Confirm your build' : 'Your order';
+    $('#coGo').innerHTML = (install ? 'Checkout &amp; book install' : 'Checkout') + ' <i>&rarr;</i>';
+    $('#coVeh').textContent = vehicle ? 'For your ' + vName(vehicle.id, vehicle.year) : '';
+    $('#coList').innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="${src(p.img)}" alt=""><span>${p.brand} ${p.title}${optName(id) ? `<small>${optName(id)}</small>` : ''}</span><b>${money(priceOf(id))}</b></li>`; }).join('');
+    $('#coTotal').textContent = $('#buildTotal').textContent;
+    const ci = $('#coInstall'); ci.hidden = !install;
+    if (install) ci.innerHTML = `<b>Install request</b><span>${esc(install.name)} · ${esc(install.phone)}${install.day ? ' · ' + esc(install.day) : ''}</span><small>Sent to the lab with your order. They'll call to lock in your day.</small>`;
+    clearTimeout(co._t); co.hidden = false; void co.offsetWidth; co.classList.add('open'); document.body.classList.add('locked');
+    buildEl.classList.remove('is-open');
+  };
+  const closeCheckout = () => { co.classList.remove('open'); clearTimeout(co._t); co._t = setTimeout(() => { co.hidden = true; }, reduce ? 0 : 320); if (!menu.classList.contains('is-open') && pdpEl.hidden) document.body.classList.remove('locked'); };
+  $$('[data-checkout]').forEach(b => b.addEventListener('click', () => openCheckout()));
+  $('#coClose').addEventListener('click', closeCheckout);
+  co.addEventListener('click', e => { if (e.target === co) closeCheckout(); });
+  $('#coGo').addEventListener('click', () => { closeCheckout(); toast('This is where the secure Shopify checkout opens.'); });
 
   // iilumo Club early access (coming soon): email capture pop-up
   const cm = $('#clubModal');
@@ -967,7 +1020,7 @@
   const closeClub = () => {
     if (cm.hidden) return;
     cm.classList.remove('open'); cm._t = setTimeout(() => { cm.hidden = true; }, reduce ? 0 : 380);
-    if (pdpEl.hidden && $('#modal').hidden && !menu.classList.contains('is-open')) document.body.classList.remove('locked');
+    if (pdpEl.hidden && $('#modal').hidden && $('#checkout').hidden && !menu.classList.contains('is-open')) document.body.classList.remove('locked');
   };
   document.addEventListener('click', e => { if (e.target.closest('[data-club]')) { e.preventDefault(); openClub(); } });
   $('#cmClose').addEventListener('click', closeClub);
@@ -985,6 +1038,7 @@
     if (e.key !== 'Escape') return;
     if (!pdpEl.hidden) closePdp();
     else if (!modal.hidden) closeModal();
+    else if (!co.hidden) closeCheckout();
     else if (menu.classList.contains('is-open')) setMenu(false);
     else buildEl.classList.remove('is-open');
   });
