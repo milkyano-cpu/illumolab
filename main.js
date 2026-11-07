@@ -1063,22 +1063,55 @@
       + `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`;
     qsPanel.hidden = false;
   };
-  const qsOpen = on => {
-    // phones: the field grows out of the magnifier, so tell the CSS where the button sits across the field
-    const b = $('#qsBtn').getBoundingClientRect(), x0 = 16, w = innerWidth - 32;
-    qs.style.setProperty('--qs-l', Math.max(0, (b.left - x0) / w * 100) + '%');
-    qs.style.setProperty('--qs-r', Math.max(0, (x0 + w - b.right) / w * 100) + '%');
-    qs.classList.toggle('is-open', on); $('#qsBtn').setAttribute('aria-expanded', on);
-    if (on) { qsIn.focus(); qsRender(); } else { qsPanel.hidden = true; qsIn.blur(); }
+  // Phones: the field grows out of the magnifier exactly like the build bar grows (pixel clip, same easing),
+  // run by the animation engine; closing shrinks it back into the button
+  const qsBox = $('.qs__box', qs), qsPhone = () => matchMedia('(max-width:760px)').matches;
+  let qsAnim, qsT, qsWant = false; // qsWant = open or closed as last asked, even while animating
+  const qsClip = () => {
+    const b = $('#qsBtn').getBoundingClientRect(), r = qsBox.getBoundingClientRect();
+    const l = Math.max(0, Math.round(b.left - r.left)), rr = Math.max(0, Math.round(r.right - b.right));
+    return { dot: `inset(0px ${rr}px 0px ${l}px round 26px)`, full: 'inset(0px 0px 0px 0px round 26px)' };
   };
-  $('#qsBtn').addEventListener('click', () => qsOpen(!qs.classList.contains('is-open')));
+  const qsOpen = on => {
+    const anim = qsPhone() && !reduce;
+    qsWant = on;
+    $('#qsBtn').setAttribute('aria-expanded', on);
+    clearTimeout(qsT);
+    if (qsAnim) { qsAnim.onfinish = null; qsAnim.cancel(); qsAnim = null; }
+    if (on) {
+      qs.classList.add('is-open'); qsIn.focus(); qsRender();
+      if (anim) {
+        const c = qsClip();
+        qsAnim = qsBox.animate([
+          { clipPath: c.dot, webkitClipPath: c.dot, transform: 'translateY(-10px)', opacity: .5 },
+          { clipPath: c.full, webkitClipPath: c.full, transform: 'none', opacity: 1 }
+        ], { duration: 600, easing: 'cubic-bezier(.65,0,.3,1)' });
+        [...qsBox.children].filter(x => x !== qsPanel).forEach(x => x.animate(
+          [{ opacity: 0, transform: 'translateX(-6px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 340, delay: 260, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' }));
+      }
+    } else {
+      qsPanel.hidden = true; qsIn.blur();
+      if (anim && qs.classList.contains('is-open')) {
+        const c = qsClip();
+        qsAnim = qsBox.animate([
+          { clipPath: c.full, webkitClipPath: c.full, transform: 'none', opacity: 1, offset: 0 },
+          { opacity: 1, offset: .55 },
+          { clipPath: c.dot, webkitClipPath: c.dot, transform: 'translateY(-10px)', opacity: 0, offset: 1 }
+        ], { duration: 380, easing: 'cubic-bezier(.65,0,.3,1)', fill: 'forwards' });
+        const done = () => { clearTimeout(qsT); if (!qsAnim) return; qs.classList.remove('is-open'); qsAnim.cancel(); qsAnim = null; };
+        qsAnim.onfinish = done; qsT = setTimeout(done, 450); // safety net if the finish event is skipped
+      } else qs.classList.remove('is-open');
+    }
+  };
+  $('#qsBtn').addEventListener('click', () => qsOpen(!qsWant));
   $('#qsClose').addEventListener('click', () => { qsIn.value = ''; qsOpen(false); });
   qsIn.addEventListener('input', qsRender);
   qsIn.addEventListener('focus', qsRender);
   qs.addEventListener('submit', e => { e.preventDefault(); const q = qsIn.value.trim(); if (!q) return; qsOpen(false); location.hash = '#/parts?q=' + encodeURIComponent(q); });
   qsPanel.addEventListener('click', e => { if (e.target.closest('[data-pdp], .qs__all')) setTimeout(() => qsOpen(false)); });
-  document.addEventListener('click', e => { if (!qs.contains(e.target) && (!qsPanel.hidden || qs.classList.contains('is-open'))) qsOpen(false); });
-  addEventListener('keydown', e => { if (e.key === 'Escape' && (!qsPanel.hidden || qs.classList.contains('is-open'))) qsOpen(false); });
+  document.addEventListener('click', e => { if (!qs.contains(e.target) && (qsWant || !qsPanel.hidden)) qsOpen(false); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && (qsWant || !qsPanel.hidden)) qsOpen(false); });
 
   /* ---------- Checkout ---------- */
   const co = $('#checkout');
