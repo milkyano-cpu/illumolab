@@ -306,7 +306,7 @@
     $('#resultsTitle').textContent = vName(vehicle.id, vehicle.year);
     $('#chips').innerHTML = cats.map(c => `<button class="chip${c === filter ? ' is-on' : ''}" data-cat="${c}">${c}<b>${c === 'All' ? list.length : list.filter(p => p.cat === c).length}</b></button>`).join('');
     const shown = list.filter(p => filter === 'All' || p.cat === filter);
-    $('#resultsGrid').innerHTML = shown.length ? shown.map(card).join('') : `<div class="empty">Nothing listed yet. Call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</div>`;
+    $('#resultsGrid').innerHTML = shown.length ? shown.map(card).join('') : `<div class="empty">Nothing listed yet. Call <a href="tel:0483939304">our team</a> and we'll source it.</div>`;
   };
   // the chips stick under the header while scrolling the results; picking one keeps the row's swipe position
   // and, if the row is stuck, brings the top of the new results up under it
@@ -719,7 +719,7 @@
     $('#pdpBody').innerHTML =
       paras.map(t => `<p>${esc(t)}</p>`).join('') +
       (d.hl && d.hl.length ? `<h4>Highlights</h4><ul>${d.hl.map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : '') +
-      `<h4>Fitted at the lab</h4><p>Book it in at <b>22 Atlantic Drive, Keysborough VIC 3173</b>. Monday to Friday 9am to 5pm, Saturday 10am to 2pm. Or call or text <a href="tel:0483939304"><b>0483 939 304</b></a>.</p>` +
+      `<h4>Fitted at the lab</h4><p>Book it in at <b>22 Atlantic Drive, Keysborough VIC 3173</b>. Monday to Friday 9am to 5pm, Saturday 10am to 2pm. Or call or text <a href="tel:0483939304"><b>our team</b></a>.</p>` +
       `<div class="pdp__tags">${[...new Set(tags)].map(t => `<span>${esc(t)}</span>`).join('')}</div>`;
     const man = MANUALS[id];
     $('#pdpInst').innerHTML = man ? `
@@ -1054,7 +1054,7 @@
     const hits = [...PARTS, ...INSTALLS].filter(p => { const h = qsHay(p); return words.every(w => h.includes(w)); }).slice(0, 6);
     qsPanel.innerHTML = (hits.length
       ? hits.map(p => `<button type="button" class="qs__item" data-pdp="${p.id}"><img src="${src(p.img)}" alt=""><span><small>${esc(p.brand)}</small>${esc(p.title)}</span><b>${p.from ? '<small>from</small> ' : ''}${money(p.price)}</b></button>`).join('')
-      : `<p class="qs__none">No quick matches. Call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</p>`)
+      : `<p class="qs__none">No quick matches. Call <a href="tel:0483939304">our team</a> and we'll source it.</p>`)
       + `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`;
     qsPanel.hidden = false;
   };
@@ -1314,7 +1314,7 @@
     const list = CAT.filter(p => pass(p)).sort(SORTS[F.sort]);
     const carTxt = F.veh ? (vehicle && vehicle.id === F.veh ? vName(F.veh, vehicle.year) : `${VEHICLES[F.veh][0]} ${VEHICLES[F.veh][1]}`) : '';
     $('#pvCount').textContent = `${list.length.toLocaleString()} part${list.length === 1 ? '' : 's'}${carTxt ? ' for your ' + carTxt : ''}`;
-    $('#pvGrid').innerHTML = list.length ? list.slice(0, shown).map(card).join('') : `<div class="empty">No parts match yet. <button class="link" data-pv-reset>Clear filters</button> or call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</div>`;
+    $('#pvGrid').innerHTML = list.length ? list.slice(0, shown).map(card).join('') : `<div class="empty">No parts match yet. <button class="link" data-pv-reset>Clear filters</button> or call <a href="tel:0483939304">our team</a> and we'll source it.</div>`;
     $('#pvMore').hidden = shown >= list.length;
     $('#pvShown').textContent = list.length ? `Showing ${Math.min(shown, list.length)} of ${list.length.toLocaleString()}` : '';
     // facets (counts respect every other active filter)
