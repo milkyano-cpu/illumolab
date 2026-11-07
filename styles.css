@@ -1362,3 +1362,6 @@ body.locked{overscroll-behavior:none}
 /* @iilumolab heading links to Instagram */
 .insta__handle{color:inherit;text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;transition:background-size .35s var(--ease)}
 .insta__handle:hover{background-size:100% 2px}
+/* Header controls share one height and text size: search, Book install, My garage */
+.top .pill{height:40px;padding-top:0;padding-bottom:0;font-size:14px}
+.qs__box input{font-size:14px}
