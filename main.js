@@ -965,7 +965,7 @@
 
   /* One-time offer: 3 add-ons that fit their car, discounted, behind a 3 minute countdown (dummy picks for now) */
   const OFFER_MS = 3 * 60 * 1000, OFFER_OFF = [.15, .2, .25], OFFER_LEFT = [2, 3, 5];
-  let offerIds = [], offerPick = new Set(), offerTick;
+  let offerIds = [], offerPick = new Set(), offerTick, offerNext = 'book'; // where the offer leads: the booking form or checkout
   const offerEnd = () => { let t = +sessionStorage.getItem('offerEnd'); if (!t) { t = Date.now() + OFFER_MS; sessionStorage.setItem('offerEnd', t); } return t; };
   const offerLive = () => !sessionStorage.getItem('offerEnd') || +sessionStorage.getItem('offerEnd') > Date.now();
   const offerPicks = () => {
@@ -1017,14 +1017,17 @@
   $('#offerAdd').addEventListener('click', () => {
     const ids = offerPick.size ? offerIds.filter(id => offerPick.has(id)) : offerIds;
     ids.forEach(id => { if (!build.includes(id)) build.push(id); deals[id] = offerPrice(ALL[id], offerIds.indexOf(id)); });
-    renderBuild(true); buildEl.classList.remove('is-open'); toBooking();
+    renderBuild(true); buildEl.classList.remove('is-open'); offerDone();
   });
-  $('#offerSkip').addEventListener('click', toBooking);
+  const offerDone = () => { if (offerNext === 'checkout') { clearInterval(offerTick); closeModal(); openCheckout(); } else toBooking(); };
+  $('#offerSkip').addEventListener('click', offerDone);
 
-  const openModal = (service, withOffer) => {
+  const openModal = (service, withOffer, next = 'book') => {
+    offerNext = next;
+    const offer = withOffer && build.length && offerShow();
+    if (next === 'checkout' && !offer) { openCheckout(); return; }
     $('#bfVehicle').value = vehicle ? vName(vehicle.id, vehicle.year) : '';
     fillWork(service);
-    const offer = withOffer && build.length && offerShow();
     $('#offer').hidden = !offer; $('#bookStep').hidden = !!offer;
     const d = new Date(); d.setDate(d.getDate() + 2); $('#bfDate').min = new Date().toISOString().slice(0, 10); $('#bfDate').value = d.toISOString().slice(0, 10);
     clearTimeout(modal._t); modal.hidden = false; void modal.offsetWidth; modal.classList.add('open'); document.body.classList.add('locked');
@@ -1088,7 +1091,7 @@
     buildEl.classList.remove('is-open');
   };
   const closeCheckout = () => { co.classList.remove('open'); clearTimeout(co._t); co._t = setTimeout(() => { co.hidden = true; }, reduce ? 0 : 320); if (!menu.classList.contains('is-open') && pdpEl.hidden) document.body.classList.remove('locked'); };
-  $$('[data-checkout]').forEach(b => b.addEventListener('click', () => openCheckout()));
+  $$('[data-checkout]').forEach(b => b.addEventListener('click', () => openModal(null, true, 'checkout')));
   $('#coClose').addEventListener('click', closeCheckout);
   co.addEventListener('click', e => { if (e.target === co) closeCheckout(); });
   $('#coGo').addEventListener('click', () => { closeCheckout(); toast('This is where the secure Shopify checkout opens.'); });
