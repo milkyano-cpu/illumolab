@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=115">
+<link rel="stylesheet" href="styles.css?v=117">
 </head>
 <body>
 
@@ -74,6 +74,9 @@
     <a href="#club">iilumo Club</a>
     <a href="#story">Our lab</a>
     <a href="#visit">Visit</a>
+  </nav>
+  <nav class="menu__more" aria-label="Info">
+    <a href="#/pages/about-us">About</a><a href="#/pages/contact-us">Contact</a><a href="#/pages/faq">FAQ</a><a href="#/pages/careers">Careers</a>
   </nav>
   <div class="menu__foot">
     <p>22 Atlantic Drive, Keysborough VIC 3173</p>
@@ -323,7 +326,7 @@
     </div>
     <div class="jobs">
       <p><b>We're hiring.</b> Installers and auto electricians who care about the details.</p>
-      <a href="https://iilumolab.com.au/pages/careers" class="pill pill--outline">See careers <i>&rarr;</i></a>
+      <a href="#/pages/careers" class="pill pill--outline">See careers <i>&rarr;</i></a>
     </div>
   </div>
 </section>
@@ -398,6 +401,11 @@
   </div>
 </main>
 
+<!-- Content pages: About, Contact, FAQ, Careers, each service, guides and policies (#/pages/<handle>) -->
+<main id="viewPage" class="view" hidden>
+  <div class="wrap pg" id="pgBody"></div>
+</main>
+
 <footer class="foot">
   <div class="wrap foot__grid">
     <div class="foot__brand">
@@ -408,9 +416,9 @@
         <div><input id="newsEmail" type="email" placeholder="Email address" required><button type="submit" aria-label="Subscribe">&rarr;</button></div>
       </form>
     </div>
-    <div><h4>Services</h4><a href="#services">Ambient lighting</a><a href="#services">Starlight roofs</a><a href="#services">Body kits</a><a href="#services">Exhausts</a><a href="#services">Suspension</a></div>
+    <div><h4>Services</h4><a href="#/pages/ambient-lighting">Ambient lighting</a><a href="#/pages/starlight-roofing">Starlight roofs</a><a href="#/pages/custom-underglow">Custom underglow</a><a href="#/pages/body-parts-installs">Body kits</a><a href="#/pages/exhaust-installs">Exhausts</a><a href="#/pages/dashcam-installs">Dash cams</a><a href="#/pages/steering-wheel-wraps">Steering wheel wraps</a></div>
     <div><h4>Shop</h4><a href="#finder">Shop by vehicle</a><a href="#/parts">All parts</a><a href="#brands">Brands</a><a href="https://www.iilumo.com/">iilumo lighting</a></div>
-    <div><h4>Info</h4><a href="https://iilumolab.com.au/pages/about-us">About us</a><a href="https://iilumolab.com.au/pages/contact-us">Contact</a><a href="https://iilumolab.com.au/apps/help-center">FAQ</a><a href="https://iilumolab.com.au/pages/careers">Careers</a></div>
+    <div><h4>Info</h4><a href="#/pages/about-us">About us</a><a href="#/pages/contact-us">Contact</a><a href="#/pages/faq">FAQ</a><a href="#/pages/careers">Careers</a><a href="#/pages/shipping-policy">Shipping</a><a href="#/pages/exchanges-returns-policy">Returns</a><a href="#/pages/warranty-policy">Warranty</a><a href="#/pages/booking-policy">Booking policy</a><a href="#/pages/privacy-policy">Privacy</a></div>
   </div>
   <div class="wrap foot__base">
     <div class="social">
@@ -597,6 +605,7 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="main.js?v=115"></script>
+<script src="pages.js?v=117"></script>
+<script src="main.js?v=117"></script>
 </body>
 </html>

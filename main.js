@@ -1091,6 +1091,85 @@
   co.addEventListener('click', e => { if (e.target === co) closeCheckout(); });
   $('#coGo').addEventListener('click', () => { closeCheckout(); toast('This is where the secure Shopify checkout opens.'); });
 
+  /* ---------- Content pages: #/pages/<handle>, the same handle Shopify uses for /pages/<handle> ---------- */
+  const PG = window.PAGES || {};
+  const pgP = arr => (arr || []).map(x => `<p>${x}</p>`).join('');
+  const pgList = arr => arr && arr.length ? `<ul class="pg__list${arr.some(x => x.length > 90) ? ' pg__list--long' : ''}">${arr.map(x => `<li>${x}</li>`).join('')}</ul>` : '';
+  const pgSec = s => `<section class="pg__sec">
+      ${s.h ? `<h2 class="pg__h">${s.h}</h2>` : '<span></span>'}
+      <div class="pg__body">${pgP(s.p)}${pgList(s.list)}${pgP(s.after)}
+        ${s.cards ? `<div class="pg__cards">${s.cards.map(c => `<div class="pg__card"><b>${c.t}</b>${pgP(c.p)}${pgList(c.list)}</div>`).join('')}</div>` : ''}
+        ${s.table ? `<div class="pg__table" style="--n:${s.table[0].length}">${s.table.map((r, i) => `<div class="pg__row${s.thead && !i ? ' pg__row--head' : ''}">${r.map(c => `<span>${c}</span>`).join('')}</div>`).join('')}</div>` : ''}
+        ${s.faq ? `<div class="pg__faq">${s.faq.map(([q, a]) => `<details><summary>${q}</summary><div>${a}</div></details>`).join('')}</div>` : ''}
+      </div></section>`;
+  const temp = t => { const m = (t || '').match(/(\d+)\s*-\s*(\d+)/); return m ? [+m[1], +m[2]] : null; };
+  const pgPads = pads => `<div class="pg__pads">${pads.map(d => { const r = temp(d.temp); return `<article class="pg__pad">
+      <span class="pg__use">${d.use || ''}</span><h3>${d.t}</h3>${pgP(d.p)}
+      <dl><div><dt>Material</dt><dd>${d.material}</dd></div><div><dt>Temperature</dt><dd>${d.temp.replace('c', '°C')}</dd></div></dl>
+      ${r ? `<div class="pg__temp" aria-hidden="true"><i style="left:${r[0] / 9}%;right:${100 - r[1] / 9}%"></i></div><div class="pg__scale"><span>0°C</span><span>900°C</span></div>` : ''}
+    </article>`; }).join('')}</div>`;
+  const pgModels = brands => `<label class="pg__find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input type="search" id="pgFind" placeholder="Search your make or model" aria-label="Search your make or model"></label>
+    <div class="pg__brands" id="pgBrands">${brands.map(b => `<details class="pg__brand"><summary>${b.b}<b>${b.models.length}</b></summary><div>${b.models.map(m => `<span>${m}</span>`).join('')}</div></details>`).join('')}</div>
+    <p class="pg__none" id="pgNone" hidden>Not listed yet. Email <a href="mailto:hello@iilumolab.com">hello@iilumolab.com</a> and we'll check your car.</p>`;
+  const pgContact = () => `<div class="pg__contact">
+      <div class="pg__cards pg__cards--contact">
+        <div class="pg__card"><b>Email</b><p><a href="mailto:hello@iilumolab.com">hello@iilumolab.com</a></p></div>
+        <div class="pg__card"><b>Call or text</b><p><a href="tel:0483939304">0483 939 304</a><br>International <a href="tel:+61483939304">+61 483 939 304</a></p></div>
+        <div class="pg__card"><b>Workshop</b><p>22 Atlantic Drive, Keysborough VIC 3173</p><a class="pill pill--outline" href="https://www.google.com/maps/dir/?api=1&destination=22+Atlantic+Drive+Keysborough+VIC+3173" target="_blank" rel="noopener">Directions <i>&rarr;</i></a></div>
+        <div class="pg__card"><b>Hours</b><dl class="pg__hours"><div><dt>Monday to Friday</dt><dd>9am to 5pm</dd></div><div><dt>Saturday</dt><dd>By appointment</dd></div><div><dt>Sunday &amp; public holidays</dt><dd>Closed</dd></div></dl><p class="pg__small">Appointments are needed for installs.</p></div>
+      </div>
+      <iframe class="pg__map" title="Map to iilumolab, Keysborough" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=22+Atlantic+Drive+Keysborough+VIC+3173&output=embed"></iframe>
+    </div>`;
+  const pgJobs = jobs => jobs.map(j => `<article class="pg__job">
+      <header><div><p class="eyebrow eyebrow--dark">Now hiring</p><h2>${j.t}</h2><p class="pg__small">${j.meta}</p></div>
+        <a class="btn btn--amber" href="${j.apply}" target="_blank" rel="noopener">Apply now <i>&rarr;</i></a></header>
+      ${j.sections.map(pgSec).join('')}
+      <p class="pg__small">All applications are strictly confidential.</p>
+    </article>`).join('');
+  const renderPage = slug => {
+    const p = PG[slug];
+    if (!p) { location.hash = '#/'; return; }
+    const svc = p.group === 'Services';
+    const ctas = `${p.book ? `<button type="button" class="btn btn--amber" data-book-page="${esc(p.book)}">Book now <i>&rarr;</i></button>` : ''}
+      ${(p.links || []).map(([t, u]) => `<a class="btn btn--black" href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${t} <i>&rarr;</i></a>`).join('')}
+      <a class="btn btn--line" href="tel:0483939304">Call our team</a>`;
+    const more = svc ? Object.entries(PG).filter(([k, v]) => v.group === 'Services' && k !== slug) : [];
+    $('#pgBody').innerHTML = `
+      <header class="pg__hero${p.img ? '' : ' pg__hero--plain'}">
+        <div class="pg__intro">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><span>${p.group}</span><span>/</span><b>${p.title}</b></nav>
+          <h1 class="pg__title">${p.title}</h1>
+          <div class="pg__lead">${pgP(p.lead)}</div>
+          ${p.group === 'Policies' ? '' : `<div class="pg__ctas">${ctas}</div>`}
+        </div>
+        ${p.img ? `<figure class="pg__img"><img src="${p.img}" alt="${esc(p.title)} by iilumolab"></figure>` : ''}
+      </header>
+      ${p.facts.length ? `<div class="pg__facts">${p.facts.map(([b, s]) => `<div class="pg__fact"><b>${b}</b><span>${s}</span></div>`).join('')}</div>` : ''}
+      ${p.contact ? pgContact() : ''}
+      ${p.before_after ? `<div class="pg__ba">${p.before_after.map((u, i) => `<figure><img src="${u}" alt="Steering wheel ${i ? 'after' : 'before'} the wrap" loading="lazy"><figcaption>${i ? 'After' : 'Before'}</figcaption></figure>`).join('')}</div>` : ''}
+      ${p.pads ? pgPads(p.pads) : ''}
+      ${p.models ? pgModels(p.models) : ''}
+      ${p.jobs ? pgJobs(p.jobs) : ''}
+      <div class="pg__secs">${p.sections.map(pgSec).join('')}</div>
+      ${more.length ? `<nav class="pg__more" aria-label="More services"><p class="eyebrow eyebrow--dark">More from the lab</p><div>${more.map(([k, v]) => `<a class="pill pill--outline" href="#/pages/${k}">${v.title}</a>`).join('')}</div></nav>` : ''}
+      <section class="pg__cta">
+        <div><h2>${svc ? 'Ready when you are.' : 'Questions? Talk to a human.'}</h2><p>${svc ? 'Book a time at the Keysborough lab, or ask our team anything first.' : 'Our team answers six days a week, by phone, text or email.'}</p></div>
+        <div class="pg__ctas">${p.book ? `<button type="button" class="btn btn--amber" data-book-page="${esc(p.book)}">Book now <i>&rarr;</i></button>` : `<a class="btn btn--amber" href="#/pages/contact-us">Contact us <i>&rarr;</i></a>`}<a class="btn btn--line" href="tel:0483939304">Call our team</a></div>
+      </section>`;
+    document.title = `${p.title} | iilumolab`;
+    const find = $('#pgFind');
+    if (find) find.addEventListener('input', () => {
+      const q = find.value.trim().toLowerCase(); let any = false;
+      $$('.pg__brand', $('#pgBrands')).forEach(d => {
+        const brandHit = d.querySelector('summary').textContent.toLowerCase().includes(q);
+        let n = 0; $$('span', d).forEach(s => { const on = !q || brandHit || s.textContent.toLowerCase().includes(q); s.hidden = !on; n += on; });
+        d.hidden = !n; d.open = !!q && n > 0; any = any || n > 0;
+      });
+      $('#pgNone').hidden = any;
+    });
+  };
+  document.addEventListener('click', e => { const b = e.target.closest('[data-book-page]'); if (b) openModal(b.dataset.bookPage); });
+
   // iilumo Club early access (coming soon): email capture pop-up
   const cm = $('#clubModal');
   const openClub = () => {
@@ -1247,7 +1326,7 @@
   $$('#hours [data-days]').forEach(el => el.classList.toggle('is-today', el.dataset.days.split(',').includes(String(today))));
 
   /* ---------- Views: All parts + full product pages (hash routes, ready to map to Shopify templates) ---------- */
-  const views = { home: $('#home'), parts: $('#viewParts'), product: $('#viewProduct') };
+  const views = { home: $('#home'), parts: $('#viewParts'), product: $('#viewProduct'), page: $('#viewPage') };
   let current = 'home', CAT = null, catLoading = null;
   const loadCatalog = () => catLoading || (catLoading = fetch('assets/data/catalog.json').then(r => r.json()).then(j => {
     const seen = new Set();
@@ -1411,6 +1490,7 @@
 
   const showView = name => {
     if (current === 'product' && name !== 'product') leaveProductPage();
+    if (name !== 'page' && name !== 'product') document.title = 'iilumolab | Custom Automotive Upgrades, Melbourne';
     Object.entries(views).forEach(([k, el]) => { el.hidden = k !== name; });
     document.body.classList.toggle('on-view', name !== 'home');
     $('#garagePanel') && !$('#garagePanel').hidden && garageBtn.click();
@@ -1423,6 +1503,7 @@
     const h = location.hash;
     if (h.startsWith('#/parts')) { const was = current; showView('parts'); if (was !== 'parts') scrollTo(0, 0); openParts(); }
     else if (h.startsWith('#/product/')) { showView('product'); scrollTo(0, 0); openProductPage(h.slice(10)); }
+    else if (h.startsWith('#/pages/')) { showView('page'); scrollTo(0, 0); renderPage(decodeURIComponent(h.slice(8))); }
     else if (h === '#/' || h === '' || h === '#') { const was = current; showView('home'); if (was !== 'home') scrollTo(0, 0); }
   };
   addEventListener('hashchange', route);
