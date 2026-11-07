@@ -37,7 +37,7 @@
   };
   function escH(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   const src = x => /^https?:/.test(x) ? x : 'assets/' + x;
-  const money = n => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const money = n => n == null ? 'Quote' : '$' + n.toLocaleString('en-AU', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
 
   /* ---------- Data ---------- */
   // id: [make, model, firstYear, lastYear, image]
@@ -103,16 +103,17 @@
     ['iilumo', 'T10 Extreme Output 360° LED', 18, 'p-t10.jpg', 'Lighting', '*']
   ].map(([brand, title, price, img, cat, fits, tag], i) => ({ id: 'p' + i, brand, title, price, img, cat, fits, tag }));
 
+  // starting prices from iilumolab.com.au's own service pages; null = no price listed there, shown as "Quote"
   const INSTALLS = [
-    ['Ambient lighting install', 'Lighting', 'Multi-zone RGB, app controlled', 's-ambient.jpg', 690],
-    ['Starlight roof', 'Lighting', 'Fibre optic headliner, shooting stars', 's-starlight.jpg', 1890],
-    ['Projector retrofit', 'Lighting', 'Sharper cut-off, brighter beam', 's-dashcam.jpg', 1200],
-    ['Dash cam install', 'Electronics', 'Front & rear, hardwired', 's-dashcam.jpg', 249],
-    ['Body kit fitment', 'Body kits', 'Test fit, paint match, install', 's-bodykit.jpg', 450],
-    ['Exhaust install', 'Exhaust', 'Cat back, midpipe, valve control', 's-exhaust.jpg', 350],
-    ['Suspension install', 'Suspension', 'Springs, coilovers, air + alignment', 's-suspension.jpg', 590],
-    ['Caliper respray', 'Brakes', 'Any colour, decals optional', 's-exhaust.jpg', 790]
-  ].map(([title, cat, sub, img, from], i) => ({ id: 'i' + i, brand: 'iilumolab install', title, cat, sub, img, price: from, from: true, fits: '*' }));
+    ['Ambient lighting install', 'Lighting', 'Multi-zone RGB, app controlled', 's-ambient.jpg', 1050],
+    ['Starlight roof', 'Lighting', 'Fibre optic headliner, shooting stars', 's-starlight.jpg', 1799],
+    ['Projector retrofit', 'Lighting', 'Sharper cut-off, brighter beam', 'pages/projector.jpg', null],
+    ['Dash cam install', 'Electronics', 'Front & rear, hardwired', 's-dashcam.jpg', null],
+    ['Body kit fitment', 'Body kits', 'Test fit, paint match, install', 's-bodykit.jpg', null],
+    ['Exhaust install', 'Exhaust', 'Cat back, midpipe, valve control', 's-exhaust.jpg', 200],
+    ['Suspension install', 'Suspension', 'Springs, coilovers, air + alignment', 's-suspension.jpg', null],
+    ['Caliper respray', 'Brakes', 'Any colour, decals optional', 's-exhaust.jpg', null]
+  ].map(([title, cat, sub, img, from], i) => ({ id: 'i' + i, brand: 'iilumolab install', title, cat, sub, img, price: from, from: from != null, fits: '*' }));
 
   // Services: custom work the lab does that isn't a part (body kit / exhaust / suspension installs are just fitting, which the lab does for every part)
   const SERVICES = INSTALLS.filter(p => !['Body kits', 'Exhaust', 'Suspension'].includes(p.cat));
@@ -870,7 +871,8 @@
     $('#buildCount').textContent = build.length;
     if (pop) { const d = $('#buildCount'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop'); }
     const total = build.reduce((s, id) => s + priceOf(id), 0);
-    $('#buildTotal').textContent = (build.some(id => ALL[id].from) ? 'from ' : '') + money(total);
+    const quote = build.some(id => ALL[id].price == null);
+    $('#buildTotal').textContent = !total && quote ? 'Quote' : (build.some(id => ALL[id].from) || quote ? 'from ' : '') + money(total);
     $('#buildList').innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="${src(p.img)}" alt=""><span>${p.brand} ${p.title}${optName(id) ? `<small style="display:block;color:var(--grey)">${optName(id)}</small>` : ''}</span><b>${money(priceOf(id))}</b><button data-remove="${id}" aria-label="Remove">&times;</button></li>`; }).join('');
     $$('[data-add]').forEach(b => { const on = build.includes(b.dataset.add); b.classList.toggle('is-in', on); b.textContent = on ? 'Added ✓' : addLabel(b.dataset.add); });
   };
@@ -1116,7 +1118,7 @@
         <div class="pg__card"><b>Email</b><p><a href="mailto:hello@iilumolab.com">hello@iilumolab.com</a></p></div>
         <div class="pg__card"><b>Call or text</b><p><a href="tel:0483939304">0483 939 304</a><br>International <a href="tel:+61483939304">+61 483 939 304</a></p></div>
         <div class="pg__card"><b>Workshop</b><p>22 Atlantic Drive, Keysborough VIC 3173</p><a class="pill pill--outline" href="https://www.google.com/maps/dir/?api=1&destination=22+Atlantic+Drive+Keysborough+VIC+3173" target="_blank" rel="noopener">Directions <i>&rarr;</i></a></div>
-        <div class="pg__card"><b>Hours</b><dl class="pg__hours"><div><dt>Monday to Friday</dt><dd>9am to 5pm</dd></div><div><dt>Saturday</dt><dd>By appointment</dd></div><div><dt>Sunday &amp; public holidays</dt><dd>Closed</dd></div></dl><p class="pg__small">Appointments are needed for installs.</p></div>
+        <div class="pg__card"><b>Hours</b><dl class="pg__hours"><div><dt>Monday to Friday</dt><dd>9am to 5pm</dd></div><div><dt>Saturday</dt><dd>10am to 2pm</dd></div><div><dt>Sunday &amp; public holidays</dt><dd>Closed</dd></div></dl><p class="pg__small">Appointments are needed for installs.</p></div>
       </div>
       <iframe class="pg__map" title="Map to iilumolab, Keysborough" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=22+Atlantic+Drive+Keysborough+VIC+3173&output=embed"></iframe>
     </div>`;

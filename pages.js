@@ -48,11 +48,11 @@ window.PAGES = {
   "facts": [],
   "book": null,
   "lead": [
-   "Quick answers from the lab. Anything else, ask our team."
+   "The questions we get asked most, answered by the lab. Anything else, ask our team."
   ],
   "sections": [
    {
-    "h": "Visiting the lab",
+    "h": "Booking & visiting",
     "faq": [
      [
       "Where are you?",
@@ -60,15 +60,31 @@ window.PAGES = {
      ],
      [
       "When are you open?",
-      "<p>Monday to Friday 9am to 5pm. Saturday by appointment only. Sunday and public holidays closed.</p>"
+      "<p>Monday to Friday 9am to 5pm, Saturday 10am to 2pm. Closed Sundays and public holidays.</p>"
      ],
      [
-      "Do I need an appointment?",
-      "<p>Yes. Appointments are needed for all of our installation services.</p>"
+      "Do I need to book?",
+      "<p>Yes. Appointments are needed for all of our installation services, so we can set aside the right time and parts for your car.</p>"
+     ],
+     [
+      "How do I get a quote?",
+      "<p>Call, text or email us with your car (make, model and year) and what you are after. Photos help, especially for custom work. <a href=\"#/pages/contact-us\">Contact the team</a>.</p>"
+     ],
+     [
+      "Can I wait while you work on my car?",
+      "<p>For shorter jobs, yes. We have a comfortable waiting lounge. For longer installs we will give you a pick-up time.</p>"
+     ],
+     [
+      "Do you need a deposit?",
+      "<p>Some bookings need a deposit, as we block out time and resources for the job. Cancel 7+ days ahead for a full deposit refund. See the <a href=\"#/pages/booking-policy\">booking policy</a>.</p>"
+     ],
+     [
+      "Can I reschedule?",
+      "<p>Yes. With 2+ days notice your deposit is unaffected. Closer to the day, part or all of the deposit may be lost. See the <a href=\"#/pages/booking-policy\">booking policy</a>.</p>"
      ],
      [
       "Can I come in for advice or a demo?",
-      "<p>Yes. If you are local, visit us for a consultation with one of our specialists. If the workshop is too far, <a href=\"#/pages/contact-us\">reach out to us here</a>.</p>"
+      "<p>Yes. If you are local, visit for a consultation with one of our specialists. If the workshop is too far, <a href=\"#/pages/contact-us\">reach out to us here</a>.</p>"
      ]
     ]
    },
@@ -76,16 +92,24 @@ window.PAGES = {
     "h": "Installs",
     "faq": [
      [
+      "What cars do you work on?",
+      "<p>All types of cars, from daily drivers to performance builds. If you are not sure we can do your car, ask our team.</p>"
+     ],
+     [
       "How long does an install take?",
-      "<ul><li>Cat-back exhaust: about 1 hour</li><li>Dash cam: about 1.5 to 2 hours</li><li>Steering wheel wrap: up to 3 hours</li><li>Ambient lighting: most installs take a single day</li><li>Starlight roof: 3 to 7 business days, depending on the star count</li></ul><p>Every car is different, so some installs take longer.</p>"
+      "<ul><li>Cat-back exhaust: about 1 hour</li><li>Dash cam: about 1.5 to 2 hours</li><li>Steering wheel wrap: up to 3 hours</li><li>Ambient lighting: most installs take a single day</li><li>Starlight roof: 3 to 7 business days, depending on the star count</li></ul><p>Every car is different, so some installs take longer. We will give you a time when you book.</p>"
      ],
      [
       "Can I supply my own parts?",
-      "<p>Yes. You are welcome to supply your own exhaust, body parts or dash cam. Get in touch for a quote.</p>"
+      "<p>Yes. You are welcome to supply your own exhaust, body parts or dash cam. Get in touch for a quote. Note that we cannot cover the warranty on parts you supply.</p>"
      ],
      [
-      "Do you take deposits?",
-      "<p>Some bookings need a deposit, as we block out time and resources for the job. See our <a href=\"#/pages/booking-policy\">booking policy</a> for refund and rescheduling timeframes.</p>"
+      "Will aftermarket parts void my car’s warranty?",
+      "<p>Fitting aftermarket parts does not automatically void a new car warranty in Australia. A manufacturer generally has to show the part or the work caused the fault. If you are unsure, ask us before you book and we will talk it through.</p>"
+     ],
+     [
+      "Are your lighting and exhaust upgrades road legal?",
+      "<p>Rules on lighting colours and exhaust noise vary by state. Tell us how you use the car and we will recommend options that suit a road car before we start.</p>"
      ],
      [
       "Is your work under warranty?",
@@ -94,19 +118,39 @@ window.PAGES = {
     ]
    },
    {
-    "h": "Orders",
+    "h": "Orders & payment",
     "faq": [
      [
+      "How do I know a part fits my car?",
+      "<p>Add your car with the vehicle search and we only show parts that fit it. Every product also lists the cars it fits. Still unsure? Ask our team before you order.</p>"
+     ],
+     [
+      "What does Pre-order or Special order mean?",
+      "<p>Pre-order means the part is sold out for now, and yours ships first when stock lands. Special order means we order it in for your car, usually landing in 2 to 4 weeks.</p>"
+     ],
+     [
+      "Can I pay in instalments?",
+      "<p>Yes. Afterpay and Zip are available at checkout, along with card, Apple Pay, PayPal and Shop Pay.</p>"
+     ],
+     [
       "How fast do you ship?",
-      "<p>Orders are processed and shipped within 5 business days, and the same or next day if in stock. We do not ship to PO Boxes. See the <a href=\"#/pages/shipping-policy\">shipping policy</a>.</p>"
+      "<p>Orders are processed and shipped within 5 business days, and the same or next day if in stock. Every order comes with tracking. We do not ship to PO Boxes. See the <a href=\"#/pages/shipping-policy\">shipping policy</a>.</p>"
+     ],
+     [
+      "Do you ship overseas?",
+      "<p>Yes, to almost every country. Import duties and taxes are paid by the buyer. Get in touch for a shipping quote.</p>"
      ],
      [
       "Can I pick up my order?",
       "<p>Yes, from our Keysborough workshop. Bring your ID and proof of purchase.</p>"
      ],
      [
+      "Something arrived damaged or missing. What now?",
+      "<p>Contact us straight away. For missing parts, let us know within 7 days of receiving your order.</p>"
+     ],
+     [
       "Can I return or exchange something?",
-      "<p>You have 14 days from receiving your order to make an exchange or return. Approved returns have a 20% restocking fee. See <a href=\"#/pages/exchanges-returns-policy\">exchanges &amp; returns</a>.</p>"
+      "<p>You have 14 days from receiving your order to make an exchange or return. Items must be unused and in the original packaging, and approved returns have a 20% restocking fee. See <a href=\"#/pages/exchanges-returns-policy\">exchanges &amp; returns</a>.</p>"
      ]
     ]
    }
