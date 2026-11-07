@@ -1358,3 +1358,7 @@ body.locked{overscroll-behavior:none}
 .also__item .add:not(.is-in){background:#fff}
 /* Phones: build buttons stack full width, Book this build on top */
 @media (max-width:560px){.build__ctas{grid-template-columns:1fr}.build__ctas [data-book]{order:-1}}
+
+/* @iilumolab heading links to Instagram */
+.insta__handle{color:inherit;text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;transition:background-size .35s var(--ease)}
+.insta__handle:hover{background-size:100% 2px}
