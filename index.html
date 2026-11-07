@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=102">
+<link rel="stylesheet" href="styles.css?v=103">
 </head>
 <body>
 
@@ -107,12 +107,11 @@
 <section class="finder" id="finder">
   <div class="wrap finder__wrap">
     <h2 class="mega reveal">Every build.<br><span>Every detail.</span></h2>
-    <p class="finder__sub reveal"><span id="finderSub">Shop genuine parts that fit your vehicle</span></p>
 
     <div class="toggle reveal" role="tablist" aria-label="Search type">
       <span class="toggle__thumb" aria-hidden="true"></span>
-      <button role="tab" aria-selected="true" data-mode="parts" class="is-on">Parts</button>
-      <button role="tab" aria-selected="false" data-mode="installs">Installs</button>
+      <button role="tab" aria-selected="true" data-mode="parts" class="is-on">Delivered</button>
+      <button role="tab" aria-selected="false" data-mode="fitted">Fitted by us</button>
     </div>
 
     <form class="search reveal" id="searchForm" autocomplete="off" novalidate>
@@ -129,7 +128,7 @@
         <span class="search__label">Year</span>
         <select id="selYear" disabled required><option value="">Select year</option></select>
       </label>
-      <button class="search__go" type="submit"><span id="searchGoLabel">Search parts</span> <i>&rarr;</i></button>
+      <button class="search__go" type="submit">Search <i>&rarr;</i></button>
     </form>
 
     <p class="finder__help reveal">Vehicle not listed? Call <a href="tel:0483939304">0483 939 304</a> and we'll find it.</p>
@@ -547,6 +546,6 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="main.js?v=102"></script>
+<script src="main.js?v=103"></script>
 </body>
 </html>

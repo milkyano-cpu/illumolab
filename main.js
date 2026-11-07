@@ -114,7 +114,16 @@
     ['Caliper respray', 'Brakes', 'Any colour, decals optional', 's-exhaust.jpg', 790]
   ].map(([title, cat, sub, img, from], i) => ({ id: 'i' + i, brand: 'iilumolab install', title, cat, sub, img, price: from, from: true, fits: '*' }));
 
-  const ALL = Object.fromEntries([...PARTS, ...INSTALLS].map(p => [p.id, p]));
+  // "Fitted by us": workshop fitting per part category, added alongside the part
+  const FITTING = [
+    ['Body kits', 450, 's-bodykit.jpg'], ['Exhaust', 350, 's-exhaust.jpg'], ['Suspension', 590, 's-suspension.jpg'],
+    ['Brakes', 180, 's-exhaust.jpg'], ['Performance', 290, 's-exhaust.jpg'], ['Interior', 150, 's-ambient.jpg'], ['Lighting', 120, 's-ambient.jpg']
+  ].map(([cat, price, img]) => ({ id: 'f-' + cat.toLowerCase().replace(/\W+/g, '-'), brand: 'iilumolab', title: cat.replace(/s$/, '') + ' fitting', cat, img, price, from: true, fits: '*' }));
+  const fittingFor = p => FITTING.find(f => f.cat === p.cat);
+  // services that aren't the fitting of a part (body kit, exhaust and suspension installs are covered by fitting)
+  const SERVICES = INSTALLS.filter(p => !['Body kits', 'Exhaust', 'Suspension'].includes(p.cat)).map(p => ({ ...p, cat: 'Services' }));
+
+  const ALL = Object.fromEntries([...PARTS, ...INSTALLS, ...FITTING].map(p => [p.id, p]));
 
   // Shopify-ready settings per product.
   // stock: 'in' | 'out' | 'special'  (live: variant.available + inventory_quantity, special = inventory_policy "continue" / custom.lead_time metafield)
@@ -238,14 +247,6 @@
   $$('button', toggle).forEach(b => b.addEventListener('click', () => {
     mode = b.dataset.mode; toggle.dataset.mode = mode; filter = 'All';
     $$('button', toggle).forEach(x => { x.classList.toggle('is-on', x === b); x.setAttribute('aria-selected', x === b); });
-    // Say what the switch changed, even before a car is picked
-    const sub = $('#finderSub');
-    sub.style.opacity = 0;
-    setTimeout(() => {
-      sub.textContent = mode === 'parts' ? 'Shop genuine parts that fit your vehicle' : 'Book our team to fit it at the lab, any vehicle';
-      $('#searchGoLabel').textContent = mode === 'parts' ? 'Search parts' : 'Search installs';
-      sub.style.opacity = 1;
-    }, 180);
     if (vehicle) renderResults();
   }));
 
@@ -275,9 +276,10 @@
     if (scroll) glide('#results');
   };
 
-  const matches = () => (mode === 'parts' ? PARTS : INSTALLS).filter(p => p.fits === '*' || p.fits.includes(vehicle.id));
+  const matches = () => [...PARTS.filter(p => p.fits === '*' || p.fits.includes(vehicle.id)), ...(mode === 'fitted' ? SERVICES : [])];
 
-  const card = p => {
+  const card = (p, fitted) => {
+    const fit = fitted && !p.from && fittingFor(p);
     const inBuild = build.includes(p.id);
     const photo = p.img.startsWith('s-');
     return `<article class="card" data-pdp="${p.id}" tabindex="0" aria-label="View ${p.brand} ${p.title}">
@@ -285,7 +287,7 @@
       <div class="card__img${photo ? ' card__img--photo' : ''}"><img src="${src(p.img)}" alt="${escH(p.brand + ' ' + p.title)}" loading="lazy"></div>
       <p class="card__brand">${p.brand}</p>
       <h4 class="card__title">${p.title}</h4>
-      <p class="card__fit">${p.sub || fitsLabel(p)}</p>
+      <p class="card__fit">${fit ? `+ ${money(fit.price)} fitted at our lab` : p.sub || fitsLabel(p)}</p>
       ${p.from ? '' : stockBadge(p.id, 'card__stock')}
       <div class="card__row">
         <span class="card__price">${p.from ? '<small>from</small>' : ''}${money(p.price)}</span>
@@ -299,11 +301,11 @@
     const cats = ['All', ...new Set(list.map(p => p.cat))];
     if (!cats.includes(filter)) filter = 'All';
     $('#results').hidden = false;
-    $('#resultsKicker').textContent = `${list.length} ${mode === 'parts' ? 'parts' : 'installs'} fit your`;
+    $('#resultsKicker').textContent = `${list.length} ${mode === 'parts' ? 'parts' : 'parts & services'} fit your`;
     $('#resultsTitle').textContent = vName(vehicle.id, vehicle.year);
     $('#chips').innerHTML = cats.map(c => `<button class="chip${c === filter ? ' is-on' : ''}" data-cat="${c}">${c}<b>${c === 'All' ? list.length : list.filter(p => p.cat === c).length}</b></button>`).join('');
     const shown = list.filter(p => filter === 'All' || p.cat === filter);
-    $('#resultsGrid').innerHTML = shown.length ? shown.map(card).join('') : `<div class="empty">Nothing listed yet. Call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</div>`;
+    $('#resultsGrid').innerHTML = shown.length ? shown.map(p => card(p, mode === 'fitted')).join('') : `<div class="empty">Nothing listed yet. Call <a href="tel:0483939304">0483 939 304</a> and we'll source it.</div>`;
   };
   $('#chips').addEventListener('click', e => { const c = e.target.closest('[data-cat]'); if (c) { filter = c.dataset.cat; renderResults(); } });
   const resetFinder = () => {
@@ -802,7 +804,7 @@
   $('#pdpAdd').addEventListener('click', () => {
     const optChanged = build.includes(pdpId) && buildOpt[pdpId] !== pdpOpt && PDP[pdpId] && PDP[pdpId].opts.length;
     if (pdpOpt != null) buildOpt[pdpId] = pdpOpt;
-    if (!build.includes(pdpId)) { build.push(pdpId); toast(`${ALL[pdpId].title} added to your build`); }
+    if (!build.includes(pdpId)) { build.push(pdpId); addFitting(pdpId); toast(`${ALL[pdpId].title} added to your build`); }
     else if (optChanged) toast('Option updated in your build');
     else { build = build.filter(x => x !== pdpId); delete buildOpt[pdpId]; }
     renderBuild(true); pdpPaint();
@@ -816,7 +818,10 @@
 
   /* ---------- Build (cart) ---------- */
   const buildEl = $('#build');
+  const addFitting = id => { const f = mode === 'fitted' && !ALL[id].from && fittingFor(ALL[id]); if (f && !build.includes(f.id)) build.push(f.id); };
   const renderBuild = (pop) => {
+    // a fitting only stays while a part it fits is in the build
+    build = build.filter(id => !id.startsWith('f-') || build.some(x => !ALL[x].from && fittingFor(ALL[x]) && fittingFor(ALL[x]).id === id));
     store.set('build', build); store.set('buildOpt', buildOpt);
     store.set('buildMeta', Object.fromEntries(build.filter(id => ALL[id] && ALL[id].remote).map(id => [id, ALL[id]])));
     const appearing = buildEl.hidden && build.length > 0;
@@ -921,7 +926,7 @@
         build = build.filter(x => x !== id); delete buildOpt[id]; renderBuild();
         if (build.length && !reduce) buildEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(.955)' }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' });
       }
-      else { build.push(id); flyToBuild(a, () => renderBuild(false)); }
+      else { build.push(id); addFitting(id); flyToBuild(a, () => renderBuild(false)); }
     }
     const r = e.target.closest('[data-remove]');
     if (r) { build = build.filter(x => x !== r.dataset.remove); delete buildOpt[r.dataset.remove]; renderBuild(); if (build.length && !reduce) buildEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(.955)' }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' }); }
