@@ -38,4 +38,6 @@ Every change to the iilumolab redesign, newest first. Live concept: https://illu
 
 - **10%**: design foundations (colours, fonts, buttons) and the Home hero, editable in the theme editor.
 - **30%**: six more home sections, all editable with plain-English names: Brand logo strip, Services tiles, Brands we fit, Our lab story, Visit the lab (Open now badge, today's hours), Book in three steps. Checked on desktop and phone.
-- **Next**: Popular parts (real products), iilumo Club signup, header and menu, vehicle finder.
+- **35%** (14 Nov): Popular parts (real products, automatic In stock / Pre-order / Sold out, adds to the cart drawer) and the iilumo Club signup (Shopify's customer form).
+- **55%** (14 Nov): header restyled with a Book install button (their menu app kept working), footer restyled, every content page (About, Contact, Careers, policies, services) in the redesign's page layout with sentence-case titles, a new "service" page template, product cards restyled site-wide with stock badges, collection pages restyled, light grey page background.
+- **Next**: vehicle finder and fitment data, product page and quick view, build bar / cart / one-time offer.

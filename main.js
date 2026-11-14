@@ -1340,10 +1340,12 @@
   /* ---------- Views: All parts + full product pages (hash routes, ready to map to Shopify templates) ---------- */
   const views = { home: $('#home'), parts: $('#viewParts'), product: $('#viewProduct'), page: $('#viewPage') };
   let current = 'home', CAT = null, catLoading = null;
+  const HIDDEN_BRANDS = /^zero\s*offset$/i;
   const loadCatalog = () => catLoading || (catLoading = fetch('assets/data/catalog.json').then(r => r.json()).then(j => {
     const seen = new Set();
     CAT = [];
     j.rows.forEach(([id, h, b, t, pr, ci, fi, img, inStock, d]) => {
+      if (HIDDEN_BRANDS.test(b)) return; // brands the redesign doesn't feature
       const fits = fi.map(k => j.veh[k]);
       if (ALL[id] && !ALL[id].remote) {           // one of our curated products: keep its local data, widen its fitment
         const p = ALL[id]; if (p.fits !== '*') p.fits = [...new Set([...p.fits, ...fits])];
