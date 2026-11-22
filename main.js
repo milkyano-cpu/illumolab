@@ -595,7 +595,7 @@
 
   let dragging = false, pending = null, dx0 = 0, f0 = 0;
   const startDrag = e => {
-    pending = null; dragging = true; f0 = frame; viewer.classList.add('is-dragging');
+    pending = null; dragging = true; f0 = frame; viewer.classList.add('is-dragging'); if (view && view.turntable) { cancelAnimationFrame(glideT); spinning = false; vSpots.innerHTML = ''; }
     $('#viewerHint').classList.add('is-gone');
     if (e.pointerType === 'mouse') vStage.setPointerCapture(e.pointerId);
   };
@@ -621,9 +621,9 @@
     cancelAnimationFrame(glideT);
     const len = view.frames.length; let d = ((to - frame) % len + len) % len; if (d > len / 2) d -= len;
     if (!d || reduce) { setFrame(to); spinning = false; drawSpots(); done && done(); return; }
-    spinning = true; const from = frame, t0 = performance.now(), dur = Math.min(520, 120 + Math.abs(d) * 34);
+    spinning = true; viewer.classList.add('is-dragging'); vSpots.innerHTML = ''; const from = frame, t0 = performance.now(), dur = Math.min(520, 120 + Math.abs(d) * 34);
     const tick = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      setFrame(from + Math.round(d * e)); if (k < 1) glideT = requestAnimationFrame(tick); else { spinning = false; drawSpots(); done && done(); } };
+      setFrame(from + Math.round(d * e)); if (k < 1) glideT = requestAnimationFrame(tick); else { spinning = false; viewer.classList.remove('is-dragging'); drawSpots(); done && done(); } };
     glideT = requestAnimationFrame(tick);
   };
   const nearestKey = n => { const len = view.frames.length; let best = n, bd = 1e9;
