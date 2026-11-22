@@ -9,7 +9,7 @@ What it does:
   3. moves every frame so the car sits dead centre and on the same floor line,
      smoothing the moves across neighbouring frames so nothing jitters
   4. crops all frames to one shared size, background forced to pure white
-  5. saves a computer size (1100 px wide) and a phone size (640 px wide)
+  5. saves a computer size (1600 px wide) and a phone size (640 px wide)
   6. optional: matches hand-made key photos (with their tap dots) to the closest frames by colour
   7. writes meta.json with the frame boxes (for dot placement) and the matches
 """
@@ -190,7 +190,7 @@ def main():
     out_boxes = []
     for k, (c, b) in enumerate(shifted):
         big = pad.copy(); big.paste(c, (W, H)); im = big.crop((cx0 + W, cy0 + H, cx1 + W, cy1 + H))
-        for w, suf in [(1100, ''), (640, '-s')]:
+        for w, suf in [(1600, ''), (640, '-s')]:   # computer size (sharp on Retina) and phone size
             im.resize((w, round(CH * w / CW)), Image.LANCZOS).save(f'{a.out}/{a.key}-t{k:02d}{suf}.jpg', quality=84, optimize=True, progressive=True)
         out_boxes.append([round(b[0] - cx0), round(b[1] - cy0), round(b[2] - cx0), round(b[3] - cy0)])
     meta = {'crop': [CW, CH], 'boxes': out_boxes, 'match': {}}
