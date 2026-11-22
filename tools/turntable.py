@@ -45,6 +45,15 @@ def body_box(a):
     return [float(np.percentile(xs, .3)), float(np.percentile(ys, .3)), float(np.percentile(xs, 99.7)), float(np.percentile(ys, 99.7))]
 
 
+def orbit_fit(v, harmonics):
+    """The camera's slow drift over one full turn: a smooth curve (low-order Fourier fit over 360 degrees).
+    Removing only this keeps the car steady without reacting to its changing outline frame by frame."""
+    v = np.asarray(v, float); n = len(v); t = np.arange(n) * 2 * np.pi / n
+    cols = [np.ones(n)] + [f(h * t) for h in range(1, harmonics + 1) for f in (np.cos, np.sin)]
+    A = np.stack(cols, 1); coef, *_ = np.linalg.lstsq(A, v, rcond=None)
+    return A @ coef
+
+
 def smooth_circular(v, win=5):
     v = np.asarray(v, float); n = len(v); h = win // 2
     return np.array([np.mean([v[(i + d) % n] for d in range(-h, h + 1)]) for i in range(n)])
@@ -67,14 +76,15 @@ def main():
     frames = [np.array(Image.open(f'{raw}/f{k:02d}.png').convert('RGB')).astype(float) for k in range(N)]
     H, W = frames[0].shape[:2]
     boxes = [body_box(f) for f in frames]
-    # pin the centre of the car body exactly to the centre of the frame in every frame (both axes);
-    # on a plain white background only the car is visible, so it turns on the spot, dead centre, no bobbing
-    cx = smooth_circular([(b[0] + b[2]) / 2 for b in boxes], 1)
-    cy = smooth_circular([(b[1] + b[3]) / 2 for b in boxes], 1)
+    # remove only the camera's slow drift (smooth curves over the full turn): sideways from the car's middle,
+    # up/down from the floor line (wheels), so the car turns on the spot and never bobs
+    cx = orbit_fit([(b[0] + b[2]) / 2 for b in boxes], 2)
+    gy = orbit_fit([b[3] for b in boxes], 1)
     TX, TY = W / 2, H / 2
+    FLOOR = float(np.mean(gy))
     shifted = []
     for k, f in enumerate(frames):
-        dx, dy = int(round(TX - cx[k])), int(round(TY - cy[k]))
+        dx, dy = int(round(TX - cx[k])), int(round(FLOOR - gy[k]))
         im = clean_floor(Image.fromarray(whiten(f).astype('uint8')))
         c = Image.new('RGB', (W, H), (255, 255, 255)); c.paste(im, (dx, dy))
         b = boxes[k]; shifted.append((c, [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]))
@@ -82,6 +92,7 @@ def main():
     X0 = min(b[0] for _, b in shifted); X1 = max(b[2] for _, b in shifted)
     Y0 = min(b[1] for _, b in shifted); Y1 = max(b[3] for _, b in shifted)
     # 16:9 frame (the viewer's shape), symmetric round the centre, ~30% white space round the widest/tallest view
+    TY = (Y0 + Y1) / 2   # middle of the car's full up/down extent over the turn
     half = max(TX - X0, X1 - TX) * 1.30
     vh = max(half * 2 * 9 / 16, max(TY - Y0, Y1 - TY) * 2 * 1.35)
     half = max(half, vh * 16 / 9 / 2)
