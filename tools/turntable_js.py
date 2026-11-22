@@ -21,7 +21,7 @@ block = f"""  // TURNTABLE {name} start
   const {name} = (() => {{
     const B = {B};
     const KEY = {KEY};
-    return {{ turntable: true, size: [{CW}, {CH}], parts: {keyview}.parts,
+    return {{ turntable: true, size: [{CW}, {CH}], parts: {keyview}.parts, zero: Number(Object.keys(KEY).find(k => KEY[k] === 0) || 0),
       frames: B.map((b, k) => {{ const i = KEY[k], kf = i != null ? {keyview}.frames[i] : null;
         const spots = kf ? kf[3].map(([p, u, v]) => [p, kf[2] ? 1 - u : u, v]) : [];
         return [`360/{key}/{ver}-t${{String(k).padStart(2, '0')}}.jpg`, [{CW}, {CH}, ...b], 0, spots, i != null]; }}) }};

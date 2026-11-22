@@ -54,6 +54,38 @@ def orbit_fit(v, harmonics):
     return A @ coef
 
 
+def find_stops(video, dur, tmp):
+    """Exact times of the 8 arrow stops: the start view (t=0), dead-on front, exact side, dead-on rear, exact other side,
+    and the three-quarter views half-way between them. Straight-on = most mirror-symmetric; side = longest outline."""
+    d = os.path.join(tmp, 'dense'); os.makedirs(d, exist_ok=True)
+    subprocess.run([FF, '-v', 'error', '-y', '-i', video, '-vf', 'fps=20,scale=640:-1', f'{d}/d%03d.png'], check=True)
+    fs = sorted(f for f in os.listdir(d) if f.endswith('.png'))
+    sym, wid, red = [], [], []
+    for f in fs:
+        a = np.array(Image.open(os.path.join(d, f)).convert('RGB')).astype(float); w = whiten(a)
+        m = w.min(axis=2) < 200; ys, xs = np.where(m)
+        x0, x1, y0, y1 = [int(v) for v in (np.percentile(xs, .3), np.percentile(xs, 99.7), np.percentile(ys, .3), np.percentile(ys, 99.7))]
+        c = m[y0:y1, x0:x1]; sym.append((c & c[:, ::-1]).sum() / max(1, (c | c[:, ::-1]).sum()))
+        wid.append((x1 - x0) / max(1, y1 - y0)); red.append(((a[..., 0] > 140) & (a[..., 1] < 70) & (a[..., 2] < 70)).sum())
+    sym, wid, red = map(np.array, (sym, wid, red)); n = len(fs); t = np.arange(n) / 20
+    def peak(arr, lo, hi):
+        i0, i1 = int(lo * 20), int(hi * 20); return t[i0 + int(np.argmax(arr[i0:i1]))]
+    half = dur / 2
+    a1 = peak(sym, 0.3, half); a2 = peak(sym, a1 + dur * .3, min(dur - .3, a1 + dur * .7))   # the two straight-on views
+    front, rear = (a1, a2) if red[int(a1 * 20)] < red[int(a2 * 20)] else (a2, a1)
+    s1 = peak(wid, min(front, rear) + .3, max(front, rear) - .3)                               # side between them
+    s2 = peak(np.concatenate([wid, wid]), max(front, rear) + .3, min(front, rear) + dur - .3) % dur  # side across the loop
+    key = sorted([0.0, front, rear, s1, s2])
+    stops = []
+    for i, k in enumerate(key):                       # three-quarter stops half-way between neighbours (start view is already one)
+        stops.append(k); nxt = key[i + 1] if i + 1 < len(key) else dur
+        if k != 0.0 and nxt != dur: stops.append((k + nxt) / 2)
+        elif k != 0.0 and nxt == dur: stops.append((k + dur) / 2)
+    stops = sorted(set(round(x, 3) for x in stops))[:8]
+    print('stops (s):', stops, '| front', front, 'rear', rear, 'sides', s1, s2, file=sys.stderr)
+    return stops
+
+
 def smooth_circular(v, win=5):
     v = np.asarray(v, float); n = len(v); h = win // 2
     return np.array([np.mean([v[(i + d) % n] for d in range(-h, h + 1)]) for i in range(n)])
@@ -64,14 +96,23 @@ def main():
     ap.add_argument('video'); ap.add_argument('out'); ap.add_argument('key')
     ap.add_argument('--frames', type=int, default=48)
     ap.add_argument('--keys', help='JSON list of [photo path, flip 0/1] in the viewer\'s key-view order')
+    ap.add_argument('--stops', action='store_true', help='put the 8 arrow stops on the exact straight-on/side/three-quarter views, centred')
     ap.add_argument('--order', help='key indices in the order they appear going round, first = the start frame view')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True); raw = os.path.join(a.out, 'raw'); os.makedirs(raw, exist_ok=True)
     hh, mm, ss = subprocess.run([FF, '-i', a.video], capture_output=True, text=True).stderr.split('Duration: ')[1].split(',')[0].split(':')
     dur = int(hh) * 3600 + int(mm) * 60 + float(ss)
     N = a.frames
+    times = [k * dur / N + 0.02 for k in range(N)]
+    stop_idx = []
+    if a.stops:
+        st = find_stops(a.video, dur, a.out); per = N // len(st); times = []
+        for i, t0 in enumerate(st):
+            t1 = st[i + 1] if i + 1 < len(st) else dur
+            stop_idx.append(len(times)); times += [t0 + (t1 - t0) * j / per for j in range(per)]
+        times = [min(dur - .03, max(0.02, t)) for t in times]
     for k in range(N):
-        t = k * dur / N + 0.02
+        t = times[k]
         subprocess.run([FF, '-v', 'error', '-y', '-ss', f'{t:.3f}', '-i', a.video, '-frames:v', '1', f'{raw}/f{k:02d}.png'], check=True)
     frames = [np.array(Image.open(f'{raw}/f{k:02d}.png').convert('RGB')).astype(float) for k in range(N)]
     H, W = frames[0].shape[:2]
@@ -80,11 +121,19 @@ def main():
     # up/down from the floor line (wheels), so the car turns on the spot and never bobs
     cx = orbit_fit([(b[0] + b[2]) / 2 for b in boxes], 2)
     gy = orbit_fit([b[3] for b in boxes], 1)
+    if stop_idx:   # car exactly centred at every stop, offsets eased (smoothstep) in between: no wobble while turning
+        ccx = [(b[0] + b[2]) / 2 for b in boxes]; ccy = [(b[1] + b[3]) / 2 for b in boxes]
+        cx = np.zeros(N); cy = np.zeros(N)
+        for i, s0 in enumerate(stop_idx):
+            s1 = stop_idx[(i + 1) % len(stop_idx)]; span = (s1 - s0) % N or N
+            for j in range(span):
+                u = j / span; e = u * u * (3 - 2 * u); k = (s0 + j) % N
+                cx[k] = ccx[s0] * (1 - e) + ccx[s1] * e; cy[k] = ccy[s0] * (1 - e) + ccy[s1] * e
     TX, TY = W / 2, H / 2
     FLOOR = float(np.mean(gy))
     shifted = []
     for k, f in enumerate(frames):
-        dx, dy = int(round(TX - cx[k])), int(round(FLOOR - gy[k]))
+        dx, dy = (int(round(TX - cx[k])), int(round(TY - cy[k]))) if stop_idx else (int(round(TX - cx[k])), int(round(FLOOR - gy[k])))
         im = clean_floor(Image.fromarray(whiten(f).astype('uint8')))
         c = Image.new('RGB', (W, H), (255, 255, 255)); c.paste(im, (dx, dy))
         b = boxes[k]; shifted.append((c, [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]))
@@ -132,8 +181,11 @@ def main():
             f = max(range(N), key=lambda g: dp[n - 1][g]); total = dp[n - 1][f]; picks = [0] * n
             for i in range(n - 1, -1, -1): picks[i] = f; f = back[i][f]
             return total, dict(zip(seq, picks))
-        s1, u1 = place(order); s2, u2 = place([order[0]] + order[:0:-1])
-        used = u1 if s1 >= s2 else u2
+        if stop_idx:
+            used = {order[i]: stop_idx[i] for i in range(min(len(order), len(stop_idx)))}
+        else:
+            s1, u1 = place(order); s2, u2 = place([order[0]] + order[:0:-1])
+            used = u1 if s1 >= s2 else u2
         meta['match'] = {str(v): k for k, v in used.items()}
         print('key photo -> frame:', used)
     json.dump(meta, open(f'{a.out}/meta.json', 'w'))
