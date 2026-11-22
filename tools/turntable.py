@@ -79,12 +79,17 @@ def main():
     # one shared crop with even margins around the widest/tallest view
     X0 = min(b[0] for _, b in shifted); X1 = max(b[2] for _, b in shifted)
     Y0 = min(b[1] for _, b in shifted); Y1 = max(b[3] for _, b in shifted)
-    half = max(TX - X0, X1 - TX) * 1.06; top = (TY - Y0) * 1.10 + 20; bottom = (Y1 - TY) + 0.12 * (TY - Y0) + 30
-    cx0, cx1 = int(max(0, TX - half)), int(min(W, TX + half)); cy0, cy1 = int(max(0, TY - top)), int(min(H, TY + bottom))
+    # 16:9 frame (the viewer's shape) with ~15% white space round the widest view; car body centred top to bottom
+    half = max(TX - X0, X1 - TX) * 1.18
+    carH = TY - Y0; vh = max(half * 2 * 9 / 16, carH * 1.5)
+    half = max(half, vh * 16 / 9 / 2)
+    midY = TY - carH * 0.47
+    cx0, cx1 = int(round(TX - half)), int(round(TX + half)); cy0, cy1 = int(round(midY - vh / 2)), int(round(midY + vh / 2))
     CW, CH = cx1 - cx0, cy1 - cy0
+    pad = Image.new('RGB', (W + 2 * W, H + 2 * H), (255, 255, 255))   # room for the margin beyond the video frame
     out_boxes = []
     for k, (c, b) in enumerate(shifted):
-        im = c.crop((cx0, cy0, cx1, cy1))
+        big = pad.copy(); big.paste(c, (W, H)); im = big.crop((cx0 + W, cy0 + H, cx1 + W, cy1 + H))
         for w, suf in [(1100, ''), (640, '-s')]:
             im.resize((w, round(CH * w / CW)), Image.LANCZOS).save(f'{a.out}/{a.key}-t{k:02d}{suf}.jpg', quality=84, optimize=True, progressive=True)
         out_boxes.append([round(b[0] - cx0), round(b[1] - cy0), round(b[2] - cx0), round(b[3] - cy0)])
