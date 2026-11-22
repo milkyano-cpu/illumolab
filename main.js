@@ -427,7 +427,18 @@
       ['360/gr86/raw3.jpg', [1168, 779, 132, 262, 1056, 666], 1, [['front', .18, .74], ['wheels', .4, .78], ['body', .62, .7], ['cabin', .55, .25], ['wing', .92, .08]]]
     ]
   };
-  const VIEWS = { m2g87: M2, gr86: GR86, brz: GR86 };
+
+  // BMW M2 (G87): smooth 48-frame studio turntable (one frame every 7.5°), iilumo plate on the back.
+  // Every frame is framed the same way so the car turns on the spot; the hand-placed dots sit on the 8 main angles.
+  const M2_TURN = (() => {
+    const B = [[167,24,1018,552],[176,24,998,555],[193,25,967,558],[214,27,934,561],[248,29,889,563],[293,34,902,565],[338,38,946,566],[306,43,1011,567],[255,48,1065,566],[201,55,1119,563],[145,62,1164,556],[105,68,1193,548],[57,73,1225,538],[27,79,1245,528],[12,83,1253,517],[9,88,1261,506],[9,91,1268,498],[10,95,1269,502],[20,97,1267,511],[41,99,1264,522],[57,100,1244,530],[83,100,1216,536],[125,100,1177,542],[166,99,1140,546],[233,98,1088,548],[307,96,1035,548],[368,95,996,546],[437,94,1065,544],[434,93,1119,543],[371,91,1194,542],[317,89,1243,539],[272,87,1269,536],[223,85,1273,530],[180,83,1273,522],[142,79,1272,509],[119,75,1273,494],[103,71,1273,479],[93,66,1273,465],[92,60,1269,473],[94,52,1247,488],[95,45,1213,503],[102,40,1179,514],[115,34,1131,526],[128,30,1092,537],[138,27,1066,543],[151,25,1043,548],[160,24,1030,551],[165,24,1024,552]];
+    const KEY = {"6":0,"0":1,"37":2,"30":3,"27":4,"21":5,"15":6,"9":7};
+    return { turntable: true, size: [1280, 602], parts: M2.parts,
+      frames: B.map((b, k) => { const i = KEY[k], kf = i != null ? M2.frames[i] : null;
+        const spots = kf ? kf[3].map(([p, u, v]) => [p, kf[2] ? 1 - u : u, v]) : [];
+        return [`360/m2/t${String(k).padStart(2, '0')}.jpg`, [1280, 602, ...b], 0, spots, i != null]; }) };
+  })();
+  const VIEWS = { m2g87: M2_TURN, gr86: GR86, brz: GR86 };
 
   // Every other car: real catalogue photos, cropped to fill the stage. Dots come from the view direction.
   // [src, width, height, view, [x0,y0,x1,y1] car box as fractions of the photo]
@@ -467,6 +478,14 @@
   const layout = () => {
     if (!view || imgs.length !== view.frames.length) return;
     const SW = vStage.clientWidth, SH = vStage.clientHeight;
+    if (view.turntable) {
+      const [TW, TH] = view.size, s = Math.min(SW * .96 / TW, SH * .86 / TH), left = (SW - TW * s) / 2, top = (SH - TH * s) / 2 + SH * .02;
+      view.frames.forEach(([, [, , x0, y0, x1, y1]], i) => {
+        Object.assign(imgs[i].style, { width: TW * s + 'px', left: left + 'px', top: top + 'px' });
+        imgs[i]._box = { left, top, s, x0, y0, cw: x1 - x0, ch: y1 - y0, flip: 0 };
+      });
+      return drawSpots();
+    }
     if (view.photo) {
       view.frames.forEach(([, [W, H, fx0, fy0, fx1, fy1]], i) => {
         const cw = (fx1 - fx0) * W, ch = (fy1 - fy0) * H;
@@ -546,7 +565,9 @@
       return;
     }
     viewer.hidden = false;
-    vFrames.innerHTML = (view.photo ? '<div class="viewer__bg" id="viewerBg"></div>' : '') + view.frames.map(([src, , flip]) => `<img src="assets/${src}" alt="" draggable="false"${flip === 1 ? ' class="flip"' : view.photo ? ' class="soft"' : ''}>`).join('');
+    vFrames.innerHTML = (view.photo ? '<div class="viewer__bg" id="viewerBg"></div>' : '') + view.frames.map(([f, , flip]) => view.turntable
+      ? `<img src="assets/${f}" srcset="assets/${f.replace('.jpg', '-s.jpg')} 640w, assets/${f} 1100w" sizes="(max-width:720px) 94vw, 960px" alt="" draggable="false" decoding="async">`
+      : `<img src="assets/${f}" alt="" draggable="false"${flip === 1 ? ' class="flip"' : view.photo ? ' class="soft"' : ''}>`).join('');
     imgs = $$('img', vFrames);
     frame = 0; imgs[0].classList.add('is-on');
     if (view.photo) $('#viewerBg').style.backgroundImage = `url(assets/${view.frames[0][0]})`;
@@ -554,7 +575,7 @@
     $('.viewer__ctrl').hidden = view.frames.length < 2;
     $('#viewerHint').hidden = view.frames.length < 2;
     $('#viewerHint').classList.remove('is-gone');
-    $('#viewerNote').textContent = view.frames.length > 1 ? `${view.frames.length} angles of the ${VEHICLES[id][0]} ${VEHICLES[id][1]}. Drag to turn it, tap any dot to see what fits there.` : `Tap any dot to see what fits your ${VEHICLES[id][0]} ${VEHICLES[id][1]}.`;
+    $('#viewerNote').textContent = view.turntable ? `The ${VEHICLES[id][0]} ${VEHICLES[id][1]} all the way round. Drag to turn it, tap any dot to see what fits there.` : view.frames.length > 1 ? `${view.frames.length} angles of the ${VEHICLES[id][0]} ${VEHICLES[id][1]}. Drag to turn it, tap any dot to see what fits there.` : `Tap any dot to see what fits your ${VEHICLES[id][0]} ${VEHICLES[id][1]}.`;
     layout(); requestAnimationFrame(layout);
     // one slow intro turn so people see it moves
     if (!reduce && view.frames.length > 1) introSpin();
@@ -566,7 +587,7 @@
       if (!en.isIntersecting) return; spinIO.disconnect();
       let k = 0; spinning = true; viewer.classList.add('is-dragging');
       const stop = () => { clearInterval(spin); spinning = false; viewer.classList.remove('is-dragging'); };
-      const spin = setInterval(() => { if (dragging) return stop(); if (++k > view.frames.length) { stop(); setFrame(0); return; } setFrame(k); }, 260);
+      const spin = setInterval(() => { if (dragging) return stop(); if (++k > view.frames.length) { stop(); setFrame(0); return; } setFrame(k); }, view.turntable ? 42 : 260);
     }, { threshold: .6 });
     spinIO.observe(vStage);
   };
@@ -591,14 +612,28 @@
       return;
     }
     if (!dragging) return;
-    const step = Math.max(40, vStage.clientWidth / (view.frames.length * 1.5));
+    const step = view.turntable ? Math.max(4, vStage.clientWidth / view.frames.length) : Math.max(40, vStage.clientWidth / (view.frames.length * 1.5));
     setFrame(f0 - Math.round((e.clientX - dx0) / step));
   });
-  const endDrag = () => { pending = null; if (!dragging) return; dragging = false; viewer.classList.remove('is-dragging'); drawSpots(); };
+  // turntable: glide frame by frame to another angle (used by the arrows and after a drag)
+  let glideT = 0;
+  const turnTo = (to, done) => {
+    cancelAnimationFrame(glideT);
+    const len = view.frames.length; let d = ((to - frame) % len + len) % len; if (d > len / 2) d -= len;
+    if (!d || reduce) { setFrame(to); spinning = false; drawSpots(); done && done(); return; }
+    spinning = true; const from = frame, t0 = performance.now(), dur = Math.min(520, 120 + Math.abs(d) * 34);
+    const tick = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      setFrame(from + Math.round(d * e)); if (k < 1) glideT = requestAnimationFrame(tick); else { spinning = false; drawSpots(); done && done(); } };
+    glideT = requestAnimationFrame(tick);
+  };
+  const nearestKey = n => { const len = view.frames.length; let best = n, bd = 1e9;
+    view.frames.forEach((f, i) => { if (!f[4]) return; let dd = Math.abs(i - n); dd = Math.min(dd, len - dd); if (dd < bd) { bd = dd; best = i; } }); return best; };
+  const endDrag = () => { pending = null; if (!dragging) return; dragging = false; viewer.classList.remove('is-dragging'); if (view && view.turntable) turnTo(nearestKey(frame)); else drawSpots(); };
   vStage.addEventListener('pointerup', endDrag);
   vStage.addEventListener('pointercancel', endDrag);
-  $('#viewerPrev').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); setFrame(frame - 1); });
-  $('#viewerNext').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); setFrame(frame + 1); });
+  const keyStep = dir => { const len = view.frames.length; for (let i = 1; i <= len; i++) { const n = ((frame + dir * i) % len + len) % len; if (view.frames[n][4]) return n; } return frame; };
+  $('#viewerPrev').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); view && view.turntable ? turnTo(keyStep(-1)) : setFrame(frame - 1); });
+  $('#viewerNext').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); view && view.turntable ? turnTo(keyStep(1)) : setFrame(frame + 1); });
   vStage.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); setFrame(frame - 1); }
     if (e.key === 'ArrowRight') { e.preventDefault(); setFrame(frame + 1); }
@@ -838,6 +873,8 @@
 
   /* ---------- Build (cart) ---------- */
   const buildEl = $('#build');
+  // the count bubble pops on the GPU (no class swap, no forced layout)
+  const popCount = () => { if (!reduce) $('#buildCount').animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: .5 }, { transform: 'scale(1)' }], { duration: 400, easing: 'cubic-bezier(.2,.7,.1,1)' }); };
   const renderBuild = (pop) => {
     deals = Object.fromEntries(Object.entries(deals).filter(([id]) => build.includes(id)));
     store.set('build', build); store.set('buildOpt', buildOpt); store.set('deals', deals);
@@ -850,6 +887,7 @@
       clearTimeout(buildEl._t);
       const parts = [...$('.build__bar').children];
       parts.forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' }));
+      buildEl.classList.add('is-growing');
       const cl = barClip(), C = cl.cap, FULL = cl.full;
       buildEl.animate([
         // hold while the contents fade, fold smoothly (ease in + out) into a tall capsule, then drop away
@@ -859,7 +897,7 @@
         { clipPath: C, webkitClipPath: C, transform: 'translateY(30px) scale(.8)', opacity: 0, offset: 1 }
       ], { duration: 900, easing: 'linear', fill: 'forwards' }).onfinish = function () {
         if (!build.length) buildEl.hidden = true;
-        buildEl.style.pointerEvents = ''; this.cancel();
+        buildEl.style.pointerEvents = ''; buildEl.classList.remove('is-growing'); this.cancel();
         parts.forEach(el => el.getAnimations().forEach(a => a.cancel()));
       };
     } else {
@@ -869,7 +907,7 @@
     if (appearing && !buildEl._fromOrb && !reduce) buildEl.animate([{ transform: 'translateY(30px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 500, easing: 'cubic-bezier(.16,1,.3,1)' });
     if (!build.length) buildEl.classList.remove('is-open');
     $('#buildCount').textContent = build.length;
-    if (pop) { const d = $('#buildCount'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop'); }
+    if (pop) popCount();
     const total = build.reduce((s, id) => s + priceOf(id), 0);
     const quote = build.some(id => ALL[id].price == null);
     $('#buildTotal').textContent = !total && quote ? 'Quote' : (build.some(id => ALL[id].from) || quote ? 'from ' : '') + money(total);
@@ -884,7 +922,7 @@
     return { full: 'inset(0px 0px 0px 0px round 999px)', dot: `inset(${y}px ${x}px ${y}px ${x}px round 999px)`, cap: `inset(0px ${cx}px 0px ${cx}px round 999px)` };
   };
   const flyToBuild = (btn, update) => {
-    buildEl.getAnimations().forEach(x => x.cancel()); buildEl.style.pointerEvents = '';
+    buildEl.getAnimations().forEach(x => x.cancel()); buildEl.style.pointerEvents = ''; buildEl.classList.remove('is-growing');
     const wasHidden = buildEl.hidden;
     if (reduce || !btn.getBoundingClientRect) { update(); return; }
     const r = btn.getBoundingClientRect(), D = 46;
@@ -920,7 +958,9 @@
         buildEl.style.visibility = '';
         const cl = barClip();
         // ease in AND out: gentle start, smooth middle, soft settle
-        buildEl.animate([{ clipPath: cl.dot, webkitClipPath: cl.dot }, { clipPath: cl.full, webkitClipPath: cl.full }], { duration: 760, easing: 'cubic-bezier(.65,0,.3,1)' });
+        buildEl.classList.add('is-growing');
+        const grow = buildEl.animate([{ clipPath: cl.dot, webkitClipPath: cl.dot }, { clipPath: cl.full, webkitClipPath: cl.full }], { duration: 760, easing: 'cubic-bezier(.65,0,.3,1)' });
+        grow.onfinish = grow.oncancel = () => buildEl.classList.remove('is-growing');
       } else {
         buildEl.animate([
           { transform: 'scale(1)', offset: 0, easing: 'cubic-bezier(.45,0,.55,1)' },
@@ -928,7 +968,7 @@
           { transform: 'scale(.995)', offset: .75, easing: 'cubic-bezier(.45,0,.55,1)' },
           { transform: 'scale(1)', offset: 1 }
         ], { duration: 700, easing: 'linear' });
-        const d = $('#buildCount'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+        popCount();
       }
       orb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: wasHidden ? 120 : 160, easing: 'ease-out', fill: 'forwards' }).onfinish = () => orb.remove();
       setTimeout(() => orb.remove(), 400);

@@ -1510,3 +1510,17 @@ body.locked{overscroll-behavior:none}
 /* No grey tap flash on phones (it showed as a dark block on the Parts / Services switch); our own states show instead */
 html{-webkit-tap-highlight-color:transparent}
 .toggle button{-webkit-user-select:none;user-select:none;touch-action:manipulation}
+
+/* My build bar, smooth on every screen: the shadow lives on its own layer and fades in after the bar has grown,
+   instead of being cut by the growing mask and popping in at the end */
+.build__bar{position:relative;box-shadow:none}
+.build__bar::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 20px 40px -16px rgba(0,0,0,.5);z-index:-1;pointer-events:none;transition:opacity .35s ease}
+.build.is-growing .build__bar::after{opacity:0;transition:none}
+.build__dot{will-change:transform}
+.orb{will-change:transform,opacity}
+
+/* iilumolab logo: the iilumo box and lettering, in the lab gradient (full logo on wider screens, the box alone on phones) */
+.brand .brand__full{width:auto;height:30px}
+.brand .brand__mark{display:none;width:auto;height:30px}
+@media (max-width:640px){.brand .brand__full{display:none}.brand .brand__mark{display:block}}
+.foot__brand .foot__logo{display:block;width:auto;height:44px;margin:0 0 26px}
