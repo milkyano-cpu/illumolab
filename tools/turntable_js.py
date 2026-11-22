@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Write a car's turntable data into the site script(s), replacing that car's existing block.
 
-    python3 tools/turntable_js.py <meta.json> <CONST_NAME> <folder-key> <KEYVIEW_CONST> <script.js> [<script.js> ...]
+    python3 tools/turntable_js.py <meta.json> <CONST_NAME> <folder-key> <KEYVIEW_CONST> <version> <script.js> [<script.js> ...]
+
+The version (e.g. v3) is part of the file names (360/<key>/v3-t00.jpg) so a new render never shows cached old frames.
 
 e.g. python3 tools/turntable_js.py out/meta.json M2_TURN m2 M2 main.js
 The block sits between the markers "// TURNTABLE <CONST_NAME> start" and "// TURNTABLE <CONST_NAME> end".
@@ -9,7 +11,7 @@ The block sits between the markers "// TURNTABLE <CONST_NAME> start" and "// TUR
 """
 import json, re, sys
 
-meta, name, key, keyview, *scripts = sys.argv[1:]
+meta, name, key, keyview, ver, *scripts = sys.argv[1:]
 m = json.load(open(meta))
 CW, CH = m['crop']
 B = json.dumps(m['boxes'], separators=(',', ':'))
@@ -22,7 +24,7 @@ block = f"""  // TURNTABLE {name} start
     return {{ turntable: true, size: [{CW}, {CH}], parts: {keyview}.parts,
       frames: B.map((b, k) => {{ const i = KEY[k], kf = i != null ? {keyview}.frames[i] : null;
         const spots = kf ? kf[3].map(([p, u, v]) => [p, kf[2] ? 1 - u : u, v]) : [];
-        return [`360/{key}/t${{String(k).padStart(2, '0')}}.jpg`, [{CW}, {CH}, ...b], 0, spots, i != null]; }}) }};
+        return [`360/{key}/{ver}-t${{String(k).padStart(2, '0')}}.jpg`, [{CW}, {CH}, ...b], 0, spots, i != null]; }}) }};
   }})();
   // TURNTABLE {name} end
 """

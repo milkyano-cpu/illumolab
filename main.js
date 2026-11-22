@@ -436,7 +436,7 @@
     return { turntable: true, size: [1039, 577], parts: M2.parts,
       frames: B.map((b, k) => { const i = KEY[k], kf = i != null ? M2.frames[i] : null;
         const spots = kf ? kf[3].map(([p, u, v]) => [p, kf[2] ? 1 - u : u, v]) : [];
-        return [`360/m2/t${String(k).padStart(2, '0')}.jpg`, [1039, 577, ...b], 0, spots, i != null]; }) };
+        return [`360/m2/v3-t${String(k).padStart(2, '0')}.jpg`, [1039, 577, ...b], 0, spots, i != null]; }) };
   })();
   // TURNTABLE M2_TURN end
   const VIEWS = { m2g87: M2_TURN, gr86: GR86, brz: GR86 };
