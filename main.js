@@ -428,16 +428,17 @@
     ]
   };
 
-  // BMW M2 (G87): smooth 48-frame studio turntable (one frame every 7.5°), iilumo plate on the back.
-  // Every frame is framed the same way so the car turns on the spot; the hand-placed dots sit on the 8 main angles.
+  // TURNTABLE M2_TURN start
+  // smooth 48-frame studio turntable, every frame centred on the same floor line; the hand-placed dots sit on the main angles
   const M2_TURN = (() => {
-    const B = [[167,24,1018,552],[176,24,998,555],[193,25,967,558],[214,27,934,561],[248,29,889,563],[293,34,902,565],[338,38,946,566],[306,43,1011,567],[255,48,1065,566],[201,55,1119,563],[145,62,1164,556],[105,68,1193,548],[57,73,1225,538],[27,79,1245,528],[12,83,1253,517],[9,88,1261,506],[9,91,1268,498],[10,95,1269,502],[20,97,1267,511],[41,99,1264,522],[57,100,1244,530],[83,100,1216,536],[125,100,1177,542],[166,99,1140,546],[233,98,1088,548],[307,96,1035,548],[368,95,996,546],[437,94,1065,544],[434,93,1119,543],[371,91,1194,542],[317,89,1243,539],[272,87,1269,536],[223,85,1273,530],[180,83,1273,522],[142,79,1272,509],[119,75,1273,494],[103,71,1273,479],[93,66,1273,465],[92,60,1269,473],[94,52,1247,488],[95,45,1213,503],[102,40,1179,514],[115,34,1131,526],[128,30,1092,537],[138,27,1066,543],[151,25,1043,548],[160,24,1030,551],[165,24,1024,552]];
-    const KEY = {"6":0,"0":1,"37":2,"30":3,"27":4,"21":5,"15":6,"9":7};
-    return { turntable: true, size: [1280, 602], parts: M2.parts,
+    const B = [[177,74,863,492],[188,70,852,492],[203,68,837,492],[221,65,818,492],[239,64,789,492],[264,63,745,492],[284,63,747,492],[297,64,761,492],[283,65,787,493],[237,67,818,493],[191,71,856,493],[161,77,885,493],[134,86,911,494],[109,98,937,494],[79,110,960,493],[56,124,974,491],[48,139,986,491],[44,149,995,486],[40,153,997,478],[41,153,994,485],[56,147,992,490],[63,135,986,491],[68,121,968,491],[82,107,949,491],[115,95,918,496],[148,86,884,496],[182,78,839,495],[231,74,769,495],[270,72,744,492],[299,71,788,492],[238,73,832,495],[182,75,867,495],[141,81,904,495],[107,90,940,495],[75,100,971,492],[54,113,986,492],[44,127,992,492],[38,140,996,491],[35,147,1010,483],[36,148,1006,478],[43,145,999,487],[55,134,993,491],[69,122,980,491],[85,109,950,494],[104,98,931,493],[123,90,914,494],[139,83,897,493],[156,77,881,492]];
+    const KEY = {"0":1,"6":0,"10":7,"17":6,"22":5,"28":4,"30":3,"38":2};
+    return { turntable: true, size: [1039, 577], parts: M2.parts,
       frames: B.map((b, k) => { const i = KEY[k], kf = i != null ? M2.frames[i] : null;
         const spots = kf ? kf[3].map(([p, u, v]) => [p, kf[2] ? 1 - u : u, v]) : [];
-        return [`360/m2/t${String(k).padStart(2, '0')}.jpg`, [1280, 602, ...b], 0, spots, i != null]; }) };
+        return [`360/m2/t${String(k).padStart(2, '0')}.jpg`, [1039, 577, ...b], 0, spots, i != null]; }) };
   })();
+  // TURNTABLE M2_TURN end
   const VIEWS = { m2g87: M2_TURN, gr86: GR86, brz: GR86 };
 
   // Every other car: real catalogue photos, cropped to fill the stage. Dots come from the view direction.
@@ -479,7 +480,7 @@
     if (!view || imgs.length !== view.frames.length) return;
     const SW = vStage.clientWidth, SH = vStage.clientHeight;
     if (view.turntable) {
-      const [TW, TH] = view.size, s = Math.min(SW * .96 / TW, SH * .86 / TH), left = (SW - TW * s) / 2, top = (SH - TH * s) / 2 + SH * .02;
+      const [TW, TH] = view.size, s = Math.min(SW / TW, SH / TH), left = (SW - TW * s) / 2, top = (SH - TH * s) / 2; // frames carry their own even margins: fit and centre
       view.frames.forEach(([, [, , x0, y0, x1, y1]], i) => {
         Object.assign(imgs[i].style, { width: TW * s + 'px', left: left + 'px', top: top + 'px' });
         imgs[i]._box = { left, top, s, x0, y0, cw: x1 - x0, ch: y1 - y0, flip: 0 };
