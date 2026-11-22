@@ -45,6 +45,34 @@ def body_box(a):
     return [float(np.percentile(xs, .3)), float(np.percentile(ys, .3)), float(np.percentile(xs, 99.7)), float(np.percentile(ys, 99.7))]
 
 
+def lean(a):
+    """Camera lean in degrees: compares the lowest tyre points at the far left and far right of the car.
+    Only meaningful when both tyres are side by side (straight front, straight rear, side profiles)."""
+    body = whiten(a).min(axis=2) < 200; dark = whiten(a).min(axis=2) < 90
+    ys, xs = np.where(body); x0, x1 = xs.min(), xs.max(); w = x1 - x0
+    def low(xa, xb):
+        r = np.where(dark[:, xa:xb].any(axis=1))[0]; return r.max() if len(r) else None
+    L = low(x0, int(x0 + w * .32)); R = low(int(x1 - w * .32), x1)
+    if L is None or R is None: return None
+    return float(np.degrees(np.arctan2(R - L, w * .68)))
+
+
+def sym_lean(a):
+    """Lean of a straight-on front or rear view: the rotation (0.1 degree steps) at which the car is most mirror-symmetric."""
+    clean = np.asarray(clean_floor(Image.fromarray(whiten(a).astype('uint8')))).astype(float)   # no floor marks in the measurement
+    m = Image.fromarray(((clean.min(axis=2) < 200) * 255).astype('uint8'))
+    m = m.resize((m.width // 2, m.height // 2))
+    best, best_ang = -1, 0.0
+    for ang in np.arange(-3, 3.01, 0.1):
+        r = np.asarray(m.rotate(float(ang), resample=Image.BILINEAR)) > 128
+        ys, xs = np.where(r)
+        if not len(xs): continue
+        c = r[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        sc = (c & c[:, ::-1]).sum() / max(1, (c | c[:, ::-1]).sum())
+        if sc > best: best, best_ang = sc, float(ang)
+    return best_ang, best
+
+
 def orbit_fit(v, harmonics):
     """The camera's slow drift over one full turn: a smooth curve (low-order Fourier fit over 360 degrees).
     Removing only this keeps the car steady without reacting to its changing outline frame by frame."""
@@ -96,6 +124,7 @@ def main():
     ap.add_argument('video'); ap.add_argument('out'); ap.add_argument('key')
     ap.add_argument('--frames', type=int, default=48)
     ap.add_argument('--keys', help='JSON list of [photo path, flip 0/1] in the viewer\'s key-view order')
+    ap.add_argument('--level', action='store_true', help='also straighten a leaning camera (only for leans over ~1 degree; smaller is below what it can measure)')
     ap.add_argument('--stops', action='store_true', help='put the 8 arrow stops on the exact straight-on/side/three-quarter views, centred')
     ap.add_argument('--order', help='key indices in the order they appear going round, first = the start frame view')
     a = ap.parse_args()
@@ -116,24 +145,34 @@ def main():
         subprocess.run([FF, '-v', 'error', '-y', '-ss', f'{t:.3f}', '-i', a.video, '-frames:v', '1', f'{raw}/f{k:02d}.png'], check=True)
     frames = [np.array(Image.open(f'{raw}/f{k:02d}.png').convert('RGB')).astype(float) for k in range(N)]
     H, W = frames[0].shape[:2]
+    if stop_idx and a.level:   # optional: level the camera: find the lean at the straight front and rear (best mirror symmetry), ease between them
+        fi, ri = stop_idx[1], stop_idx[5]
+        (fa, fs), (ra, rs) = sym_lean(frames[fi]), sym_lean(frames[ri])
+        print(f'lean: front {fa:+.1f} deg (symmetry {fs:.3f}), rear {ra:+.1f} deg (symmetry {rs:.3f}) -> levelled', file=sys.stderr)
+        roll = np.zeros(N)
+        for k in range(N):   # smooth cosine blend front -> rear -> front around the turn
+            d = ((k - fi) % N) / N * 2 * np.pi; w = (1 - np.cos(d)) / 2 if (ri - fi) % N else 0
+            roll[k] = fa * (1 - w) + ra * w
+        frames = [np.asarray(Image.fromarray(whiten(f).astype('uint8')).rotate(float(roll[k]), resample=Image.BICUBIC, fillcolor=(255, 255, 255))).astype(float)
+                  for k, f in enumerate(frames)]
     boxes = [body_box(f) for f in frames]
     # remove only the camera's slow drift (smooth curves over the full turn): sideways from the car's middle,
     # up/down from the floor line (wheels), so the car turns on the spot and never bobs
     cx = orbit_fit([(b[0] + b[2]) / 2 for b in boxes], 2)
     gy = orbit_fit([b[3] for b in boxes], 1)
-    if stop_idx:   # car exactly centred at every stop, offsets eased (smoothstep) in between: no wobble while turning
-        ccx = [(b[0] + b[2]) / 2 for b in boxes]; ccy = [(b[1] + b[3]) / 2 for b in boxes]
-        cx = np.zeros(N); cy = np.zeros(N)
-        for i, s0 in enumerate(stop_idx):
-            s1 = stop_idx[(i + 1) % len(stop_idx)]; span = (s1 - s0) % N or N
-            for j in range(span):
-                u = j / span; e = u * u * (3 - 2 * u); k = (s0 + j) % N
-                cx[k] = ccx[s0] * (1 - e) + ccx[s1] * e; cy[k] = ccy[s0] * (1 - e) + ccy[s1] * e
+    if stop_idx:   # pin the point the car spins around (its middle, measured at the straight front/side/rear/side views)
+        straight = stop_idx[1::2]
+        th = np.array([k * 2 * np.pi / N for k in straight])
+        A = np.stack([np.ones_like(th), np.cos(th), np.sin(th)], 1)
+        tk = np.arange(N) * 2 * np.pi / N; Ak = np.stack([np.ones(N), np.cos(tk), np.sin(tk)], 1)
+        fx, *_ = np.linalg.lstsq(A, np.array([(boxes[k][0] + boxes[k][2]) / 2 for k in straight]), rcond=None)
+        fy, *_ = np.linalg.lstsq(A, np.array([boxes[k][3] for k in straight]), rcond=None)
+        cx = Ak @ fx; gy = Ak @ fy   # one smooth curve each: the car turns on the spot, no sliding, no bobbing
     TX, TY = W / 2, H / 2
     FLOOR = float(np.mean(gy))
     shifted = []
     for k, f in enumerate(frames):
-        dx, dy = (int(round(TX - cx[k])), int(round(TY - cy[k]))) if stop_idx else (int(round(TX - cx[k])), int(round(FLOOR - gy[k])))
+        dx, dy = int(round(TX - cx[k])), int(round(FLOOR - gy[k]))
         im = clean_floor(Image.fromarray(whiten(f).astype('uint8')))
         c = Image.new('RGB', (W, H), (255, 255, 255)); c.paste(im, (dx, dy))
         b = boxes[k]; shifted.append((c, [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]))
