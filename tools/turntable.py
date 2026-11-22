@@ -71,8 +71,12 @@ def main():
     gy = smooth_circular([b[3] for b in boxes])          # wheels / floor line
     TX, TY = W / 2, float(np.median(gy))
     shifted = []
+    # one move for the whole turn (centres the average car position); frames are never nudged one by one,
+    # so the camera feels locked and only the car turns
+    gdx = int(round(TX - float(np.mean([(b[0] + b[2]) / 2 for b in boxes]))))
+    TY = float(np.median([b[3] for b in boxes]))
     for k, f in enumerate(frames):
-        dx, dy = int(round(TX - cx[k])), int(round(TY - gy[k]))
+        dx, dy = gdx, 0
         im = clean_floor(Image.fromarray(whiten(f).astype('uint8')))
         c = Image.new('RGB', (W, H), (255, 255, 255)); c.paste(im, (dx, dy))
         b = boxes[k]; shifted.append((c, [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]))
@@ -80,7 +84,7 @@ def main():
     X0 = min(b[0] for _, b in shifted); X1 = max(b[2] for _, b in shifted)
     Y0 = min(b[1] for _, b in shifted); Y1 = max(b[3] for _, b in shifted)
     # 16:9 frame (the viewer's shape) with ~15% white space round the widest view; car body centred top to bottom
-    half = max(TX - X0, X1 - TX) * 1.18
+    half = max(TX - X0, X1 - TX) * 1.30
     carH = TY - Y0; vh = max(half * 2 * 9 / 16, carH * 1.5)
     half = max(half, vh * 16 / 9 / 2)
     midY = TY - carH * 0.47
