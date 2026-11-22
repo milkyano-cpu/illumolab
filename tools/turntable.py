@@ -67,28 +67,25 @@ def main():
     frames = [np.array(Image.open(f'{raw}/f{k:02d}.png').convert('RGB')).astype(float) for k in range(N)]
     H, W = frames[0].shape[:2]
     boxes = [body_box(f) for f in frames]
-    cx = smooth_circular([(b[0] + b[2]) / 2 for b in boxes])
-    gy = smooth_circular([b[3] for b in boxes])          # wheels / floor line
-    TX, TY = W / 2, float(np.median(gy))
+    # pin the centre of the car body exactly to the centre of the frame in every frame (both axes);
+    # on a plain white background only the car is visible, so it turns on the spot, dead centre, no bobbing
+    cx = smooth_circular([(b[0] + b[2]) / 2 for b in boxes], 1)
+    cy = smooth_circular([(b[1] + b[3]) / 2 for b in boxes], 1)
+    TX, TY = W / 2, H / 2
     shifted = []
-    # one move for the whole turn (centres the average car position); frames are never nudged one by one,
-    # so the camera feels locked and only the car turns
-    gdx = int(round(TX - float(np.mean([(b[0] + b[2]) / 2 for b in boxes]))))
-    TY = float(np.median([b[3] for b in boxes]))
     for k, f in enumerate(frames):
-        dx, dy = gdx, 0
+        dx, dy = int(round(TX - cx[k])), int(round(TY - cy[k]))
         im = clean_floor(Image.fromarray(whiten(f).astype('uint8')))
         c = Image.new('RGB', (W, H), (255, 255, 255)); c.paste(im, (dx, dy))
         b = boxes[k]; shifted.append((c, [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy]))
     # one shared crop with even margins around the widest/tallest view
     X0 = min(b[0] for _, b in shifted); X1 = max(b[2] for _, b in shifted)
     Y0 = min(b[1] for _, b in shifted); Y1 = max(b[3] for _, b in shifted)
-    # 16:9 frame (the viewer's shape) with ~15% white space round the widest view; car body centred top to bottom
+    # 16:9 frame (the viewer's shape), symmetric round the centre, ~30% white space round the widest/tallest view
     half = max(TX - X0, X1 - TX) * 1.30
-    carH = TY - Y0; vh = max(half * 2 * 9 / 16, carH * 1.5)
+    vh = max(half * 2 * 9 / 16, max(TY - Y0, Y1 - TY) * 2 * 1.35)
     half = max(half, vh * 16 / 9 / 2)
-    midY = TY - carH * 0.47
-    cx0, cx1 = int(round(TX - half)), int(round(TX + half)); cy0, cy1 = int(round(midY - vh / 2)), int(round(midY + vh / 2))
+    cx0, cx1 = int(round(TX - half)), int(round(TX + half)); cy0, cy1 = int(round(TY - vh / 2)), int(round(TY + vh / 2))
     CW, CH = cx1 - cx0, cy1 - cy0
     pad = Image.new('RGB', (W + 2 * W, H + 2 * H), (255, 255, 255))   # room for the margin beyond the video frame
     out_boxes = []
