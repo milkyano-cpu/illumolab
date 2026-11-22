@@ -640,6 +640,51 @@
     if (e.key === 'ArrowRight') { e.preventDefault(); setFrame(frame + 1); }
   });
 
+  /* ---------- Product photos: one consistent frame on every card ----------
+     Supplier photos come with different amounts of empty space round the product. On load, each card photo is checked
+     (a small copy): where the product sits, and how white the background is. It is then zoomed and centred to fill the
+     same share of the card, near-white backgrounds are lifted to the card's white, and full scene photos fill the frame.
+     If a photo can't be checked it simply shows as before. */
+  const FIT_FILL = .84, fitCache = {};
+  const fitData = url => fitCache[url] || (fitCache[url] = new Promise(res => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const S = 96, c = document.createElement('canvas'), r = Math.min(S / im.naturalWidth, S / im.naturalHeight);
+        const w = c.width = Math.max(1, Math.round(im.naturalWidth * r)), h = c.height = Math.max(1, Math.round(im.naturalHeight * r));
+        const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, w, h);
+        const d = x.getImageData(0, 0, w, h).data, px = (i, j) => { const k = (j * w + i) * 4; return [d[k], d[k + 1], d[k + 2], d[k + 3]]; };
+        const corners = [px(1, 1), px(w - 2, 1), px(1, h - 2), px(w - 2, h - 2)];
+        const bg = corners.map(p => Math.min(p[0], p[1], p[2])), spread = Math.max(...bg) - Math.min(...bg), base = bg.reduce((a, b) => a + b) / 4;
+        if (base < 200 || spread > 26) return res({ photo: true });            // a scene photo, not a product on a plain background
+        const cut = Math.min(base - 14, 238); let x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+          const p = px(i, j); if (p[3] > 20 && Math.min(p[0], p[1], p[2]) < cut) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
+        }
+        if (x1 < 0) return res(null);
+        res({ box: [x0 / w, y0 / h, (x1 + 1) / w, (y1 + 1) / h], ar: im.naturalWidth / im.naturalHeight, lift: base < 250 ? Math.min(1.12, 255 / base) : 1 });
+      } catch (e) { res(null); }
+    };
+    im.onerror = () => res(null);
+    im.src = url.replace(/([?&])width=\d+/, '$1width=200');
+  }));
+  const fitApply = (img, f) => {
+    const box = img.parentElement, W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
+    if (f.photo) { box.classList.add('is-photo'); return; }
+    const rw = Math.min(W, H * f.ar), rh = rw / f.ar, ox = (W - rw) / 2, oy = (H - rh) / 2;
+    const [u0, v0, u1, v1] = f.box, cw = (u1 - u0) * rw, ch = (v1 - v0) * rh;
+    const s = Math.max(.9, Math.min(2.6, Math.min(FIT_FILL * W / cw, FIT_FILL * H / ch)));
+    const ccx = ox + (u0 + u1) / 2 * rw - W / 2, ccy = oy + (v0 + v1) / 2 * rh - H / 2;
+    img.style.setProperty('--fs', s.toFixed(3)); img.style.setProperty('--fx', (-s * ccx / W * 100).toFixed(2) + '%'); img.style.setProperty('--fy', (-s * ccy / H * 100).toFixed(2) + '%');
+    if (f.lift > 1.005) img.style.setProperty('--fb', `brightness(${f.lift.toFixed(3)})`);
+    box.classList.add('is-fit');
+  };
+  const fitImg = img => { if (img._fit) return; img._fit = true; const u = img.currentSrc || img.src; if (!u) return; fitData(u).then(f => { if (f) { img._fitData = f; fitApply(img, f); } }); };
+  document.addEventListener('load', e => { const t = e.target; if (t.tagName === 'IMG' && t.closest('.card__img')) fitImg(t); }, true);
+  const fitScan = () => document.querySelectorAll('.card__img img').forEach(i => { if (i.complete && i.naturalWidth) fitImg(i); });
+  new MutationObserver(() => fitScan()).observe(document.body, { childList: true, subtree: true });
+  let fitT; addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => document.querySelectorAll('.card__img img').forEach(i => i._fitData && fitApply(i, i._fitData)), 200); });
+
   /* ---------- Popular parts & vehicles rails ---------- */
   const popular = ['p0', 'p30', 'p2', 'p11', 'p10', 'p20', 'p4', 'p17', 'p13', 'p3'];
   const popTrack = $('#popularTrack');

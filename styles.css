@@ -1524,3 +1524,9 @@ html{-webkit-tap-highlight-color:transparent}
 .brand .brand__mark{display:none;width:auto;height:30px}
 @media (max-width:640px){.brand .brand__full{display:none}.brand .brand__mark{display:block}}
 .foot__brand .foot__logo{display:block;width:auto;height:44px;margin:0 0 26px}
+
+/* Product photos: one consistent frame (sizes set per photo by the script; plain white backgrounds melt into the card) */
+.card__img img{mix-blend-mode:multiply;transform:translate(var(--fx,0%),var(--fy,0%)) scale(var(--fs,1));filter:var(--fb,none);transform-origin:50% 50%}
+.card:hover .card__img img{transform:translate(var(--fx,0%),var(--fy,0%)) scale(calc(var(--fs,1) * 1.05))}
+.card__img.is-photo img{object-fit:cover;mix-blend-mode:normal}
+@media (hover:none){.card:hover .card__img img{transform:translate(var(--fx,0%),var(--fy,0%)) scale(var(--fs,1))}}
