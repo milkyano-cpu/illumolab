@@ -41,30 +41,243 @@
 
   /* ---------- Data ---------- */
   // id: [make, model, firstYear, lastYear, image]
+  // VEHICLES start: every car in the live iilumolab.com.au Vehicles menu (tools/build_vehicles.py + tools/vehicles_js.py)
+  // [make, model, first year, last year, photo]; years 0, 0 = the menu lists no years ("All years")
   const VEHICLES = {
-    m2g87:   ['BMW', 'M2 (G87)', 2023, 2026, 'p-adro-m2.jpg'],
-    m2f87:   ['BMW', 'M2 (F87)', 2016, 2022],
-    m3g80:   ['BMW', 'M3 (G80)', 2021, 2026],
-    m4g82:   ['BMW', 'M4 (G82)', 2021, 2026],
-    gr86:    ['Toyota', 'GR86 (ZN8)', 2022, 2026, 'p-adro-gr86.jpg'],
-    zn6:     ['Toyota', '86 (ZN6)', 2012, 2021],
-    supra:   ['Toyota', 'GR Supra (A90)', 2019, 2026, 'p-adro-supra.jpg'],
-    brz:     ['Subaru', 'BRZ (ZD8)', 2022, 2026],
-    wrxvb:   ['Subaru', 'WRX (VB)', 2022, 2026],
-    model3:  ['Tesla', 'Model 3 (2019–2023)', 2019, 2023, 'p-tesla3.jpg'],
-    modely:  ['Tesla', 'Model Y (2020–2024)', 2020, 2024, 'p-adro-tesla.jpg'],
-    ev6:     ['Kia', 'EV6 (CV)', 2022, 2026, 'p-adro-ev6.jpg'],
-    stinger: ['Kia', 'Stinger (CK)', 2018, 2023],
-    golfr7:  ['Volkswagen', 'Golf R (Mk7 / 7.5)', 2014, 2020],
-    gti8:    ['Volkswagen', 'Golf GTI (Mk8)', 2021, 2026],
-    rs3:     ['Audi', 'RS3 (8Y)', 2022, 2026],
-    s3:      ['Audi', 'S3 (8Y)', 2021, 2026],
-    focusrs: ['Ford', 'Focus RS (Mk3)', 2016, 2018],
-    gtr:     ['Nissan', 'GT-R (R35)', 2009, 2024],
-    z370:    ['Nissan', '370Z (Z34)', 2009, 2020],
-    ctr:     ['Honda', 'Civic Type R (FL5)', 2023, 2026],
-    a45:     ['Mercedes-AMG', 'A45 S (W177)', 2020, 2026]
+    "aston-martin-levante-m161": ["Aston Martin", "Levante M161", 0, 0, null],
+    "aston-martin-db9": ["Aston Martin", "DB9", 0, 0, null],
+    "aston-martin-vanquish": ["Aston Martin", "Vanquish", 0, 0, null],
+    "audi-a1-8x": ["Audi", "A1 (8X)", 2010, 2015, null],
+    "audi-a3-8y": ["Audi", "A3 (8Y)", 2022, 2023, null],
+    "audi-a3-8p": ["Audi", "A3 (8P)", 2004, 2013, null],
+    "audi-a4-b9": ["Audi", "A4 (B9)", 2017, 2023, null],
+    "audi-a5-b9": ["Audi", "A5 (B9)", 2017, 2023, null],
+    "audi-a6-c8": ["Audi", "A6 (C8)", 2019, 2023, null],
+    "audi-a7-4g": ["Audi", "A7 (4G)", 2010, 2018, null],
+    s3: ["Audi", "S3 (8Y)", 2021, 2026, null],
+    "audi-s3-8v": ["Audi", "S3 (8V)", 2014, 2021, null],
+    "audi-s3-8p": ["Audi", "S3 (8P)", 2005, 2013, null],
+    "audi-s4-b9": ["Audi", "S4 (B9)", 2017, 2024, null],
+    "audi-s4-b8": ["Audi", "S4 (B8)", 2009, 2015, null],
+    "audi-s5-b9": ["Audi", "S5 (B9)", 2018, 2024, null],
+    "audi-s5-8t": ["Audi", "S5 (8T)", 2009, 2015, null],
+    "audi-s6-c8": ["Audi", "S6 (C8)", 2019, 2023, null],
+    "audi-s6-c7": ["Audi", "S6 (C7)", 2012, 2018, null],
+    "audi-s7-4g": ["Audi", "S7 (4G)", 2012, 2018, null],
+    "audi-sq5-fy": ["Audi", "SQ5 (FY)", 2021, 2023, null],
+    "audi-sq7-4m": ["Audi", "SQ7 (4M)", 2016, 2023, null],
+    "audi-rs3-8v": ["Audi", "RS3 (8V)", 2014, 2021, null],
+    rs3: ["Audi", "RS3 (8Y)", 2022, 2026, null],
+    "audi-rs4-b9": ["Audi", "RS4 (B9)", 2017, 2024, null],
+    "audi-rs4-b8": ["Audi", "RS4 (B8)", 2010, 2016, null],
+    "audi-rs5-b9": ["Audi", "RS5 (B9)", 2018, 2024, null],
+    "audi-rs5-b8": ["Audi", "RS5 (B8)", 2010, 2016, null],
+    "audi-rs6-c8": ["Audi", "RS6 (C8)", 2019, 2023, null],
+    "audi-rs6-c7": ["Audi", "RS6 (C7)", 2012, 2018, null],
+    "audi-rs7-4k": ["Audi", "RS7 (4K)", 2019, 2023, null],
+    "audi-rs7-4g": ["Audi", "RS7 (4G)", 2012, 2018, null],
+    "audi-rsq3-f3": ["Audi", "RSQ3 (F3)", 2019, 2023, null],
+    "audi-rsq8-f1": ["Audi", "RSQ8 (F1)", 2019, 2026, null],
+    "audi-r8-mk2-4s": ["Audi", "R8 (MK2 4S)", 2016, 2021, null],
+    "audi-r8-mk1": ["Audi", "R8 (MK1)", 2007, 2015, null],
+    "audi-tt-fv-8s": ["Audi", "TT (FV/8S)", 2015, 2023, null],
+    "audi-tts-fv-8s": ["Audi", "TTS (FV/8S)", 2015, 2023, null],
+    "audi-ttrs-fv-8s": ["Audi", "TTRS (FV/8S)", 2015, 2023, null],
+    "bmw-1m": ["BMW", "1M", 0, 0, null],
+    m2g87: ["BMW", "M2 (G87)", 2023, 2026, "p-adro-m2.jpg"],
+    m2f87: ["BMW", "M2 (F87)", 2016, 2022, null],
+    m3g80: ["BMW", "M3 (G80)", 2021, 2026, null],
+    "bmw-m3-f80": ["BMW", "M3 (F80)", 2014, 2019, null],
+    "bmw-m3-e90-e92": ["BMW", "M3 (E90 / E92)", 2007, 2013, null],
+    "bmw-m3-e46": ["BMW", "M3 (E46)", 2001, 2006, null],
+    m4g82: ["BMW", "M4 (G82)", 2021, 2026, null],
+    "bmw-m4-f82-f83": ["BMW", "M4 (F82/F83)", 2014, 2020, null],
+    "bmw-m5-g90": ["BMW", "M5 (G90)", 2025, 2026, null],
+    "bmw-m5-f90": ["BMW", "M5 (F90)", 2017, 2020, null],
+    "bmw-m5-f10": ["BMW", "M5 (F10)", 2011, 2017, null],
+    "bmw-m5-e60": ["BMW", "M5 (E60)", 2005, 2010, null],
+    "bmw-m6-f06-f12-f13": ["BMW", "M6 (F06/F12/F13)", 2011, 2018, null],
+    "bmw-m6-e63-e64": ["BMW", "M6 (E63/E64)", 2005, 2010, null],
+    "bmw-m8-f91-f92-f93": ["BMW", "M8 (F91/F92/F93)", 2020, 2026, null],
+    "bmw-1-series-f40": ["BMW", "1 Series (F40)", 2019, 2026, null],
+    "bmw-1-series-f20-f21": ["BMW", "1 Series (F20/F21)", 2011, 2019, null],
+    "bmw-1-series-e87-e88": ["BMW", "1 Series (E87/E88)", 2004, 2011, null],
+    "bmw-2-series-g42-g43": ["BMW", "2 Series (G42/G43)", 2022, 2026, null],
+    "bmw-2-series-f44": ["BMW", "2 Series (F44)", 2019, 2024, null],
+    "bmw-2-series-f22-f23": ["BMW", "2 Series (F22/F23)", 2014, 2021, null],
+    "bmw-3-series-g20-g21": ["BMW", "3 Series (G20/G21)", 2019, 2026, null],
+    "bmw-3-series-f30-f31": ["BMW", "3 Series (F30/F31)", 2011, 2018, null],
+    "bmw-4-series-g22-g23-g26": ["BMW", "4 Series (G22/G23/G26)", 2021, 2026, null],
+    "bmw-4-series-f32-f33-f36": ["BMW", "4 Series (F32/F33/F36)", 2013, 2020, null],
+    "bmw-5-series-g60": ["BMW", "5 Series (G60)", 2025, 2026, null],
+    "bmw-5-series-g30": ["BMW", "5 Series (G30)", 2017, 2026, null],
+    "bmw-5-series-f10-f11": ["BMW", "5 Series (F10/F11)", 2010, 2016, null],
+    "bmw-6-series-f06-f12-f13": ["BMW", "6 Series (F06/F12/F13)", 2011, 2018, null],
+    "bmw-8-series-g14-g15-g16": ["BMW", "8 Series (G14/G15/G16)", 2020, 2023, null],
+    "bmw-i4-series-g26": ["BMW", "i4 Series (G26)", 2021, 2024, null],
+    "bmw-ix3-g08": ["BMW", "iX3 (G08)", 2019, 2026, null],
+    "bmw-x1-u11": ["BMW", "X1 (U11)", 2022, 2024, null],
+    "bmw-x2-f39": ["BMW", "X2 (F39)", 2018, 2026, null],
+    "bmw-x3-g01": ["BMW", "X3 (G01)", 2017, 2026, null],
+    "bmw-x4-g02": ["BMW", "X4 (G02)", 2018, 2026, null],
+    "bmw-x5-g05": ["BMW", "X5 (G05)", 2018, 2026, null],
+    "bmw-x6-g06": ["BMW", "X6 (G06)", 2019, 2026, null],
+    "bmw-x7-g07": ["BMW", "X7 (G07)", 2019, 2026, null],
+    "bmw-x3m-f97": ["BMW", "X3M (F97)", 2019, 2026, null],
+    "bmw-x4m-f98": ["BMW", "X4M (F98)", 2019, 2026, null],
+    "bmw-x5m-f95": ["BMW", "X5M (F95)", 2020, 2026, null],
+    "bmw-x5m-f85": ["BMW", "X5M (F85)", 2015, 2018, null],
+    "bmw-x5m-e70": ["BMW", "X5M (E70)", 2009, 2014, null],
+    "bmw-x6m-f96": ["BMW", "X6M (F96)", 2020, 2023, null],
+    "bmw-x6m-f86": ["BMW", "X6M (F86)", 2015, 2019, null],
+    "bmw-x6m-e71": ["BMW", "X6M (E71)", 2009, 2014, null],
+    "bmw-z4-g29": ["BMW", "Z4 (G29)", 2018, 2026, null],
+    "bmw-z4-e89": ["BMW", "Z4 (E89)", 2009, 2016, null],
+    "cupra-ateca-kh": ["Cupra", "Ateca (KH)", 2022, 2026, null],
+    "cupra-formentor-km": ["Cupra", "Formentor (KM)", 2022, 2026, null],
+    "cupra-leon-kl": ["Cupra", "Leon (KL)", 2022, 2026, null],
+    "ferrari-458": ["Ferrari", "458", 0, 0, null],
+    "ferrari-488": ["Ferrari", "488", 0, 0, null],
+    "ferrari-599": ["Ferrari", "599", 0, 0, null],
+    "ferrari-812": ["Ferrari", "812", 0, 0, null],
+    "ferrari-california": ["Ferrari", "California", 0, 0, null],
+    "ferrari-f8": ["Ferrari", "F8", 0, 0, null],
+    "ferrari-f12": ["Ferrari", "F12", 0, 0, null],
+    "ferrari-f430": ["Ferrari", "F430", 0, 0, null],
+    "ferrari-ff": ["Ferrari", "FF", 0, 0, null],
+    "ferrari-gtc4lusso": ["Ferrari", "GTC4LUSSO", 0, 0, null],
+    "ferrari-sf90": ["Ferrari", "SF90", 0, 0, null],
+    "ford-mustang-fn": ["Ford", "Mustang (FN)", 2018, 2026, null],
+    "ford-mustang-fm": ["Ford", "Mustang (FM)", 2015, 2017, null],
+    "ford-focus-mk4": ["Ford", "Focus (MK4)", 2018, 2022, null],
+    focusrs: ["Ford", "Focus (Mk3)", 2011, 2018, null],
+    "ford-focus-mk2": ["Ford", "Focus (MK2)", 2007, 2011, null],
+    "chevrolet-corvette-c8": ["Chevrolet", "Corvette (C8)", 2021, 2026, null],
+    "chevrolet-silverado-t1": ["Chevrolet", "Silverado (T1)", 2019, 2026, null],
+    "genesis-g70-ik": ["Genesis", "G70 (IK)", 2019, 2021, null],
+    "genesis-g70-ik-v2": ["Genesis", "G70 (IK.V2)", 2022, 2026, null],
+    "genesis-g80-rg3-v2": ["Genesis", "G80 (RG3.V2)", 2021, 2026, null],
+    "genesis-gv70-jk-v1": ["Genesis", "GV70 (JK.V1)", 2022, 2026, null],
+    "genesis-gv80-jx-v3": ["Genesis", "GV80 (JX.V3)", 2021, 2026, null],
+    "holden-commodore-vf": ["Holden", "Commodore (VF)", 2013, 2017, null],
+    "holden-commodore-ve": ["Holden", "Commodore (VE)", 2006, 2013, null],
+    "honda-civic-ek": ["Honda", "Civic (EK)", 1996, 2000, null],
+    "honda-civic-ep3": ["Honda", "Civic (EP3)", 2001, 2004, null],
+    "honda-civic-fd2": ["Honda", "Civic (FD2)", 2007, 2010, null],
+    "honda-civic-fn2": ["Honda", "Civic (FN2)", 2006, 2011, null],
+    "honda-civic-fc-fk": ["Honda", "Civic (FC/FK)", 2015, 2021, null],
+    "honda-civic-fk8": ["Honda", "Civic (FK8)", 2017, 2021, null],
+    ctr: ["Honda", "Civic Type R (FL5)", 2023, 2026, null],
+    "honda-accord-euro-cl9": ["Honda", "Accord Euro (CL9)", 2002, 2008, null],
+    "honda-accord-euro-cu2": ["Honda", "Accord Euro (CU2)", 2008, 2015, null],
+    "honda-nsx-na1-2": ["Honda", "NSX (NA1/2)", 1990, 2006, null],
+    "honda-nsx-nc1-2": ["Honda", "NSX (NC1/2)", 2017, 2021, null],
+    "honda-s2000-ap1-ap2": ["Honda", "S2000 (AP1 / AP2)", 1999, 2009, null],
+    "honda-integra-dc2": ["Honda", "Integra (DC2)", 1995, 2001, null],
+    "honda-integra-dc5": ["Honda", "Integra (DC5)", 2002, 2006, null],
+    "hyundai-i30-pd-hatchback": ["Hyundai", "i30 (PD Hatchback)", 2017, 2023, null],
+    "hyundai-i30-pd-fastback": ["Hyundai", "i30 (PD Fastback)", 2017, 2020, null],
+    "hyundai-i30-cn7-sedan": ["Hyundai", "i30 (CN7 Sedan)", 2020, 2026, null],
+    "hyundai-i20-bc3": ["Hyundai", "i20 (BC3)", 2021, 2024, null],
+    "hyundai-kona-sx2": ["Hyundai", "Kona (SX2)", 2024, 2026, null],
+    "hyundai-kona-os": ["Hyundai", "Kona (OS)", 2017, 2023, null],
+    "hyundai-veloster-fs": ["Hyundai", "Veloster (FS)", 2012, 2017, null],
+    "jeep-grand-cherokee-wk": ["Jeep", "Grand Cherokee (WK)", 2011, 2021, null],
+    "kia-cerato-bd": ["Kia", "Cerato (BD)", 2018, 2023, null],
+    ev6: ["Kia", "EV6 (CV)", 2022, 2026, "p-adro-ev6.jpg"],
+    stinger: ["Kia", "Stinger (CK)", 2018, 2023, null],
+    "land-rover-range-rover-l405": ["Land Rover", "Range Rover (L405)", 2017, 2022, null],
+    "land-rover-range-rover-evoque-l538": ["Land Rover", "Range Rover Evoque (L538)", 2011, 2018, null],
+    "land-rover-range-rover-sport-l494": ["Land Rover", "Range Rover Sport (L494)", 2015, 2018, null],
+    "land-rover-range-rover-velar-l560": ["Land Rover", "Range Rover Velar (L560)", 2017, 2026, null],
+    "lamborghini-aventador": ["Lamborghini", "Aventador", 0, 0, null],
+    "lamborghini-gallardo": ["Lamborghini", "Gallardo", 0, 0, null],
+    "lamborghini-huracan": ["Lamborghini", "Huracan", 0, 0, null],
+    "lamborghini-murcielago": ["Lamborghini", "Murcielago", 0, 0, null],
+    "lamborghini-urus": ["Lamborghini", "Urus", 0, 0, null],
+    "lexus-is-xe30": ["Lexus", "IS (XE30)", 2013, 2023, null],
+    "lexus-is-xe20": ["Lexus", "IS (XE20)", 2005, 2013, null],
+    "lexus-is-xe10": ["Lexus", "IS (XE10)", 1999, 2005, null],
+    "lexus-rc-xc10": ["Lexus", "RC (XC10)", 2015, 2019, null],
+    "maserati-ghibli-m157": ["Maserati", "Ghibli M157", 0, 0, null],
+    "maserati-gran-turismo-m145": ["Maserati", "Gran Turismo M145", 0, 0, null],
+    "maserati-quattroporte-m156": ["Maserati", "Quattroporte M156", 0, 0, null],
+    "mazda-mazda-3-bp": ["Mazda", "Mazda 3 (BP)", 0, 0, null],
+    "mazda-mazda-3-bm-bn": ["Mazda", "Mazda 3 (BM / BN)", 2013, 2018, null],
+    "mazda-mazda-3-bl": ["Mazda", "Mazda 3 (BL)", 2008, 2012, null],
+    "mclaren-540c-570s-570gt": ["McLaren", "540C / 570S / 570GT", 0, 0, null],
+    "mclaren-600lt": ["McLaren", "600LT", 0, 0, null],
+    "mclaren-650s": ["McLaren", "650S", 0, 0, null],
+    "mclaren-720s": ["McLaren", "720S", 0, 0, null],
+    "mclaren-mp4-12c": ["McLaren", "MP4-12C", 0, 0, null],
+    "mclaren-gt": ["McLaren", "GT", 0, 0, null],
+    a45: ["Mercedes-Benz", "A-Class (W177)", 2019, 2026, null],
+    "mercedes-benz-a-class-w176": ["Mercedes-Benz", "A Class (W176)", 2013, 2018, null],
+    "mercedes-benz-c-class-w205": ["Mercedes-Benz", "C Class (W205)", 2014, 2021, null],
+    "mercedes-benz-c-class-w204": ["Mercedes-Benz", "C Class (W204)", 2007, 2013, null],
+    "mercedes-benz-c-class-c205": ["Mercedes-Benz", "C Class (C205)", 2015, 2023, null],
+    "mercedes-benz-e-class-c238": ["Mercedes-Benz", "E Class (C238)", 2017, 2018, null],
+    "mercedes-benz-e-class-w213": ["Mercedes-Benz", "E Class (W213)", 2016, 2019, null],
+    "mercedes-benz-e-class-w212": ["Mercedes-Benz", "E Class (W212)", 2011, 2016, null],
+    "mercedes-benz-g-class-w463": ["Mercedes-Benz", "G Class (W463)", 1990, 2026, null],
+    "mercedes-benz-sl-class-r231": ["Mercedes-Benz", "SL Class (R231)", 2012, 2021, null],
+    "mercedes-benz-s-class-c217": ["Mercedes-Benz", "S Class (C217)", 2013, 2017, null],
+    "mercedes-benz-s-class-w222": ["Mercedes-Benz", "S Class (W222)", 2013, 2017, null],
+    "mercedes-benz-cla-c118-x118": ["Mercedes-Benz", "CLA (C118 / X118)", 2019, 2026, null],
+    "mercedes-benz-cla-c117-x117": ["Mercedes-Benz", "CLA (C117 / X117)", 2013, 2019, null],
+    "mercedes-benz-cls-c257": ["Mercedes-Benz", "CLS (C257)", 2019, 2026, null],
+    "mercedes-benz-cls-c218-x218": ["Mercedes-Benz", "CLS (C218 / X218)", 2011, 2017, null],
+    "mercedes-benz-gla-x156": ["Mercedes-Benz", "GLA (X156)", 2014, 2019, null],
+    "mercedes-benz-glb-x247": ["Mercedes-Benz", "GLB (X247)", 2019, 2026, null],
+    "mercedes-benz-glc-c253-x253": ["Mercedes-Benz", "GLC (C253 / X253)", 2015, 2023, null],
+    "mercedes-benz-gle-w167-c167": ["Mercedes-Benz", "GLE (W167 / C167)", 2019, 2026, null],
+    "mercedes-benz-gle-w166-c292": ["Mercedes-Benz", "GLE (W166 / C292)", 2017, 2019, null],
+    "mercedes-benz-gt-c190-r190": ["Mercedes-Benz", "GT (C190 / R190)", 2015, 2021, null],
+    "mercedes-benz-gt-x290": ["Mercedes-Benz", "GT (X290)", 2019, 2026, null],
+    "mercedes-benz-sls-c197-r197": ["Mercedes-Benz", "SLS (C197 / R197)", 2010, 2014, null],
+    "mini-cooper-f55-f56-f57": ["Mini", "Cooper (F55/F56/F57)", 2013, 2026, null],
+    "mini-countryman-r60": ["Mini", "Countryman (R60)", 2011, 2026, null],
+    "mini-clubman-f54": ["Mini", "Clubman (F54)", 2015, 2026, null],
+    "mini-paceman-r61": ["Mini", "Paceman (R61)", 2013, 2015, null],
+    "mitsubishi-evolution-cz4a": ["Mitsubishi", "Evolution (CZ4A)", 2008, 2015, null],
+    "mitsubishi-evolution-ct9a": ["Mitsubishi", "Evolution (CT9A)", 2000, 2007, null],
+    z370: ["Nissan", "370Z (Z34)", 2009, 2021, null],
+    gtr: ["Nissan", "GT-R (R35)", 2009, 2024, null],
+    "nissan-z-z34": ["Nissan", "Z (Z34)", 2022, 2023, null],
+    "porsche-911": ["Porsche", "911", 0, 0, null],
+    "porsche-boxster": ["Porsche", "Boxster", 0, 0, null],
+    "porsche-cayenne": ["Porsche", "Cayenne", 0, 0, null],
+    "porsche-cayman": ["Porsche", "Cayman", 0, 0, null],
+    "porsche-macan": ["Porsche", "Macan", 0, 0, null],
+    "skoda-octavia": ["Skoda", "Octavia", 0, 0, null],
+    "skoda-superb": ["Skoda", "Superb", 0, 0, null],
+    brz: ["Subaru", "BRZ (ZD8)", 2022, 2026, null],
+    "subaru-brz-zc6": ["Subaru", "BRZ (ZC6)", 2011, 2021, null],
+    "subaru-levorg-vm": ["Subaru", "Levorg (VM)", 2016, 2018, null],
+    wrxvb: ["Subaru", "WRX (VB)", 2022, 2026, null],
+    "subaru-impreza-wrx-sti-vn": ["Subaru", "Impreza WRX / STI (VN)", 2022, 2026, null],
+    "subaru-impreza-wrx-sti-va": ["Subaru", "Impreza WRX / STI (VA)", 2014, 2021, null],
+    "subaru-impreza-wrx-sti-ge-gh": ["Subaru", "Impreza WRX / STI (GE/GH)", 2008, 2011, null],
+    "suzuki-swift": ["Suzuki", "Swift", 0, 0, null],
+    "tesla-model-3-highland": ["Tesla", "Model 3 (Highland)", 2024, 2026, null],
+    model3: ["Tesla", "Model 3 (2019–2023)", 2019, 2023, "p-tesla3.jpg"],
+    modely: ["Tesla", "Model Y (2020–2024)", 2020, 2024, "p-adro-tesla.jpg"],
+    gr86: ["Toyota", "GR86 (ZN8)", 2022, 2026, "p-adro-gr86.jpg"],
+    zn6: ["Toyota", "86 (ZN6)", 2012, 2021, null],
+    supra: ["Toyota", "GR Supra (A90)", 2019, 2026, "p-adro-supra.jpg"],
+    "toyota-corolla-gr": ["Toyota", "Corolla (GR)", 2022, 2023, null],
+    "toyota-yaris-gr": ["Toyota", "Yaris (GR)", 2021, 2026, null],
+    gti8: ["Volkswagen", "Golf (Mk8)", 2021, 2026, null],
+    golfr7: ["Volkswagen", "Golf (Mk7 / 7.5)", 2013, 2020, null],
+    "volkswagen-golf-mk6": ["Volkswagen", "Golf (MK6)", 2008, 2013, null],
+    "volkswagen-golf-mk5": ["Volkswagen", "Golf (MK5)", 2003, 2007, null],
+    "volkswagen-polo-aw": ["Volkswagen", "Polo (AW)", 2017, 2021, null],
+    "volkswagen-polo-6r": ["Volkswagen", "Polo (6R)", 2010, 2017, null],
+    "volkswagen-scirocco-r": ["Volkswagen", "Scirocco (R)", 2011, 2016, null],
+    "volkswagen-tiguan-mk2": ["Volkswagen", "Tiguan (MK2)", 2021, 2024, null],
+    "volkswagen-t-roc-mk1": ["Volkswagen", "T-Roc (MK1)", 2020, 2026, null]
   };
+  // VEHICLES end
   const G8X = ['m2g87', 'm3g80', 'm4g82'];
 
   // [brand, title, price, image, category, fits ('*' = universal), tag]
@@ -100,7 +313,7 @@
     ['DIXCEL', 'Rear Brake Pads', 130, 'p-pads.jpg', 'Brakes', ['gti8', 's3']],
     ['DIXCEL', 'Front Brake Pads', 290, 'p-pads.jpg', 'Brakes', ['wrxvb', 'model3', 'modely', 'ev6', 'stinger', 'rs3', 'focusrs', 'm2f87']],
     ['iilumo', 'Ambience+ RGB Flow Ambient Kit', 349, 'p-ambience.jpg', 'Lighting', '*', 'Best seller'],
-    ['iilumo', 'T10 Extreme Output 360° LED', 18, 'p-t10.jpg', 'Lighting', '*']
+    ['iilumo', 'T10 Extreme Output 360° LED', 18, 'p-t10.jpg', 'Lighting', []]
   ].map(([brand, title, price, img, cat, fits, tag], i) => ({ id: 'p' + i, brand, title, price, img, cat, fits, tag }));
 
   // starting prices from iilumolab.com.au's own service pages; null = no price listed there, shown as "Quote"
@@ -141,7 +354,7 @@
   const STOCK_TXT = { in: 'In stock', preorder: 'Pre-order', out: 'Sold out', special: 'Special order' };
   const addLabel = id => stockOf(id) === 'preorder' ? 'Pre-order' : stockOf(id) === 'out' ? 'Sold out' : 'Add to build';
   const stockBadge = (id, cls = '') => { const st = stockOf(id); return `<span class="stock stock--${st} ${cls}" title="${st === 'special' ? 'Made for you, ships in 2 to 4 weeks' : st === 'preorder' ? 'Sold out for now. Order now and yours ships first when stock lands' : STOCK_TXT[st]}"><i></i>${STOCK_TXT[st]}${st === 'special' ? '<small> · 2 to 4 weeks</small>' : ''}</span>`; };
-  const vName = (id, y) => id && VEHICLES[id] ? `${y ? y + ' ' : ''}${VEHICLES[id][0]} ${VEHICLES[id][1]}` : '';
+  const vName = (id, y) => id && VEHICLES[id] ? `${+y ? y + ' ' : ''}${VEHICLES[id][0]} ${VEHICLES[id][1]}` : '';
   // Always name the exact model and chassis (M2 F87 and M2 G87 are different cars)
   const modelName = id => `${VEHICLES[id][0]} ${VEHICLES[id][1]}`;
   const fitsList = ids => {
@@ -239,7 +452,7 @@
   };
   const fillYears = id => {
     selYear.replaceChildren(opt('', 'Select year'));
-    if (id) { const [, , a, b] = VEHICLES[id]; for (let y = b; y >= a; y--) selYear.append(opt(y, y)); }
+    if (id) { const [, , a, b] = VEHICLES[id]; if (!a) selYear.append(opt(0, 'All years')); else for (let y = b; y >= a; y--) selYear.append(opt(y, y)); }
     selYear.disabled = !id;
   };
   selMake.addEventListener('change', () => { fillModels(selMake.value); if (selMake.value) selModel.focus(); });
@@ -345,8 +558,8 @@
     $('#garageList').innerHTML = garage.map((g, i) => {
       const on = vehicle && vehicle.id === g.id && vehicle.year === g.year;
       return `<li class="garage__item${on ? ' is-on' : ''}">
-        <button class="garage__pick" type="button" data-garage="${i}"><span class="garage__name">${g.year} ${VEHICLES[g.id][0]} ${VEHICLES[g.id][1]}</span>${on ? '<span class="garage__now">Current</span>' : ''}</button>
-        <button class="garage__del" type="button" data-garage-del="${i}" aria-label="Remove ${g.year} ${VEHICLES[g.id][0]} ${VEHICLES[g.id][1]}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
+        <button class="garage__pick" type="button" data-garage="${i}"><span class="garage__name">${vName(g.id, g.year)}</span>${on ? '<span class="garage__now">Current</span>' : ''}</button>
+        <button class="garage__del" type="button" data-garage-del="${i}" aria-label="Remove ${vName(g.id, g.year)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
       </li>`;
     }).join('');
   };
@@ -1144,12 +1357,15 @@
 
   /* ---------- Header search: bar on desktop, magnifier on phones ---------- */
   const qs = $('#qs'), qsIn = $('#qsInput'), qsPanel = $('#qsPanel');
-  const qsHay = p => `${p.brand} ${p.title} ${p.cat} ${p.sub || ''} ${p.fits === '*' ? '' : p.fits.map(id => VEHICLES[id][0] + ' ' + VEHICLES[id][1]).join(' ')}`.toLowerCase();
+  const qsHay = p => `${p.brand} ${p.title} ${p.h || ''} ${p.cat} ${p.sub || ''} ${p.fits === '*' ? '' : p.fits.map(id => VEHICLES[id][0] + ' ' + VEHICLES[id][1]).join(' ')}`.toLowerCase();
   const qsRender = () => {
     const q = qsIn.value.trim();
     if (!q) { qsPanel.hidden = true; return; }
     const words = q.toLowerCase().split(/\s+/);
-    const hits = [...PARTS, ...INSTALLS].filter(p => { const h = qsHay(p); return words.every(w => h.includes(w)); }).slice(0, 6);
+    // the whole store catalogue once it's loaded (the curated parts until then); parts for your car first
+    if (!CAT || !CAT.length) loadCatalog().then(() => { if (qsIn.value.trim() === q) qsRender(); });
+    const pool = CAT && CAT.length ? CAT : PARTS, mine = p => vehicle && fitsCar(p, vehicle.id) ? 0 : 1;
+    const hits = [...pool, ...INSTALLS].filter(p => { const h = qsHay(p); return words.every(w => h.includes(w)); }).sort((a, b) => mine(a) - mine(b)).slice(0, 6);
     qsPanel.innerHTML = (hits.length
       ? hits.map(p => `<button type="button" class="qs__item" data-pdp="${p.id}"><img src="${src(p.img)}" alt=""><span><small>${esc(p.brand)}</small>${esc(p.title)}</span><b>${p.from ? '<small>from</small> ' : ''}${money(p.price)}</b></button>`).join('')
       : `<p class="qs__none">No quick matches. Call <a href="tel:0483939304">our team</a> and we'll source it.</p>`)
@@ -1538,16 +1754,17 @@
     CAT = [];
     j.rows.forEach(([id, h, b, t, pr, ci, fi, img, inStock, d]) => {
       if (HIDDEN_BRANDS.test(b)) return; // brands the redesign doesn't feature
-      const fits = fi.map(k => j.veh[k]);
+      const fits = fi === '*' ? '*' : fi.map(k => j.veh[k]); // '*' only when the product is tagged fits_all in Shopify
       if (ALL[id] && !ALL[id].remote) {           // one of our curated products: keep its local data, widen its fitment
-        const p = ALL[id]; if (p.fits !== '*') p.fits = [...new Set([...p.fits, ...fits])];
+        const p = ALL[id]; if (p.fits !== '*') p.fits = fits; // the store's own fitment, never a guess
         p.h = p.h || h || null; p.date = d; CAT.push(p); seen.add(id); return;
       }
       const p = ALL[id] || (ALL[id] = { id, h: h || id, brand: b, title: t, price: pr, cat: j.cats[ci], fits, img: j.cdn + img + '?width=600', remote: true });
       p.date = d; if (!inStock) QTY[id] = 0;
       CAT.push(p); seen.add(id);
     });
-    PARTS.forEach(p => { if (!seen.has(p.id)) CAT.push(p); });  // universal / curated extras
+    // curated extras the store doesn't list for any car: kept for All parts and search, but only universal kits match a car
+    PARTS.forEach(p => { if (!seen.has(p.id)) { if (p.fits !== '*') p.fits = []; CAT.push(p); } });
     return CAT;
   }));
 
@@ -1560,7 +1777,7 @@
     && (skip === 'brand' || !F.brands.size || F.brands.has(p.brand))
     && (skip === 'stock' || !F.stock.size || F.stock.has(stockOf(p.id)))
     && (F.min == null || p.price >= F.min) && (F.max == null || p.price <= F.max)
-    && (!F.q || (p.brand + ' ' + p.title + ' ' + p.cat).toLowerCase().includes(F.q));
+    && (!F.q || F.q.split(/\s+/).every(w => qsHay(p).includes(w))); // every word, any order ("g87 drl")
   const SORTS = {
     featured: (a, b) => (b.id[0] === 'p' && /^\d+$/.test(b.id.slice(1))) - (a.id[0] === 'p' && /^\d+$/.test(a.id.slice(1))) || (stockOf(a.id) === 'out' || stockOf(a.id) === 'preorder') - (stockOf(b.id) === 'out' || stockOf(b.id) === 'preorder') || b.price - a.price,
     low: (a, b) => a.price - b.price, high: (a, b) => b.price - a.price,
@@ -1585,7 +1802,7 @@
       mk.value = v ? v[0] : (mk.value || '');
       md.innerHTML = '<option value="">' + (mk.value ? 'All models' : 'Model') + '</option>' + Object.entries(VEHICLES).filter(([, x]) => x[0] === mk.value).map(([id, x]) => `<option value="${id}">${x[1]}</option>`).join('');
       md.disabled = !mk.value; md.value = F.veh || '';
-      yr.innerHTML = '<option value="">Year</option>' + (F.veh ? Array.from({ length: VEHICLES[F.veh][3] - VEHICLES[F.veh][2] + 1 }, (_, i) => VEHICLES[F.veh][3] - i).map(y => `<option>${y}</option>`).join('') : '');
+      yr.innerHTML = '<option value="">Year</option>' + (F.veh ? (VEHICLES[F.veh][2] ? Array.from({ length: VEHICLES[F.veh][3] - VEHICLES[F.veh][2] + 1 }, (_, i) => VEHICLES[F.veh][3] - i).map(y => `<option>${y}</option>`).join('') : '<option value="0">All years</option>') : '');
       yr.disabled = !F.veh; yr.value = vehicle && vehicle.id === F.veh ? vehicle.year : '';
     };
     mk.onchange = () => { F.veh = null; sync(); renderParts(true); };

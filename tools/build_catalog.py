@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the parts catalogue the site uses (finder results, All parts, search, one-time offer) from the LIVE store.
 
-    python3 tools/build_catalog.py <out catalog.json> [--report report.txt]
+    python3 tools/build_catalog.py <out catalog.json> --cars <vehicles.json from build_vehicles.py> [--ids <old catalog.json>] [--report report.txt]
 
 Fitment comes only from the store's own data, never from guesses:
   a part fits a car when it is in that car's collection (the Vehicles menu collections),
@@ -35,7 +35,7 @@ CARS = {
     'rs3':     (['Audi', 'RS3 (8Y)', 2022, 2026], ['audi-rs3-8y'], ['audi_rs3_8y', 'model_rs3 8y'], r'RS\s?3[^|]*8Y|8Y[^|]*RS\s?3'),
     's3':      (['Audi', 'S3 (8Y)', 2021, 2026], ['audi-s3-8y'], ['audi_s3_8y', 'model_s3 8y'], r'\bS3\b[^|]*8Y|8Y[^|]*\bS3\b'),
     'focusrs': (['Ford', 'Focus RS (Mk3)', 2016, 2018], [], ['model_mk3 focus rs', 'focus_rs'], r'Focus\s?RS'),
-    'gtr':     (['Nissan', 'GT-R (R35)', 2009, 2024], [], ['gtr_r35', 'r35'], r'\bR35\b|\bGT-?R\b'),
+    'gtr':     (['Nissan', 'GT-R (R35)', 2009, 2024], [], ['gtr_r35', 'r35'], r'\bR35\b'),
     'z370':    (['Nissan', '370Z (Z34)', 2009, 2020], [], ['370z', 'z34', 'nissan_370z'], r'\b370Z\b|\bZ34\b'),
     'ctr':     (['Honda', 'Civic Type R (FL5)', 2023, 2026], [], ['honda_fl5', 'fl5', 'model_civic type r fl5'], r'\bFL5\b'),
     'a45':     (['Mercedes-AMG', 'A45 S (W177)', 2020, 2026], [], ['w177', 'merc_w177', 'model_a45 w177'], r'\bA45\b|\bW177\b'),
@@ -50,6 +50,20 @@ CAT_RULES = [   # first match wins, checked against type + title + tags
     ('Performance', r'intake|turbo|intercooler|radiator|oil|cooling|charge ?pipe|plenum|\becu\b|tune|pump|fuel|skid|heat ?exchanger|filter'),
     ('Body kits', r'lip|splitter|diffuser|spoiler|skirt|bumper|bonnet|hood|fender|grille|wing|canard|body ?kit|aero|mirror|widebody|vent|valance|duct|wide ?body|trunk|roof'),
 ]
+
+
+def chassis_tags(label):
+    """The chassis codes in a menu car's name, as the store tags them: '2 Series (G42/G43)' -> ['g42', 'g43'].
+    Only real codes (letters + 2-3 digits, e.g. f80, e46, w177, fk8); generic ones like mk7 or b9 are left out."""
+    inner = ' '.join(re.findall(r'\(([^)]*)\)', label))
+    return [t for t in re.split(r'[\s/]+', inner.lower()) if re.fullmatch(r'[a-z]{1,2}\d{2,3}[a-z]?|[a-z]{2}\d[a-z]?', t) and not t.startswith('mk')]
+
+
+def brand_ok(tags, make):
+    """A chassis tag only counts when the product's own CARBRAND_ tag (if it has one) is the same make."""
+    brands = [t[9:] for t in tags if t.startswith('carbrand_')]
+    key = re.sub(r'[^a-z]', '', make.lower())
+    return not brands or any(re.sub(r'[^a-z]', '', x) in key or key in re.sub(r'[^a-z]', '', x) for x in brands)
 
 
 def get(url, tries=4):
@@ -79,14 +93,30 @@ def category(p):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('out'); ap.add_argument('--report'); a = ap.parse_args()
-    prods = all_products('products.json')
+    ap = argparse.ArgumentParser(); ap.add_argument('out'); ap.add_argument('--cars', required=True); ap.add_argument('--ids'); ap.add_argument('--report'); a = ap.parse_args()
+    # every finder car: ours keep their tag and title rules; every other menu car fits by its own collection only
+    for k, v in json.load(open(a.cars)).items():
+        col = [v[5]] if v[5] else []
+        if k in CARS: CARS[k] = (CARS[k][0], list(dict.fromkeys(CARS[k][1] + col)), CARS[k][2], CARS[k][3])
+        else: CARS[k] = ([v[0], v[1], v[2], v[3]], col, chassis_tags(v[1]), None)
+    # the curated parts (p0..p31 in main.js) keep their ids so their own photos and copy stay attached
+    keep_id = {}
+    if a.ids:
+        for r in json.load(open(a.ids))['rows']:
+            if re.fullmatch(r'p([0-9]|[12][0-9]|3[01])', r[0]): keep_id[r[1]] = r[0]
+    prods = all_products('products.json'); prods += all_products('products.json')   # read twice: one pass can skip a product
     print('store products:', len(prods), file=sys.stderr)
-    in_col = {k: set() for k in CARS}
+    in_col, col_cache, extra = {k: set() for k in CARS}, {}, []
     for k, (_, cols, _, _) in CARS.items():
         for c in cols:
-            try: in_col[k] |= {p['handle'] for p in all_products(f'collections/{c}/products.json')}
-            except SystemExit: pass
+            if c in col_cache: in_col[k] |= col_cache[c]; continue
+            # collection products also go into the main list: the store-wide feed pages by position and can skip a
+            # product that moved while it was being read (it missed the M2 G87 DRL modules once)
+            try: got = all_products(f'collections/{c}/products.json'); col_cache[c] = {p['handle'] for p in got}; extra.extend(got)
+            except SystemExit: col_cache[c] = set(); print('  no collection', c, file=sys.stderr)
+            in_col[k] |= col_cache[c]; time.sleep(.3)
+    prods = list({p['handle']: p for p in prods + extra}.values())
+    print('products incl. collections:', len(prods), file=sys.stderr)
     keys = list(CARS)
     rows, report = [], {k: [] for k in keys}
     for p in prods:
@@ -95,14 +125,14 @@ def main():
         fits = []
         for i, k in enumerate(keys):
             meta, cols, tagset, rx = CARS[k]
-            if p['handle'] in in_col[k] or any(t in tagset for t in tags) or re.search(rx, p['title'], re.I):
+            if p['handle'] in in_col[k] or (any(t in tagset for t in tags) and brand_ok(tags, meta[0])) or (rx and re.search(rx, p['title'], re.I)):
                 fits.append(i)
         universal = 'fits_all' in tags
         if not fits and not universal: continue
         v = next((x for x in p['variants'] if x.get('available')), p['variants'][0] if p['variants'] else {})
         price = float(v.get('price') or 0); compare = float(v.get('compare_at_price') or 0)
-        img = p['images'][0]['src'] if p['images'] else ''
-        rows.append([f"h:{p['handle']}", p['handle'], p['vendor'], p['title'], price, category(p), '*' if universal else fits,
+        img = p['images'][0]['src'].split('?')[0] if p['images'] else ''
+        rows.append([keep_id.get(p['handle'], f"h:{p['handle']}"), p['handle'], p['vendor'], p['title'], price, category(p), '*' if universal else fits,
                      img, 1 if any(x.get('available') for x in p['variants']) else 0, (p.get('published_at') or '')[:10].replace('-', ''),
                      compare if compare > price else 0])
         for i in fits: report[keys[i]].append(p['title'])
