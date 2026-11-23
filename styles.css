@@ -1530,3 +1530,15 @@ html{-webkit-tap-highlight-color:transparent}
 .card:hover .card__img img{transform:translate(var(--fx,0%),var(--fy,0%)) scale(calc(var(--fs,1) * 1.05))}
 .card__img.is-photo img{object-fit:cover;mix-blend-mode:normal}
 @media (hover:none){.card:hover .card__img img{transform:translate(var(--fx,0%),var(--fy,0%)) scale(var(--fs,1))}}
+
+/* All parts: Clear the chosen car */
+.pv__carclear{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:12px;background:var(--ink);color:#fff;font:500 14px/1 var(--body);padding:0 14px;height:40px;cursor:pointer;transition:background .2s,transform .2s}
+.pv__carclear[hidden]{display:none}
+.pv__carclear i{font-style:normal;font-size:17px;line-height:1;opacity:.8}
+.pv__carclear:hover{background:#000}
+.pv__carclear:active{transform:scale(.96)}
+
+/* 360 viewer on computers: never wider than 1080px and always fits the screen height (header and controls included) */
+@media (min-width:721px){
+  .viewer{max-width:min(1080px, calc((100vh - 260px) * 16 / 9));margin-inline:auto}
+}
