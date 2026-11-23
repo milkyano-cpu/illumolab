@@ -1542,3 +1542,8 @@ html{-webkit-tap-highlight-color:transparent}
 @media (min-width:721px){
   .viewer,.results__head{max-width:min(1080px, calc((100vh - 260px) * 16 / 9));margin-inline:auto}  /* heading lines up with the 360 box */
 }
+/* under the 360 box on computers: the note and the category chips share the box's centre line */
+@media (min-width:721px){
+  .viewer__note{text-align:center}
+  .chips{justify-content:center}
+}
