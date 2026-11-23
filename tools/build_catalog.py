@@ -3,6 +3,7 @@
 
     python3 tools/build_catalog.py <out catalog.json> --cars <vehicles.json from build_vehicles.py> [--ids <old catalog.json>] [--report report.txt]
 
+Every store product is included (except Zero Offset), so All parts and search find it.
 Fitment comes only from the store's own data, never from guesses:
   a part fits a car when it is in that car's collection (the Vehicles menu collections),
   OR one of its tags is that car's chassis tag (bmw_g87, g87, 86_zn8, Model_GR86 ZN8 ...),
@@ -104,6 +105,7 @@ def main():
     if a.ids:
         for r in json.load(open(a.ids))['rows']:
             if re.fullmatch(r'p([0-9]|[12][0-9]|3[01])', r[0]): keep_id[r[1]] = r[0]
+    keep_id.setdefault('ambience-rgb-flow-ambient-lighting-kit', 'p30')   # the curated Ambience+ kit
     prods = all_products('products.json'); prods += all_products('products.json')   # read twice: one pass can skip a product
     print('store products:', len(prods), file=sys.stderr)
     in_col, col_cache, extra = {k: set() for k in CARS}, {}, []
@@ -127,8 +129,9 @@ def main():
             meta, cols, tagset, rx = CARS[k]
             if p['handle'] in in_col[k] or (any(t in tagset for t in tags) and brand_ok(tags, meta[0])) or (rx and re.search(rx, p['title'], re.I)):
                 fits.append(i)
-        universal = 'fits_all' in tags
-        if not fits and not universal: continue
+        # fits every car: tagged fits_all by the client, or an iilumo ambient kit (tag rgbkits: wires into any interior)
+        universal = 'fits_all' in tags or 'rgbkits' in tags
+        # every product goes in (All parts and search find it); one that fits no finder car just never shows under a car
         v = next((x for x in p['variants'] if x.get('available')), p['variants'][0] if p['variants'] else {})
         price = float(v.get('price') or 0); compare = float(v.get('compare_at_price') or 0)
         img = p['images'][0]['src'].split('?')[0] if p['images'] else ''
