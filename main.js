@@ -1232,6 +1232,7 @@
       <p class="pg__small">All applications are strictly confidential.</p>
     </article>`).join('');
   const renderPage = slug => {
+    if (slug === 'iilumo-rewards') return renderRewards();
     const p = PG[slug];
     if (!p) { location.hash = '#/'; return; }
     const svc = p.group === 'Services';
@@ -1275,7 +1276,7 @@
   };
   document.addEventListener('click', e => { const b = e.target.closest('[data-book-page]'); if (b) openModal(b.dataset.bookPage); });
 
-  // iilumo Club early access (coming soon): email capture pop-up
+  // iilumo Rewards early access (coming soon): email capture pop-up
   const cm = $('#clubModal');
   const openClub = () => {
     clearTimeout(cm._t); cm.hidden = false; void cm.offsetWidth; cm.classList.add('open');
@@ -1295,8 +1296,106 @@
     e.preventDefault();
     const f = $('#cmForm'), em = f.querySelector('input');
     if (!/^\S+@\S+\.\S+$/.test(em.value)) { em.focus(); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); return; }
-    $('#cmBody').innerHTML = `<div class="cm__done"><div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><b>You're on the list</b><span>We'll email ${esc(em.value)} the moment iilumo Club opens.</span></div>`;
+    $('#cmBody').innerHTML = `<div class="cm__done"><div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><b>You're on the list</b><span>We'll email ${esc(em.value)} the moment iilumo Rewards opens.</span></div>`;
   });
+  /* ---------- iilumo Rewards (coming soon): five tier cards, a fan on the home page and the #/pages/iilumo-rewards page ---------- */
+  const TIERS = [
+    { k: 'premier', n: 'Premier', line: 'Your first card. Every member starts here.' },
+    { k: 'gold', n: 'Gold', line: 'For the regulars. More back on every build.' },
+    { k: 'platinum', n: 'Platinum', line: 'For serious builds. Priority at the lab.' },
+    { k: 'diamond', n: 'Diamond', line: 'For the garage that never stops.' },
+    { k: 'black', n: 'Black', line: 'The top card. Few will hold it.' },
+  ];
+  // Engraved line art on every card: a coupe side-on (front to the right), drawn as one stroke set
+  const RC_ART = `<svg class="rc__art" viewBox="0 0 400 132" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 104 22 88Q26 78 52 75L120 70Q160 42 206 37L250 36Q286 38 318 60L362 68Q388 72 392 86L390 104H352A28 28 0 0 0 296 104H126A28 28 0 0 0 70 104Z"/>
+    <path d="M140 68Q168 48 205 44L244 43Q270 45 292 62Z M222 44 218 66"/>
+    <path d="M74 86Q200 77 372 80 M150 72 148 100 M262 68Q266 84 262 102 M366 74 386 78 M24 86 40 83 M284 60 292 56"/>
+    <circle cx="98" cy="104" r="22"/><circle cx="98" cy="104" r="12"/><circle cx="324" cy="104" r="22"/><circle cx="324" cy="104" r="12"/>
+    <path d="M10 127H390" opacity=".45"/></g></svg>`;
+  const rcard = (t, i, more = '') => `<div class="rc rc--${t.k}" data-tier="${t.k}" style="--i:${i}"${more}>
+      <i class="rc__sheen"></i>
+      <div class="rc__top"><div class="rc__tier"><b>${t.n}</b><span>Tier 0${i + 1} of 05</span></div>
+        <div class="rc__brand"><i class="rc__cube"></i><b>iilumo</b><span>Rewards</span></div></div>
+      ${RC_ART}
+    </div>`;
+  // Cards lean toward the cursor (mouse only; phones and reduced motion keep them still)
+  const rcHover = matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce;
+  const rcTilt = (el, area = el) => {
+    if (!rcHover) return;
+    area.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      const x = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1), y = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1);
+      el.style.setProperty('--rx', ((.5 - y) * 14).toFixed(2) + 'deg');
+      el.style.setProperty('--ry', ((x - .5) * 20).toFixed(2) + 'deg');
+      el.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+      el.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+    });
+    area.addEventListener('pointerleave', () => ['--rx', '--ry', '--mx', '--my'].forEach(v => el.style.removeProperty(v)));
+  };
+  let rwStart = 'premier';
+  const fan = $('#rwFan');
+  if (fan && fan.isConnected) {
+    fan.innerHTML = TIERS.map((t, i) => rcard(t, i, ` role="link" tabindex="0" aria-label="${t.n} card"`)).join('');
+    $$('.rc', fan).forEach(c => {
+      rcTilt(c);
+      const go = () => { rwStart = c.dataset.tier; location.hash = '#/pages/iilumo-rewards'; };
+      c.addEventListener('click', go);
+      c.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    });
+  }
+  const renderRewards = () => {
+    $('#pgBody').innerHTML = `
+      <header class="rw-hero">
+        <div class="rw-hero__copy">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><b>iilumo Rewards</b></nav>
+          <p class="eyebrow eyebrow--dark">iilumo Rewards <span class="soon">Coming soon</span></p>
+          <h1 class="pg__title">Five cards.<br>One garage.</h1>
+          <div class="pg__lead"><p>Every order and install moves you closer to the next card, and every card gives you more back. Join the early list and be first in when it opens.</p></div>
+          <div class="pg__ctas"><button type="button" class="btn btn--amber" data-club>Get early access <i>&rarr;</i></button></div>
+        </div>
+        <div class="rw-stage">
+          <div class="rw-flip" id="rwFlip"></div>
+          <div class="rw-tabs" role="tablist" aria-label="Card tiers">${TIERS.map(t => `<button type="button" role="tab" class="rw-tab rw-tab--${t.k}" data-tier="${t.k}"><i></i>${t.n}</button>`).join('')}</div>
+        </div>
+      </header>
+      <section class="rw-sec">
+        <div class="rw-sec__head"><p class="eyebrow eyebrow--dark">The cards</p><h2 class="h2">Start at Premier. Finish at Black.</h2></div>
+        <div class="rw-tiers">${TIERS.map((t, i) => `<article class="rw-tier"><button type="button" class="rw-tier__card" data-tier="${t.k}" aria-label="Show the ${t.n} card">${rcard(t, i)}</button>
+          <span class="rw-tier__no">Tier 0${i + 1}</span><h3>${t.n}</h3><p>${t.line}</p></article>`).join('')}</div>
+      </section>
+      <section class="rw-teases">
+        <article class="rw-tease">
+          <div class="rw-tease__art">${rcard(TIERS[1], 1, ' aria-hidden="true"').replace('<i class="rc__sheen"></i>', '<i class="rc__sheen"></i><span class="rc__stamp">Your<br>club</span>')}</div>
+          <div><p class="eyebrow eyebrow--dark">Club editions</p><h3>Your car club gets its own card.</h3><p>Clubs we back get a club-edition card: your tier, your club's stamp, and perks just for your crew.</p></div>
+        </article>
+        <article class="rw-tease rw-tease--soon">
+          <div class="rw-tease__lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg></div>
+          <div><p class="eyebrow eyebrow--dark">How it works <span class="soon">Coming soon</span></p><h3>How you earn and move up is nearly ready.</h3><p>Credit back, install perks and member drops, with more at every card. The full details land when iilumo Rewards opens. Early list members hear first.</p></div>
+        </article>
+      </section>
+      <section class="pg__cta">
+        <div><h2>Be first in.</h2><p>Leave your email and we'll tell you the moment iilumo Rewards opens.</p></div>
+        <div class="pg__ctas"><button type="button" class="btn btn--amber" data-club>Get early access <i>&rarr;</i></button></div>
+      </section>`;
+    document.title = 'iilumo Rewards | iilumolab';
+    const flip = $('#rwFlip'), tabs = $$('.rw-tab');
+    let cur = null;
+    const show = k => {
+      if (k === cur) return;
+      const t = TIERS.find(x => x.k === k) || TIERS[0], i = TIERS.indexOf(t);
+      tabs.forEach(b => b.setAttribute('aria-selected', b.dataset.tier === t.k));
+      const paint = () => { flip.innerHTML = rcard(t, i, ` aria-label="${t.n} card"`); rcTilt($('.rc', flip), flip); };
+      // Swap with a half turn: the card turns edge-on, changes, and turns back
+      if (cur && !reduce) flip.animate([{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 220, easing: 'cubic-bezier(.5,0,.75,0)' })
+        .finished.then(() => { paint(); flip.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0)' }], { duration: 320, easing: 'cubic-bezier(.2,.7,.1,1)' }); });
+      else paint();
+      cur = t.k;
+    };
+    tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tier)));
+    $$('.rw-tier__card').forEach(b => b.addEventListener('click', () => { show(b.dataset.tier); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }));
+    show(rwStart); rwStart = 'premier';
+  };
   $('#newsForm').addEventListener('submit', e => { e.preventDefault(); e.target.reset(); toast("You're on the list."); });
 
   addEventListener('keydown', e => {

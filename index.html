@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=140">
+<link rel="stylesheet" href="styles.css?v=141">
 </head>
 <body>
 
@@ -71,7 +71,7 @@
     <a href="#/parts">All parts</a>
     <a href="#parts">Popular parts</a>
     <a href="#vehicles">Vehicles</a>
-    <a href="#club">iilumo Club</a>
+    <a href="#club">iilumo Rewards</a>
     <a href="#story">Our lab</a>
     <a href="#visit">Visit</a>
   </nav>
@@ -243,20 +243,19 @@
   </div>
 </section>
 
-<!-- Club -->
+<!-- iilumo Rewards (coming soon): five tier cards, the full page is #/pages/iilumo-rewards -->
 <section class="club" id="club">
   <div class="wrap club__wrap">
     <div class="club__copy">
-      <p class="eyebrow eyebrow--dark">iilumo Club <span class="soon">Coming soon</span></p>
+      <p class="eyebrow eyebrow--dark">iilumo Rewards <span class="soon">Coming soon</span></p>
       <h2 class="club__title reveal">Build more.<br>Pay less.</h2>
-      <p class="club__lede">Free to join. Your garage, your perks, every visit.</p>
-      <button type="button" class="btn btn--black" data-club>Get early access <i>&rarr;</i></button>
+      <p class="club__lede">Free to join. Five cards, from Premier to Black. The more you build, the higher you go.</p>
+      <div class="club__ctas">
+        <button type="button" class="btn btn--black" data-club>Get early access <i>&rarr;</i></button>
+        <a class="club__link" href="#/pages/iilumo-rewards">See the five cards <i>&rarr;</i></a>
+      </div>
     </div>
-    <ul class="club__perks">
-      <li><b>5%</b><span>back as lab credit on every order and install</span></li>
-      <li><b>Drops</b><span>member-only deals and first access to new kits</span></li>
-      <li><b>1-tap</b><span>saved vehicle, saved builds, rebook in seconds</span></li>
-    </ul>
+    <div class="rw-fan" id="rwFan" aria-label="iilumo Rewards cards: Premier, Gold, Platinum, Diamond and Black"></div>
   </div>
 </section>
 
@@ -493,10 +492,10 @@
           </div>
           <ul class="pdp__perks" id="pdpPerks" hidden></ul>
           <div class="clubmini">
-            <div class="clubmini__top"><b>iilumo Club</b><span class="soon">Coming soon</span></div>
+            <div class="clubmini__top"><b>iilumo Rewards</b><span class="soon">Coming soon</span></div>
             <p class="clubmini__line">Build more. Pay less.</p>
             <ul class="clubmini__perks">
-              <li><b>5%</b> back as lab credit on every order</li>
+              <li><b>Credit</b> back on every order, more as your card grows</li>
               <li><b>Drops</b> member-only deals and new kits first</li>
               <li><b>1-tap</b> saved car and rebooking</li>
             </ul>
@@ -526,26 +525,26 @@
   </div>
 </div>
 
-<!-- iilumo Club early access -->
+<!-- iilumo Rewards early access -->
 <div class="cm" id="clubModal" hidden>
   <div class="cm__card" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
     <button class="pdp__x cm__x" id="cmClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
     <div class="cm__band">
       <span class="soon">Coming soon</span>
-      <h3 id="cmTitle">iilumo Club</h3>
+      <h3 id="cmTitle">iilumo Rewards</h3>
       <p>Build more. Pay less.</p>
     </div>
     <div class="cm__body" id="cmBody">
       <ul class="clubmini__perks">
-        <li><b>5%</b> back as lab credit on every order and install</li>
+        <li><b>Credit</b> back on every order and install, more as your card grows</li>
         <li><b>Drops</b> member-only deals and first access to new kits</li>
         <li><b>1-tap</b> saved car, saved builds, rebook in seconds</li>
       </ul>
       <form class="cm__form" id="cmForm" novalidate>
-        <input type="email" required placeholder="Your email" aria-label="Email for iilumo Club early access" autocomplete="email">
+        <input type="email" required placeholder="Your email" aria-label="Email for iilumo Rewards early access" autocomplete="email">
         <button class="btn btn--amber" type="submit">Get early access</button>
       </form>
-      <p class="cm__fine">We'll email you when the club opens, plus iilumolab news and offers. Unsubscribe anytime.</p>
+      <p class="cm__fine">We'll email you when iilumo Rewards opens, plus iilumolab news and offers. Unsubscribe anytime.</p>
     </div>
   </div>
 </div>
@@ -606,7 +605,7 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="pages.js?v=140"></script>
-<script src="main.js?v=140"></script>
+<script src="pages.js?v=141"></script>
+<script src="main.js?v=141"></script>
 </body>
 </html>

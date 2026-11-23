@@ -1547,3 +1547,88 @@ html{-webkit-tap-highlight-color:transparent}
   .viewer__note{text-align:center}
   .chips{justify-content:center}
 }
+
+/* ================= iilumo Rewards (coming soon): the tier cards ================= */
+.club__wrap{align-items:center}
+@media (min-width:901px){.club__wrap{grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr)}}
+.club__ctas{display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px}
+.club__link{display:inline-flex;align-items:center;gap:8px;color:var(--ink);font-weight:500;text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 100%/0 1.5px no-repeat;transition:background-size .35s var(--ease)}
+.club__link:hover{background-size:100% 1.5px}
+.club__link i{font-style:normal;transition:transform .35s var(--ease)}
+.club__link:hover i{transform:translateX(4px)}
+
+/* One card: credit-card shape, brushed metal, foil cube + wordmark, engraved coupe. Sized off its own width (cqw). */
+.rc{--foil:#f1d99c;--txt:#f6ecd2;--bgc:linear-gradient(135deg,#6b3fb8 0%,#5a3aa8 40%,#3550b8 100%);
+  position:relative;aspect-ratio:1.586;border-radius:5.2%/8.2%;overflow:hidden;container-type:inline-size;isolation:isolate;
+  background:var(--bgc);color:var(--txt);
+  box-shadow:0 28px 46px -22px rgba(29,29,31,.55),0 2px 6px rgba(29,29,31,.12),inset 0 0 0 1px rgba(255,255,255,.16);
+  transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.rc::before{content:"";position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(100deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px)}
+.rc__sheen{position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 90% at var(--mx,22%) var(--my,10%),rgba(255,255,255,.22),transparent 62%);mix-blend-mode:soft-light;transition:background .2s}
+.rc__top{position:absolute;inset:7.5% 7% auto 7%;display:flex;justify-content:space-between;align-items:flex-start}
+.rc__tier b{position:relative;display:block;padding-left:4.2cqw;font:600 4.6cqw/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--foil)}
+.rc__tier b::before{content:"";position:absolute;left:0;top:50%;margin-top:-1.4cqw;border:1.4cqw solid transparent;border-right:2.1cqw solid var(--foil);border-left:0}
+.rc__tier span{display:block;margin:1.8cqw 0 0 4.2cqw;font-size:2.5cqw;letter-spacing:.2em;text-transform:uppercase;opacity:.72}
+.rc__brand{display:grid;justify-items:center;text-align:center}
+.rc__cube{width:10.5cqw;aspect-ratio:946/697;background:linear-gradient(160deg,#fff7df 0%,var(--foil) 45%,color-mix(in srgb,var(--foil) 60%,#000) 100%);-webkit-mask:url(assets/logo.png) center/contain no-repeat;mask:url(assets/logo.png) center/contain no-repeat}
+.rc__brand b{margin-top:1cqw;font:700 5.4cqw/1 var(--display);letter-spacing:-.02em;color:var(--foil)}
+.rc__brand span{margin-top:1cqw;font-size:2.3cqw;font-weight:600;letter-spacing:.42em;margin-right:-.42em;text-transform:uppercase;color:var(--foil);opacity:.9}
+.rc__art{position:absolute;left:9%;right:9%;bottom:6%;width:82%;height:auto;stroke:var(--foil);stroke-width:1.15;opacity:.85}
+.rc--gold{--foil:#fff5dc;--txt:#fffaf0;--bgc:linear-gradient(135deg,#9c8248 0%,#cdb67a 38%,#e2d09a 52%,#b89d5d 75%,#8d7440 100%)}
+.rc--platinum{--foil:#fdf7e8;--txt:#fff;--bgc:linear-gradient(135deg,#8d949e 0%,#c3c8cf 38%,#dfe3e8 52%,#adb3bb 75%,#848b95 100%)}
+.rc--diamond{--foil:#a8894c;--txt:#6d6658;--bgc:linear-gradient(135deg,#f2f2f0 0%,#ffffff 40%,#f6f6f4 60%,#e6e7ea 100%)}
+.rc--diamond::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent 28%,rgba(79,195,242,.16) 42%,rgba(143,99,184,.12) 50%,rgba(201,87,159,.12) 58%,transparent 72%) var(--mx,30%) 0/220% 100% no-repeat}
+.rc--diamond{box-shadow:0 28px 46px -22px rgba(29,29,31,.4),0 2px 6px rgba(29,29,31,.1),inset 0 0 0 1px rgba(29,29,31,.08)}
+.rc--black{--foil:#dcc283;--txt:#e9dfc6;--bgc:linear-gradient(135deg,#2c2c31 0%,#141417 45%,#09090b 70%,#1d1d22 100%)}
+
+/* Home: the five cards fanned out like a hand of cards; hover lifts one and it leans toward the cursor */
+.rw-fan{position:relative;aspect-ratio:2.1;perspective:1800px;margin-right:clamp(0px,2vw,30px)}
+.rw-fan .rc{position:absolute;top:22%;left:calc(var(--i) * 15.5%);width:38%;z-index:var(--i);cursor:pointer;outline:none;
+  transform:translateY(calc(var(--i) * -3%)) rotateZ(-7deg) rotateY(-8deg) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
+.rw-fan .rc:hover,.rw-fan .rc:focus-visible{z-index:9;transform:translateY(-20%) rotateZ(-3deg) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.04);box-shadow:0 40px 60px -24px rgba(29,29,31,.6),0 2px 6px rgba(29,29,31,.12),inset 0 0 0 1px rgba(255,255,255,.2)}
+.rw-fan .rc:focus-visible{box-shadow:0 0 0 3px var(--ink)}
+
+/* The Rewards page */
+.rw-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(28px,5vw,80px);align-items:center;padding:6px 0 clamp(48px,6vw,90px)}
+.rw-hero .pg__title{margin-bottom:22px}
+.rw-hero .eyebrow .soon{margin-left:8px}
+.rw-stage{display:grid;justify-items:center;gap:28px;perspective:1600px}
+.rw-flip{width:min(520px,100%);transform-style:preserve-3d}
+.rw-flip .rc{transform:rotateX(var(--rx,5deg)) rotateY(var(--ry,-10deg));animation:rcFloat 6s ease-in-out infinite}
+@keyframes rcFloat{50%{translate:0 -10px}}
+.rw-tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:5px;border-radius:999px;background:var(--paper);box-shadow:inset 0 0 0 1px var(--line)}
+.rw-tab{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:0;border-radius:999px;background:none;font:500 14px/1 var(--body);color:var(--ink-2);cursor:pointer;transition:background .25s,color .25s}
+.rw-tab i{width:12px;height:12px;border-radius:50%;background:var(--sw);box-shadow:inset 0 0 0 1px rgba(29,29,31,.15)}
+.rw-tab:hover{color:var(--ink)}
+.rw-tab[aria-selected="true"]{background:var(--ink);color:#fff}
+.rw-tab--premier{--sw:linear-gradient(135deg,#6b3fb8,#3550b8)}.rw-tab--gold{--sw:linear-gradient(135deg,#9c8248,#e2d09a)}.rw-tab--platinum{--sw:linear-gradient(135deg,#8d949e,#dfe3e8)}.rw-tab--diamond{--sw:#fff}.rw-tab--black{--sw:#111}
+.rw-sec{padding:clamp(40px,5vw,70px) 0;border-top:1px solid var(--line)}
+.rw-sec__head{margin-bottom:clamp(28px,3.5vw,48px)}
+.rw-tiers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(14px,1.8vw,28px)}
+.rw-tier__card{display:block;width:100%;padding:0;border:0;background:none;cursor:pointer;perspective:1200px;margin-bottom:18px}
+.rw-tier__card .rc{transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.rw-tier__card:hover .rc{transform:translateY(-6px) rotateX(6deg)}
+.rw-tier__no{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--grey)}
+.rw-tier h3{margin:4px 0 6px;font:500 24px/1.1 var(--display);letter-spacing:-.02em}
+.rw-tier p{margin:0;font-size:15px;color:var(--ink-2);line-height:1.5}
+.rw-teases{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,1.8vw,28px);padding-bottom:clamp(40px,5vw,70px)}
+.rw-tease{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);gap:clamp(18px,2.4vw,36px);align-items:center;padding:clamp(22px,2.6vw,36px);border-radius:28px;background:var(--paper)}
+.rw-tease h3{margin:0 0 10px;font:500 clamp(22px,2vw,28px)/1.15 var(--display);letter-spacing:-.025em}
+.rw-tease p:not(.eyebrow){margin:0;font-size:15px;color:var(--ink-2);line-height:1.55}
+.rw-tease .eyebrow{margin-bottom:10px}
+.rw-tease__art{padding:4% 3%}.rw-tease__art .rc{transform:rotate(-4deg)}
+.rc__stamp{position:absolute;right:6%;bottom:33%;z-index:2;display:grid;place-items:center;width:17cqw;aspect-ratio:1;border-radius:50%;border:.5cqw dashed var(--foil);color:var(--foil);font:700 2.6cqw/1.15 var(--display);letter-spacing:.14em;text-transform:uppercase;text-align:center;transform:rotate(-14deg);background:rgba(255,255,255,.08)}
+.rw-tease--soon{background:var(--ink);color:#fff}
+.rw-tease--soon p:not(.eyebrow){color:rgba(255,255,255,.72)}
+.rw-tease--soon .eyebrow--dark{color:rgba(255,255,255,.7)}
+.rw-tease--soon .soon{background:#fff;color:var(--ink)}
+.rw-tease__lock{display:grid;place-items:center;aspect-ratio:1.586;border-radius:18px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.rw-tease__lock svg{width:44px;height:44px;fill:none;stroke:var(--amber);stroke-width:1.6;stroke-linecap:round}
+@media (max-width:1100px){.rw-teases{grid-template-columns:1fr}.rw-tier h3{font-size:20px}.rw-tier p{font-size:14px}}
+@media (max-width:860px){.rw-tiers{grid-template-columns:1fr;gap:18px}.rw-tier{display:grid;grid-template-columns:minmax(0,44%) minmax(0,1fr);column-gap:18px;align-content:center}.rw-tier__card{grid-row:1 / span 3;margin:0;align-self:center}.rw-tier__no{align-self:end}}
+@media (max-width:900px){.rw-hero{grid-template-columns:1fr}.rw-fan{margin:10px 0 0}}
+@media (max-width:640px){
+  .rw-tease{grid-template-columns:1fr}
+  .rw-tabs{border-radius:22px}.rw-tab{height:34px;padding:0 11px;font-size:13px}
+}
+@media (prefers-reduced-motion:reduce){.rw-flip .rc{animation:none}}

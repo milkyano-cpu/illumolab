@@ -2,6 +2,11 @@
 
 Every change to the iilumolab redesign, newest first. Live concept: https://illumolab.steroidsdigital.com.au
 
+## Mon 23 Nov 2026
+
+- iilumo Club is now **iilumo Rewards** (coming soon): five tier cards (Premier, Gold, Platinum, Diamond, Black) fanned on the home page, which lift and lean toward the cursor
+- New iilumo Rewards page (#/pages/iilumo-rewards): a big interactive card with tier tabs, the five cards, a club-edition card tease and "How it works: coming soon". There are no numbers yet because the points system is still being set up.
+
 ## Sat 07 Nov 2026
 
 - **16:37** Checkout also shows the one-time offer first, then the checkout card
