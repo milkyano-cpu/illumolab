@@ -1558,7 +1558,7 @@ html{-webkit-tap-highlight-color:transparent}
 .club__link:hover i{transform:translateX(4px)}
 
 /* One card: credit-card shape, brushed metal, foil cube + wordmark, engraved coupe. Sized off its own width (cqw). */
-.rc{--foil:#f1d99c;--txt:#f6ecd2;--bgc:linear-gradient(135deg,#6b3fb8 0%,#5a3aa8 40%,#3550b8 100%);
+.rc{--foil:#fff;--txt:#fff;--bgc:linear-gradient(120deg,#67c8f2 0%,#8998cd 26%,#9280bc 42%,#b055a1 62%,#d55f8d 80%,#f26d70 100%);
   position:relative;aspect-ratio:1.586;border-radius:5.2%/8.2%;overflow:hidden;container-type:inline-size;isolation:isolate;
   background:var(--bgc);color:var(--txt);
   box-shadow:0 28px 46px -22px rgba(29,29,31,.55),0 2px 6px rgba(29,29,31,.12),inset 0 0 0 1px rgba(255,255,255,.16);
@@ -1601,7 +1601,7 @@ html{-webkit-tap-highlight-color:transparent}
 .rw-tab i{width:12px;height:12px;border-radius:50%;background:var(--sw);box-shadow:inset 0 0 0 1px rgba(29,29,31,.15)}
 .rw-tab:hover{color:var(--ink)}
 .rw-tab[aria-selected="true"]{background:var(--ink);color:#fff}
-.rw-tab--premier{--sw:linear-gradient(135deg,#6b3fb8,#3550b8)}.rw-tab--gold{--sw:linear-gradient(135deg,#9c8248,#e2d09a)}.rw-tab--platinum{--sw:linear-gradient(135deg,#8d949e,#dfe3e8)}.rw-tab--diamond{--sw:#fff}.rw-tab--black{--sw:#111}
+.rw-tab--premier{--sw:linear-gradient(120deg,#67c8f2,#9280bc 45%,#f26d70)}.rw-tab--gold{--sw:linear-gradient(135deg,#9c8248,#e2d09a)}.rw-tab--platinum{--sw:linear-gradient(135deg,#8d949e,#dfe3e8)}.rw-tab--diamond{--sw:#fff}.rw-tab--black{--sw:#111}
 .rw-sec{padding:clamp(40px,5vw,70px) 0;border-top:1px solid var(--line)}
 .rw-sec__head{margin-bottom:clamp(28px,3.5vw,48px)}
 .rw-tiers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(14px,1.8vw,28px)}
