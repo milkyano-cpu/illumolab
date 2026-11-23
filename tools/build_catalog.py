@@ -23,7 +23,7 @@ CARS = {
     'm3g80':   (['BMW', 'M3 (G80)', 2021, 2026], ['bmw-m3-g80-g81'], ['bmw_g80', 'bmw_g81', 'g80', 'g81'], r'\bG8[01]\b'),
     'm4g82':   (['BMW', 'M4 (G82)', 2021, 2026], ['bmw-m4-g82-g83'], ['bmw_g82', 'bmw_g83', 'g82', 'g83'], r'\bG8[23]\b'),
     'gr86':    (['Toyota', 'GR86 (ZN8)', 2022, 2026], ['toyota-gr86-zn8'], ['86_zn8', 'zn8', 'gr86', 'model_gr86 zn8'], r'\bZN8\b|\bGR86\b'),
-    'zn6':     (['Toyota', '86 (ZN6)', 2012, 2021], ['toyota-86-zn6'], ['86_zn6', 'zn6', 'model_86 zn6'], r'\bZN6\b'),
+    'zn6':     (['Toyota', '86 (ZN6)', 2012, 2021], ['toyota-86-zn6'], ['86_zn6', 'zn6', 'gt86', 'model_86 zn6'], r'\bZN6\b'),
     'supra':   (['Toyota', 'GR Supra (A90)', 2019, 2026], ['toyota-a90-a91-supra'], ['supra_a90', 'a90', 'a91', 'model_supra a90'], r'\bA9[01]\b|GR\s?Supra'),
     'brz':     (['Subaru', 'BRZ (ZD8)', 2022, 2026], ['subaru-brz-zc8'], ['brz_zd8', 'zd8', 'model_brz zd8'], r'\bZD8\b'),
     'wrxvb':   (['Subaru', 'WRX (VB)', 2022, 2026], [], ['wrx_vb', 'model_vb wrx'], r'\bVB\b[^|]*WRX|WRX[^|]*\bVB\b'),
@@ -39,7 +39,7 @@ CARS = {
     'gtr':     (['Nissan', 'GT-R (R35)', 2009, 2024], [], ['gtr_r35', 'r35'], r'\bR35\b'),
     'z370':    (['Nissan', '370Z (Z34)', 2009, 2020], [], ['370z', 'z34', 'nissan_370z'], r'\b370Z\b|\bZ34\b'),
     'ctr':     (['Honda', 'Civic Type R (FL5)', 2023, 2026], [], ['honda_fl5', 'fl5', 'model_civic type r fl5'], r'\bFL5\b'),
-    'a45':     (['Mercedes-AMG', 'A45 S (W177)', 2020, 2026], [], ['w177', 'merc_w177', 'model_a45 w177'], r'\bA45\b|\bW177\b'),
+    'a45':     (['Mercedes-AMG', 'A45 S (W177)', 2020, 2026], [], ['w177', 'merc_w177', 'model_a45 w177'], r'\bW177\b'),
 }
 CATS = ['Body kits', 'Performance', 'Exhaust', 'Suspension', 'Brakes', 'Lighting', 'Interior', 'Accessories']
 CAT_RULES = [   # first match wins, checked against type + title + tags
@@ -65,6 +65,21 @@ def brand_ok(tags, make):
     brands = [t[9:] for t in tags if t.startswith('carbrand_')]
     key = re.sub(r'[^a-z]', '', make.lower())
     return not brands or any(re.sub(r'[^a-z]', '', x) in key or key in re.sub(r'[^a-z]', '', x) for x in brands)
+
+
+CODE_RX = r'[a-z]{1,2}\d{2,3}[a-z]?|[a-z]{2}\d[a-z]?'
+
+
+def car_codes(k):
+    """A finder car's chassis codes: from its name, plus code-like tags in its rules (g87, zn8, w177 ...)."""
+    label = CARS[k][0][1]
+    return set(chassis_tags(label)) | {t for t in CARS[k][2] if re.fullmatch(CODE_RX, t) and not t.startswith('mk')}
+
+
+def model_rx(k):
+    """The car's model as words, matched loosely: '4 Series' -> 4-series / 4 series; 'GR86' -> gr86."""
+    words = re.split(r'[\s-]+', CARS[k][0][1].split('(')[0].strip().lower())
+    return r'\b' + r'[\s-]?'.join(map(re.escape, words)) + r'\b' if words and words[0] else None
 
 
 def get(url, tries=4):
@@ -120,6 +135,15 @@ def main():
     prods = list({p['handle']: p for p in prods + extra}.values())
     print('products incl. collections:', len(prods), file=sys.stderr)
     keys = list(CARS)
+    codes = {k: car_codes(k) for k in keys}
+    known = set().union(*codes.values())
+    models = {k: model_rx(k) for k in keys}
+    def names_other_car(title, k):
+        """True when the title names a chassis code of a finder car, but not this car's code or model
+        (the store's shared collections put X3 G01 parts under the X4, A45 W176 parts under the W177 ...)."""
+        t = title.lower(); said = set(re.findall(CODE_RX, t)) & known
+        if not codes[k] or not said or said & codes[k]: return False   # no chassis code to judge by (VA, 911 ...): keep
+        return not (models[k] and re.search(models[k], t))
     rows, report = [], {k: [] for k in keys}
     for p in prods:
         if HIDDEN_VENDORS.match(p.get('vendor') or ''): continue
@@ -128,7 +152,7 @@ def main():
         for i, k in enumerate(keys):
             meta, cols, tagset, rx = CARS[k]
             if p['handle'] in in_col[k] or (any(t in tagset for t in tags) and brand_ok(tags, meta[0])) or (rx and re.search(rx, p['title'], re.I)):
-                fits.append(i)
+                if not names_other_car(p['title'], k): fits.append(i)
         # fits every car: tagged fits_all by the client, or an iilumo ambient kit (tag rgbkits: wires into any interior)
         universal = 'fits_all' in tags or 'rgbkits' in tags
         # every product goes in (All parts and search find it); one that fits no finder car just never shows under a car
