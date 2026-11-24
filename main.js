@@ -145,7 +145,7 @@
     "ferrari-f12": ["Ferrari", "F12", 0, 0, null],
     "ferrari-f430": ["Ferrari", "F430", 0, 0, null],
     "ferrari-ff": ["Ferrari", "FF", 0, 0, null],
-    "ferrari-gtc4lusso": ["Ferrari", "GTC4LUSSO", 0, 0, null],
+    "ferrari-gtc4lusso": ["Ferrari", "GTC4Lusso", 0, 0, null],
     "ferrari-sf90": ["Ferrari", "SF90", 0, 0, null],
     "ford-mustang-fn": ["Ford", "Mustang (FN)", 2018, 2026, null],
     "ford-mustang-fm": ["Ford", "Mustang (FM)", 2015, 2017, null],

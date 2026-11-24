@@ -45,7 +45,7 @@ MAKES = {'ASTON MARTIN': 'Aston Martin', 'AUDI': 'Audi', 'BMW': 'BMW', 'CHEVROLE
 
 def nice(s):
     """'1 SERIES' -> '1 Series', 'A CLASS' -> 'A Class'; codes (digits or 3 letters or fewer) stay as they are."""
-    fixed = {'TTRS': 'TTRS', 'I30': 'i30', 'I20': 'i20', 'T-ROC': 'T-Roc', 'MX-5': 'MX-5'}
+    fixed = {'TTRS': 'TTRS', 'GTC4LUSSO': 'GTC4Lusso', 'I30': 'i30', 'I20': 'i20', 'T-ROC': 'T-Roc', 'MX-5': 'MX-5'}
     def part(p):
         return p if re.search(r'\d', p) or len(p) <= 3 else p.capitalize()
     def word(w):

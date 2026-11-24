@@ -1,0 +1,60 @@
+# Daily refresh of the iilumolab draft theme's parts catalogue (prices, sale prices, stock labels, fitment, new products).
+# Pushes only assets/cx-data-catalog.json to draft theme 168316534946. See tools/CATALOGUE-REFRESH.md.
+name: Catalogue refresh (iilumolab draft)
+
+on:
+  schedule:
+    - cron: '17 18 * * *'   # 18:17 UTC = about 5am in Melbourne
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and check only, push nothing
+        type: boolean
+        default: false
+      accept:
+        description: Accept a big change that stopped the last run (only after reading why it stopped)
+        type: boolean
+        default: false
+      source:
+        description: Where the store is read from
+        type: choice
+        options: [auto, admin, storefront]
+        default: auto
+
+concurrency:
+  group: catalogue-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install Shopify CLI
+        run: npm install -g @shopify/cli@4   # the version line the job was tested with
+      - name: Refresh the catalogue
+        env:
+          SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}   # Theme Access password
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}               # optional: Admin API app (read_products, read_inventory)
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          SHOPIFY_ADMIN_TOKEN: ${{ secrets.SHOPIFY_ADMIN_TOKEN }}
+        run: >
+          python3 tools/refresh_catalog.py --keep out
+          --source ${{ inputs.source || 'auto' }}
+          ${{ inputs.dry_run && '--dry-run' || '' }}
+          ${{ inputs.accept && '--accept' || '' }}
+      - name: Keep the result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: catalogue
+          path: out
+          retention-days: 14
+          if-no-files-found: ignore

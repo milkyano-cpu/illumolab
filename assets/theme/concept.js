@@ -1,0 +1,2201 @@
+(() => {
+  // on Shopify pages other than home, the home sections aren't on the page: their set-up runs on a stand-in and does nothing
+  const HOME = !window.cx || (window.cx.template || 'index') === 'index';
+  const $ = (s, r = document) => r.querySelector(s) || (HOME ? null : document.createElement('div'));
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Screen height, measured once. Mobile browsers resize the page while their toolbar slides away
+  // mid-scroll; anything sized with vh/svh then resizes too (hero photo "zooms", everything below jumps).
+  // Only re-measure when the width changes (rotation), never on toolbar-driven height changes.
+  let vhW = 0;
+  const setVh = () => { if (innerWidth === vhW) return; vhW = innerWidth; document.documentElement.style.setProperty('--screen-h', innerHeight + 'px'); };
+  setVh(); addEventListener('resize', setVh);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem('iilumo:' + k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem('iilumo:' + k, JSON.stringify(v)); } catch {} }
+  };
+  // One scroll motion for every in-page jump: eased glide, length scales with distance
+  let glideRaf = 0;
+  const glide = (el, done) => {
+    if (typeof el === 'string') el = document.querySelector(el);
+    if (!el) return;
+    const offset = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0) + 76;
+    const from = scrollY, to = Math.max(0, el.getBoundingClientRect().top + scrollY - offset), dist = to - from;
+    cancelAnimationFrame(glideRaf);
+    if (reduce || Math.abs(dist) < 2) { scrollTo(0, to); done && done(); return; }
+    const dur = Math.min(1100, Math.max(550, Math.abs(dist) * .35)), t0 = performance.now();
+    const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const stop = () => { cancelAnimationFrame(glideRaf); clearTimeout(glide._t); };
+    addEventListener('wheel', stop, { once: true, passive: true }); addEventListener('touchstart', stop, { once: true, passive: true });
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      scrollTo(0, from + dist * ease(k));
+      if (k < 1) glideRaf = requestAnimationFrame(step); else { clearTimeout(glide._t); done && done(); }
+    };
+    glideRaf = requestAnimationFrame(step);
+    // safety net: if the browser throttles frames (background tab), still land on the target
+    clearTimeout(glide._t);
+    glide._t = setTimeout(() => { if (Math.abs(scrollY - to) > 2) { cancelAnimationFrame(glideRaf); scrollTo(0, to); done && done(); } }, dur + 150);
+  };
+  function escH(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  // Shopify: the design's files live in the theme as cx-<folder>-<name>; store photos are full CDN links
+  const src = x => /^(https?:)?\/\//.test(x) ? x : window.cx.assets + 'cx-' + x.replace(/^assets\//, '').replace(/\//g, '-');
+  const ROOT = window.cx.root || '/', PAGE_T = window.cx.template || 'index';
+  // the page title Shopify gave this page (the store's SEO title); other views get their own as you move around
+  // the cart and 404 pages are theme sections (cx-cart, cx-404) printed where the home page would be: there, that section is the "home" view
+  const SECTION_PAGE = PAGE_T === 'cart' || PAGE_T === '404';
+  const PAGE_TITLE = document.title, HOME_TITLE = PAGE_T === 'index' || SECTION_PAGE ? PAGE_TITLE : 'iilumolab | Custom Automotive Upgrades, Melbourne';
+  const money = n => n == null ? 'Quote' : '$' + n.toLocaleString('en-AU', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+
+  /* ---------- Data ---------- */
+  // id: [make, model, firstYear, lastYear, image]
+  // VEHICLES start: every car in the live iilumolab.com.au Vehicles menu (tools/build_vehicles.py + tools/vehicles_js.py)
+  // [make, model, first year, last year, photo]; years 0, 0 = the menu lists no years ("All years")
+  const VEHICLES = {
+    "aston-martin-levante-m161": ["Aston Martin", "Levante M161", 0, 0, null],
+    "aston-martin-db9": ["Aston Martin", "DB9", 0, 0, null],
+    "aston-martin-vanquish": ["Aston Martin", "Vanquish", 0, 0, null],
+    "audi-a1-8x": ["Audi", "A1 (8X)", 2010, 2015, null],
+    "audi-a3-8y": ["Audi", "A3 (8Y)", 2022, 2023, null],
+    "audi-a3-8p": ["Audi", "A3 (8P)", 2004, 2013, null],
+    "audi-a4-b9": ["Audi", "A4 (B9)", 2017, 2023, null],
+    "audi-a5-b9": ["Audi", "A5 (B9)", 2017, 2023, null],
+    "audi-a6-c8": ["Audi", "A6 (C8)", 2019, 2023, null],
+    "audi-a7-4g": ["Audi", "A7 (4G)", 2010, 2018, null],
+    s3: ["Audi", "S3 (8Y)", 2021, 2026, null],
+    "audi-s3-8v": ["Audi", "S3 (8V)", 2014, 2021, null],
+    "audi-s3-8p": ["Audi", "S3 (8P)", 2005, 2013, null],
+    "audi-s4-b9": ["Audi", "S4 (B9)", 2017, 2024, null],
+    "audi-s4-b8": ["Audi", "S4 (B8)", 2009, 2015, null],
+    "audi-s5-b9": ["Audi", "S5 (B9)", 2018, 2024, null],
+    "audi-s5-8t": ["Audi", "S5 (8T)", 2009, 2015, null],
+    "audi-s6-c8": ["Audi", "S6 (C8)", 2019, 2023, null],
+    "audi-s6-c7": ["Audi", "S6 (C7)", 2012, 2018, null],
+    "audi-s7-4g": ["Audi", "S7 (4G)", 2012, 2018, null],
+    "audi-sq5-fy": ["Audi", "SQ5 (FY)", 2021, 2023, null],
+    "audi-sq7-4m": ["Audi", "SQ7 (4M)", 2016, 2023, null],
+    "audi-rs3-8v": ["Audi", "RS3 (8V)", 2014, 2021, null],
+    rs3: ["Audi", "RS3 (8Y)", 2022, 2026, null],
+    "audi-rs4-b9": ["Audi", "RS4 (B9)", 2017, 2024, null],
+    "audi-rs4-b8": ["Audi", "RS4 (B8)", 2010, 2016, null],
+    "audi-rs5-b9": ["Audi", "RS5 (B9)", 2018, 2024, null],
+    "audi-rs5-b8": ["Audi", "RS5 (B8)", 2010, 2016, null],
+    "audi-rs6-c8": ["Audi", "RS6 (C8)", 2019, 2023, null],
+    "audi-rs6-c7": ["Audi", "RS6 (C7)", 2012, 2018, null],
+    "audi-rs7-4k": ["Audi", "RS7 (4K)", 2019, 2023, null],
+    "audi-rs7-4g": ["Audi", "RS7 (4G)", 2012, 2018, null],
+    "audi-rsq3-f3": ["Audi", "RSQ3 (F3)", 2019, 2023, null],
+    "audi-rsq8-f1": ["Audi", "RSQ8 (F1)", 2019, 2026, null],
+    "audi-r8-mk2-4s": ["Audi", "R8 (MK2 4S)", 2016, 2021, null],
+    "audi-r8-mk1": ["Audi", "R8 (MK1)", 2007, 2015, null],
+    "audi-tt-fv-8s": ["Audi", "TT (FV/8S)", 2015, 2023, null],
+    "audi-tts-fv-8s": ["Audi", "TTS (FV/8S)", 2015, 2023, null],
+    "audi-ttrs-fv-8s": ["Audi", "TTRS (FV/8S)", 2015, 2023, null],
+    "bmw-1m": ["BMW", "1M", 0, 0, null],
+    m2g87: ["BMW", "M2 (G87)", 2023, 2026, "p-adro-m2.jpg"],
+    m2f87: ["BMW", "M2 (F87)", 2016, 2022, null],
+    m3g80: ["BMW", "M3 (G80)", 2021, 2026, null],
+    "bmw-m3-f80": ["BMW", "M3 (F80)", 2014, 2019, null],
+    "bmw-m3-e90-e92": ["BMW", "M3 (E90 / E92)", 2007, 2013, null],
+    "bmw-m3-e46": ["BMW", "M3 (E46)", 2001, 2006, null],
+    m4g82: ["BMW", "M4 (G82)", 2021, 2026, null],
+    "bmw-m4-f82-f83": ["BMW", "M4 (F82/F83)", 2014, 2020, null],
+    "bmw-m5-g90": ["BMW", "M5 (G90)", 2025, 2026, null],
+    "bmw-m5-f90": ["BMW", "M5 (F90)", 2017, 2020, null],
+    "bmw-m5-f10": ["BMW", "M5 (F10)", 2011, 2017, null],
+    "bmw-m5-e60": ["BMW", "M5 (E60)", 2005, 2010, null],
+    "bmw-m6-f06-f12-f13": ["BMW", "M6 (F06/F12/F13)", 2011, 2018, null],
+    "bmw-m6-e63-e64": ["BMW", "M6 (E63/E64)", 2005, 2010, null],
+    "bmw-m8-f91-f92-f93": ["BMW", "M8 (F91/F92/F93)", 2020, 2026, null],
+    "bmw-1-series-f40": ["BMW", "1 Series (F40)", 2019, 2026, null],
+    "bmw-1-series-f20-f21": ["BMW", "1 Series (F20/F21)", 2011, 2019, null],
+    "bmw-1-series-e87-e88": ["BMW", "1 Series (E87/E88)", 2004, 2011, null],
+    "bmw-2-series-g42-g43": ["BMW", "2 Series (G42/G43)", 2022, 2026, null],
+    "bmw-2-series-f44": ["BMW", "2 Series (F44)", 2019, 2024, null],
+    "bmw-2-series-f22-f23": ["BMW", "2 Series (F22/F23)", 2014, 2021, null],
+    "bmw-3-series-g20-g21": ["BMW", "3 Series (G20/G21)", 2019, 2026, null],
+    "bmw-3-series-f30-f31": ["BMW", "3 Series (F30/F31)", 2011, 2018, null],
+    "bmw-4-series-g22-g23-g26": ["BMW", "4 Series (G22/G23/G26)", 2021, 2026, null],
+    "bmw-4-series-f32-f33-f36": ["BMW", "4 Series (F32/F33/F36)", 2013, 2020, null],
+    "bmw-5-series-g60": ["BMW", "5 Series (G60)", 2025, 2026, null],
+    "bmw-5-series-g30": ["BMW", "5 Series (G30)", 2017, 2026, null],
+    "bmw-5-series-f10-f11": ["BMW", "5 Series (F10/F11)", 2010, 2016, null],
+    "bmw-6-series-f06-f12-f13": ["BMW", "6 Series (F06/F12/F13)", 2011, 2018, null],
+    "bmw-8-series-g14-g15-g16": ["BMW", "8 Series (G14/G15/G16)", 2020, 2023, null],
+    "bmw-i4-series-g26": ["BMW", "i4 Series (G26)", 2021, 2024, null],
+    "bmw-ix3-g08": ["BMW", "iX3 (G08)", 2019, 2026, null],
+    "bmw-x1-u11": ["BMW", "X1 (U11)", 2022, 2024, null],
+    "bmw-x2-f39": ["BMW", "X2 (F39)", 2018, 2026, null],
+    "bmw-x3-g01": ["BMW", "X3 (G01)", 2017, 2026, null],
+    "bmw-x4-g02": ["BMW", "X4 (G02)", 2018, 2026, null],
+    "bmw-x5-g05": ["BMW", "X5 (G05)", 2018, 2026, null],
+    "bmw-x6-g06": ["BMW", "X6 (G06)", 2019, 2026, null],
+    "bmw-x7-g07": ["BMW", "X7 (G07)", 2019, 2026, null],
+    "bmw-x3m-f97": ["BMW", "X3M (F97)", 2019, 2026, null],
+    "bmw-x4m-f98": ["BMW", "X4M (F98)", 2019, 2026, null],
+    "bmw-x5m-f95": ["BMW", "X5M (F95)", 2020, 2026, null],
+    "bmw-x5m-f85": ["BMW", "X5M (F85)", 2015, 2018, null],
+    "bmw-x5m-e70": ["BMW", "X5M (E70)", 2009, 2014, null],
+    "bmw-x6m-f96": ["BMW", "X6M (F96)", 2020, 2023, null],
+    "bmw-x6m-f86": ["BMW", "X6M (F86)", 2015, 2019, null],
+    "bmw-x6m-e71": ["BMW", "X6M (E71)", 2009, 2014, null],
+    "bmw-z4-g29": ["BMW", "Z4 (G29)", 2018, 2026, null],
+    "bmw-z4-e89": ["BMW", "Z4 (E89)", 2009, 2016, null],
+    "cupra-ateca-kh": ["Cupra", "Ateca (KH)", 2022, 2026, null],
+    "cupra-formentor-km": ["Cupra", "Formentor (KM)", 2022, 2026, null],
+    "cupra-leon-kl": ["Cupra", "Leon (KL)", 2022, 2026, null],
+    "ferrari-458": ["Ferrari", "458", 0, 0, null],
+    "ferrari-488": ["Ferrari", "488", 0, 0, null],
+    "ferrari-599": ["Ferrari", "599", 0, 0, null],
+    "ferrari-812": ["Ferrari", "812", 0, 0, null],
+    "ferrari-california": ["Ferrari", "California", 0, 0, null],
+    "ferrari-f8": ["Ferrari", "F8", 0, 0, null],
+    "ferrari-f12": ["Ferrari", "F12", 0, 0, null],
+    "ferrari-f430": ["Ferrari", "F430", 0, 0, null],
+    "ferrari-ff": ["Ferrari", "FF", 0, 0, null],
+    "ferrari-gtc4lusso": ["Ferrari", "GTC4Lusso", 0, 0, null],
+    "ferrari-sf90": ["Ferrari", "SF90", 0, 0, null],
+    "ford-mustang-fn": ["Ford", "Mustang (FN)", 2018, 2026, null],
+    "ford-mustang-fm": ["Ford", "Mustang (FM)", 2015, 2017, null],
+    "ford-focus-mk4": ["Ford", "Focus (MK4)", 2018, 2022, null],
+    focusrs: ["Ford", "Focus (Mk3)", 2011, 2018, null],
+    "ford-focus-mk2": ["Ford", "Focus (MK2)", 2007, 2011, null],
+    "chevrolet-corvette-c8": ["Chevrolet", "Corvette (C8)", 2021, 2026, null],
+    "chevrolet-silverado-t1": ["Chevrolet", "Silverado (T1)", 2019, 2026, null],
+    "genesis-g70-ik": ["Genesis", "G70 (IK)", 2019, 2021, null],
+    "genesis-g70-ik-v2": ["Genesis", "G70 (IK.V2)", 2022, 2026, null],
+    "genesis-g80-rg3-v2": ["Genesis", "G80 (RG3.V2)", 2021, 2026, null],
+    "genesis-gv70-jk-v1": ["Genesis", "GV70 (JK.V1)", 2022, 2026, null],
+    "genesis-gv80-jx-v3": ["Genesis", "GV80 (JX.V3)", 2021, 2026, null],
+    "holden-commodore-vf": ["Holden", "Commodore (VF)", 2013, 2017, null],
+    "holden-commodore-ve": ["Holden", "Commodore (VE)", 2006, 2013, null],
+    "honda-civic-ek": ["Honda", "Civic (EK)", 1996, 2000, null],
+    "honda-civic-ep3": ["Honda", "Civic (EP3)", 2001, 2004, null],
+    "honda-civic-fd2": ["Honda", "Civic (FD2)", 2007, 2010, null],
+    "honda-civic-fn2": ["Honda", "Civic (FN2)", 2006, 2011, null],
+    "honda-civic-fc-fk": ["Honda", "Civic (FC/FK)", 2015, 2021, null],
+    "honda-civic-fk8": ["Honda", "Civic (FK8)", 2017, 2021, null],
+    ctr: ["Honda", "Civic Type R (FL5)", 2023, 2026, null],
+    "honda-accord-euro-cl9": ["Honda", "Accord Euro (CL9)", 2002, 2008, null],
+    "honda-accord-euro-cu2": ["Honda", "Accord Euro (CU2)", 2008, 2015, null],
+    "honda-nsx-na1-2": ["Honda", "NSX (NA1/2)", 1990, 2006, null],
+    "honda-nsx-nc1-2": ["Honda", "NSX (NC1/2)", 2017, 2021, null],
+    "honda-s2000-ap1-ap2": ["Honda", "S2000 (AP1 / AP2)", 1999, 2009, null],
+    "honda-integra-dc2": ["Honda", "Integra (DC2)", 1995, 2001, null],
+    "honda-integra-dc5": ["Honda", "Integra (DC5)", 2002, 2006, null],
+    "hyundai-i30-pd-hatchback": ["Hyundai", "i30 (PD Hatchback)", 2017, 2023, null],
+    "hyundai-i30-pd-fastback": ["Hyundai", "i30 (PD Fastback)", 2017, 2020, null],
+    "hyundai-i30-cn7-sedan": ["Hyundai", "i30 (CN7 Sedan)", 2020, 2026, null],
+    "hyundai-i20-bc3": ["Hyundai", "i20 (BC3)", 2021, 2024, null],
+    "hyundai-kona-sx2": ["Hyundai", "Kona (SX2)", 2024, 2026, null],
+    "hyundai-kona-os": ["Hyundai", "Kona (OS)", 2017, 2023, null],
+    "hyundai-veloster-fs": ["Hyundai", "Veloster (FS)", 2012, 2017, null],
+    "jeep-grand-cherokee-wk": ["Jeep", "Grand Cherokee (WK)", 2011, 2021, null],
+    "kia-cerato-bd": ["Kia", "Cerato (BD)", 2018, 2023, null],
+    ev6: ["Kia", "EV6 (CV)", 2022, 2026, "p-adro-ev6.jpg"],
+    stinger: ["Kia", "Stinger (CK)", 2018, 2023, null],
+    "land-rover-range-rover-l405": ["Land Rover", "Range Rover (L405)", 2017, 2022, null],
+    "land-rover-range-rover-evoque-l538": ["Land Rover", "Range Rover Evoque (L538)", 2011, 2018, null],
+    "land-rover-range-rover-sport-l494": ["Land Rover", "Range Rover Sport (L494)", 2015, 2018, null],
+    "land-rover-range-rover-velar-l560": ["Land Rover", "Range Rover Velar (L560)", 2017, 2026, null],
+    "lamborghini-aventador": ["Lamborghini", "Aventador", 0, 0, null],
+    "lamborghini-gallardo": ["Lamborghini", "Gallardo", 0, 0, null],
+    "lamborghini-huracan": ["Lamborghini", "Huracan", 0, 0, null],
+    "lamborghini-murcielago": ["Lamborghini", "Murcielago", 0, 0, null],
+    "lamborghini-urus": ["Lamborghini", "Urus", 0, 0, null],
+    "lexus-is-xe30": ["Lexus", "IS (XE30)", 2013, 2023, null],
+    "lexus-is-xe20": ["Lexus", "IS (XE20)", 2005, 2013, null],
+    "lexus-is-xe10": ["Lexus", "IS (XE10)", 1999, 2005, null],
+    "lexus-rc-xc10": ["Lexus", "RC (XC10)", 2015, 2019, null],
+    "maserati-ghibli-m157": ["Maserati", "Ghibli M157", 0, 0, null],
+    "maserati-gran-turismo-m145": ["Maserati", "Gran Turismo M145", 0, 0, null],
+    "maserati-quattroporte-m156": ["Maserati", "Quattroporte M156", 0, 0, null],
+    "mazda-mazda-3-bp": ["Mazda", "Mazda 3 (BP)", 0, 0, null],
+    "mazda-mazda-3-bm-bn": ["Mazda", "Mazda 3 (BM / BN)", 2013, 2018, null],
+    "mazda-mazda-3-bl": ["Mazda", "Mazda 3 (BL)", 2008, 2012, null],
+    "mclaren-540c-570s-570gt": ["McLaren", "540C / 570S / 570GT", 0, 0, null],
+    "mclaren-600lt": ["McLaren", "600LT", 0, 0, null],
+    "mclaren-650s": ["McLaren", "650S", 0, 0, null],
+    "mclaren-720s": ["McLaren", "720S", 0, 0, null],
+    "mclaren-mp4-12c": ["McLaren", "MP4-12C", 0, 0, null],
+    "mclaren-gt": ["McLaren", "GT", 0, 0, null],
+    a45: ["Mercedes-Benz", "A-Class (W177)", 2019, 2026, null],
+    "mercedes-benz-a-class-w176": ["Mercedes-Benz", "A Class (W176)", 2013, 2018, null],
+    "mercedes-benz-c-class-w205": ["Mercedes-Benz", "C Class (W205)", 2014, 2021, null],
+    "mercedes-benz-c-class-w204": ["Mercedes-Benz", "C Class (W204)", 2007, 2013, null],
+    "mercedes-benz-c-class-c205": ["Mercedes-Benz", "C Class (C205)", 2015, 2023, null],
+    "mercedes-benz-e-class-c238": ["Mercedes-Benz", "E Class (C238)", 2017, 2018, null],
+    "mercedes-benz-e-class-w213": ["Mercedes-Benz", "E Class (W213)", 2016, 2019, null],
+    "mercedes-benz-e-class-w212": ["Mercedes-Benz", "E Class (W212)", 2011, 2016, null],
+    "mercedes-benz-g-class-w463": ["Mercedes-Benz", "G Class (W463)", 1990, 2026, null],
+    "mercedes-benz-sl-class-r231": ["Mercedes-Benz", "SL Class (R231)", 2012, 2021, null],
+    "mercedes-benz-s-class-c217": ["Mercedes-Benz", "S Class (C217)", 2013, 2017, null],
+    "mercedes-benz-s-class-w222": ["Mercedes-Benz", "S Class (W222)", 2013, 2017, null],
+    "mercedes-benz-cla-c118-x118": ["Mercedes-Benz", "CLA (C118 / X118)", 2019, 2026, null],
+    "mercedes-benz-cla-c117-x117": ["Mercedes-Benz", "CLA (C117 / X117)", 2013, 2019, null],
+    "mercedes-benz-cls-c257": ["Mercedes-Benz", "CLS (C257)", 2019, 2026, null],
+    "mercedes-benz-cls-c218-x218": ["Mercedes-Benz", "CLS (C218 / X218)", 2011, 2017, null],
+    "mercedes-benz-gla-x156": ["Mercedes-Benz", "GLA (X156)", 2014, 2019, null],
+    "mercedes-benz-glb-x247": ["Mercedes-Benz", "GLB (X247)", 2019, 2026, null],
+    "mercedes-benz-glc-c253-x253": ["Mercedes-Benz", "GLC (C253 / X253)", 2015, 2023, null],
+    "mercedes-benz-gle-w167-c167": ["Mercedes-Benz", "GLE (W167 / C167)", 2019, 2026, null],
+    "mercedes-benz-gle-w166-c292": ["Mercedes-Benz", "GLE (W166 / C292)", 2017, 2019, null],
+    "mercedes-benz-gt-c190-r190": ["Mercedes-Benz", "GT (C190 / R190)", 2015, 2021, null],
+    "mercedes-benz-gt-x290": ["Mercedes-Benz", "GT (X290)", 2019, 2026, null],
+    "mercedes-benz-sls-c197-r197": ["Mercedes-Benz", "SLS (C197 / R197)", 2010, 2014, null],
+    "mini-cooper-f55-f56-f57": ["Mini", "Cooper (F55/F56/F57)", 2013, 2026, null],
+    "mini-countryman-r60": ["Mini", "Countryman (R60)", 2011, 2026, null],
+    "mini-clubman-f54": ["Mini", "Clubman (F54)", 2015, 2026, null],
+    "mini-paceman-r61": ["Mini", "Paceman (R61)", 2013, 2015, null],
+    "mitsubishi-evolution-cz4a": ["Mitsubishi", "Evolution (CZ4A)", 2008, 2015, null],
+    "mitsubishi-evolution-ct9a": ["Mitsubishi", "Evolution (CT9A)", 2000, 2007, null],
+    z370: ["Nissan", "370Z (Z34)", 2009, 2021, null],
+    gtr: ["Nissan", "GT-R (R35)", 2009, 2024, null],
+    "nissan-z-z34": ["Nissan", "Z (Z34)", 2022, 2023, null],
+    "porsche-911": ["Porsche", "911", 0, 0, null],
+    "porsche-boxster": ["Porsche", "Boxster", 0, 0, null],
+    "porsche-cayenne": ["Porsche", "Cayenne", 0, 0, null],
+    "porsche-cayman": ["Porsche", "Cayman", 0, 0, null],
+    "porsche-macan": ["Porsche", "Macan", 0, 0, null],
+    "skoda-octavia": ["Skoda", "Octavia", 0, 0, null],
+    "skoda-superb": ["Skoda", "Superb", 0, 0, null],
+    brz: ["Subaru", "BRZ (ZD8)", 2022, 2026, null],
+    "subaru-brz-zc6": ["Subaru", "BRZ (ZC6)", 2011, 2021, null],
+    "subaru-levorg-vm": ["Subaru", "Levorg (VM)", 2016, 2018, null],
+    wrxvb: ["Subaru", "WRX (VB)", 2022, 2026, null],
+    "subaru-impreza-wrx-sti-vn": ["Subaru", "Impreza WRX / STI (VN)", 2022, 2026, null],
+    "subaru-impreza-wrx-sti-va": ["Subaru", "Impreza WRX / STI (VA)", 2014, 2021, null],
+    "subaru-impreza-wrx-sti-ge-gh": ["Subaru", "Impreza WRX / STI (GE/GH)", 2008, 2011, null],
+    "suzuki-swift": ["Suzuki", "Swift", 0, 0, null],
+    "tesla-model-3-highland": ["Tesla", "Model 3 (Highland)", 2024, 2026, null],
+    model3: ["Tesla", "Model 3 (2019–2023)", 2019, 2023, "p-tesla3.jpg"],
+    modely: ["Tesla", "Model Y (2020–2024)", 2020, 2024, "p-adro-tesla.jpg"],
+    gr86: ["Toyota", "GR86 (ZN8)", 2022, 2026, "p-adro-gr86.jpg"],
+    zn6: ["Toyota", "86 (ZN6)", 2012, 2021, null],
+    supra: ["Toyota", "GR Supra (A90)", 2019, 2026, "p-adro-supra.jpg"],
+    "toyota-corolla-gr": ["Toyota", "Corolla (GR)", 2022, 2023, null],
+    "toyota-yaris-gr": ["Toyota", "Yaris (GR)", 2021, 2026, null],
+    gti8: ["Volkswagen", "Golf (Mk8)", 2021, 2026, null],
+    golfr7: ["Volkswagen", "Golf (Mk7 / 7.5)", 2013, 2020, null],
+    "volkswagen-golf-mk6": ["Volkswagen", "Golf (MK6)", 2008, 2013, null],
+    "volkswagen-golf-mk5": ["Volkswagen", "Golf (MK5)", 2003, 2007, null],
+    "volkswagen-polo-aw": ["Volkswagen", "Polo (AW)", 2017, 2021, null],
+    "volkswagen-polo-6r": ["Volkswagen", "Polo (6R)", 2010, 2017, null],
+    "volkswagen-scirocco-r": ["Volkswagen", "Scirocco (R)", 2011, 2016, null],
+    "volkswagen-tiguan-mk2": ["Volkswagen", "Tiguan (MK2)", 2021, 2024, null],
+    "volkswagen-t-roc-mk1": ["Volkswagen", "T-Roc (MK1)", 2020, 2026, null]
+  };
+  // VEHICLES end
+  const G8X = ['m2g87', 'm3g80', 'm4g82'];
+
+  // The featured parts keep the design's short names and studio photos. Each is a real store product (handle below);
+  // its price, sale price, stock and the cars it fits always come from the store.
+  const FEATURED = {"p0":"adro-v2-dry-carbon-fibre-full-kit-bundle-for-bmw-g87-m2-2023","p1":"adro-front-bumper-v1-for-bmw-g80-g81-m3-g82-g83-m4-2020","p2":"adro-widebody-kit-v2-for-toyota-gr86-subaru-brz-2022","p3":"adro-front-bumper-for-toyota-gr-supra-a90-2019","p4":"adro-v1-dry-carbon-fibre-full-body-kit-for-tesla-model-y-2022-2024","p5":"adro-carbon-fibre-v2-full-kit-for-tesla-model-3-2019-2023","p6":"adro-carbon-fibre-full-kit-for-kia-ev6-air-2023","p7":"adro-carbon-fibre-front-lip-v2-for-kia-stinger-2018-2023","p8":"maxton-design-aero-front-splitter-for-ford-focus-3-rs","p9":"maxton-design-central-rear-splitter-for-audi-rs3-8y-sedan","p10":"eventuri-carbon-intake-system-for-g8x-m2-m3-m4","p11":"iilumolab-bmw-m2-g87-3-5-high-flow-single-midpipe","p12":"fi-exhaust-valvetronic-exhaust-system-for-bmw-m2-g87-s58-23","p13":"invidia-r400-valved-cat-back-exhaust-with-round-tips-for-volkswagen-golf-r-mk7-5","p14":"xforce-vw-golf-r-mk7-mk7-5-varex-valved-cat-back-exhaust-system","p15":"invidia-r400-70mm-catback-for-toyota-86-zn6-gr86-zn8-subaru-brz-zc6-zd8-2012","p16":"invidia-r400s-cat-back-exhaust-with-ti-straight-cut-tips-for-subaru-wrx-sti-2011-2021","p17":"kw-suspensions-height-adjustable-spring-kit-has-for-bmw-m2-g87-m3-g80-m4-g82","p18":"h-r-sport-springs-for-subaru-wrx-vb-sedan-2022","p19":"skid-plate-oil-cooler-guard-for-bmw-g8x-m2-m3-m4","p20":"magnetix-magnetic-paddle-shifters-for-bmw-mini-toyota","p21":"dixcel-front-brake-pads-for-bmw-m2-g87-m3-g80-m4-g82","p22":"dixcel-front-brake-pads-for-subaru-wrx-gr-gv-brz-zc6-zd8-toyota-86-zn6-gr86-zn8","p23":"dixcel-front-brake-rotors-for-toyota-gr-supra-a90-bmw-z4-g29-348x36mm","p24":"dixcel-front-brake-rotors-for-honda-civic-type-r-fk8-fl5-350x32mm","p25":"dixcel-rear-brake-pads-for-nissan-gt-r-r35","p26":"dixcel-front-brake-pads-for-mercedes-amg-a45s-w177","p27":"dixcel-front-brake-pads-for-vw-golf-gti-mk7-mk8-golf-r-mk7-t-roc-r-a1-audi-s3-8v","p28":"dixcel-rear-brake-pads-for-vw-golf-gti-r-mk8-audi-s3-8y","p29":"dixcel-front-brake-pads-for-subaru-wrx-sti-2018-6-piston-vab","p30":"ambience-rgb-flow-ambient-lighting-kit","p31":"t10-extreme-output-360-led-bulb"};
+  // [brand, title, price, image, category, fits ('*' = universal), tag]
+  const PARTS = [
+    ['ADRO', 'V2 Dry Carbon Full Kit Bundle', 17404, 'p-adro-m2.jpg', 'Body kits', ['m2g87'], 'Hero build'],
+    ['ADRO', 'Front Bumper V1', 4480, 'p-adro-m4.jpg', 'Body kits', ['m3g80', 'm4g82']],
+    ['ADRO', 'Widebody Kit V2', 8800, 'p-adro-gr86.jpg', 'Body kits', ['gr86', 'brz'], 'New'],
+    ['ADRO', 'Front Bumper', 3500, 'p-adro-supra.jpg', 'Body kits', ['supra']],
+    ['ADRO', 'V1 Dry Carbon Full Body Kit', 6422, 'p-adro-tesla.jpg', 'Body kits', ['modely']],
+    ['ADRO', 'Carbon Fibre V2 Full Kit', 5035, 'p-tesla3.jpg', 'Body kits', ['model3']],
+    ['ADRO', 'Carbon Fibre Full Kit', 6100, 'p-adro-ev6.jpg', 'Body kits', ['ev6']],
+    ['ADRO', 'Carbon Fibre Front Lip V2', 2080, 'p-stinger.jpg', 'Body kits', ['stinger']],
+    ['Maxton Design', "'Aero' Front Splitter", 369, 'p-maxton.jpg', 'Body kits', ['focusrs']],
+    ['Maxton Design', 'Central Rear Splitter', 399, 'p-maxton-rs3.png', 'Body kits', ['rs3']],
+    ['Eventuri', 'Carbon Intake System', 5989, 'p-eventuri.jpg', 'Performance', G8X],
+    ['iilumolab', '3.5" High Flow Single Midpipe', 1649, 'p-midpipe.jpg', 'Exhaust', ['m2g87'], 'Made here'],
+    ['Fi Exhaust', 'Valvetronic Exhaust System', 8699, 'p-fi.jpg', 'Exhaust', ['m2g87']],
+    ['Invidia', 'R400 Valved Cat Back', 2499, 'p-invidia.jpg', 'Exhaust', ['golfr7']],
+    ['XForce', 'Varex Valved Cat Back', 1919.2, 'p-xforce.png', 'Exhaust', ['golfr7', 'gtr']],
+    ['Invidia', 'R400 70mm Cat Back', 1599, 'p-invidia86.jpg', 'Exhaust', ['gr86', 'brz', 'zn6']],
+    ['Invidia', 'R400S Cat Back, Ti Tips', 1799, 'p-invidiawrx.jpg', 'Exhaust', ['wrxvb']],
+    ['KW Suspensions', 'Height Adjustable Spring Kit', 1989, 'p-kw.jpg', 'Suspension', G8X],
+    ['H&R', 'Sport Springs', 650, 'p-hr.jpg', 'Suspension', ['wrxvb', 'rs3', 'golfr7']],
+    ['iilumolab', 'Skid Plate Oil Cooler Guard', 1299, 'p-skid.jpg', 'Performance', G8X],
+    ['MAGNETIX', 'Magnetic Paddle Shifters', 399, 'p-magnetix.jpg', 'Interior', [...G8X, 'm2f87', 'supra']],
+    ['DIXCEL', 'Front Brake Pads', 365, 'p-pads.jpg', 'Brakes', G8X],
+    ['DIXCEL', 'Front Brake Pads', 115, 'p-pads.jpg', 'Brakes', ['gr86', 'brz', 'zn6', 'z370']],
+    ['DIXCEL', 'Front Brake Rotors 348x36mm', 745, 'p-rotor.jpg', 'Brakes', ['supra']],
+    ['DIXCEL', 'Front Brake Rotors 350x32mm', 520, 'p-rotor.jpg', 'Brakes', ['ctr']],
+    ['DIXCEL', 'Rear Brake Pads', 305, 'p-pads.jpg', 'Brakes', ['gtr']],
+    ['DIXCEL', 'Front Brake Pads', 275, 'p-pads.jpg', 'Brakes', ['a45']],
+    ['DIXCEL', 'Front Brake Pads', 175, 'p-pads.jpg', 'Brakes', ['golfr7', 'gti8']],
+    ['DIXCEL', 'Rear Brake Pads', 130, 'p-pads.jpg', 'Brakes', ['gti8', 's3']],
+    ['DIXCEL', 'Front Brake Pads', 290, 'p-pads.jpg', 'Brakes', ['wrxvb', 'model3', 'modely', 'ev6', 'stinger', 'rs3', 'focusrs', 'm2f87']],
+    ['iilumo', 'Ambience+ RGB Flow Ambient Kit', 279.2, 'p-ambience.jpg', 'Lighting', '*', 'Best seller'],
+    ['iilumo', 'T10 Extreme Output 360° LED', 14.4, 'p-t10.jpg', 'Lighting', []]
+  ].map(([brand, title, price, img, cat, fits, tag], i) => ({ id: 'p' + i, h: FEATURED['p' + i] || null, brand, title, price, img, cat, fits: fits === '*' ? '*' : [], tag }));
+  // ^ fitment is never hand-written: each part's cars come from the store catalogue when it loads (see loadCatalog)
+
+  // starting prices from iilumolab.com.au's own service pages; null = no price listed there, shown as "Quote"
+  const INSTALLS = [
+    ['Ambient lighting install', 'Lighting', 'Multi-zone RGB, app controlled', 's-ambient.jpg', 1050],
+    ['Starlight roof', 'Lighting', 'Fibre optic headliner, shooting stars', 's-starlight.jpg', 1799],
+    ['Projector retrofit', 'Lighting', 'Sharper cut-off, brighter beam', 'pages/projector.jpg', null],
+    ['Dash cam install', 'Electronics', 'Front & rear, hardwired', 's-dashcam.jpg', null],
+    ['Body kit fitment', 'Body kits', 'Test fit, paint match, install', 's-bodykit.jpg', null],
+    ['Exhaust install', 'Exhaust', 'Cat back, midpipe, valve control', 's-exhaust.jpg', 200],
+    ['Suspension install', 'Suspension', 'Springs, coilovers, air + alignment', 's-suspension.jpg', null],
+    ['Caliper respray', 'Brakes', 'Any colour, decals optional', 's-exhaust.jpg', null]
+  ].map(([title, cat, sub, img, from], i) => ({ id: 'i' + i, brand: 'iilumolab install', title, cat, sub, img, price: from, from: from != null, fits: '*' }));
+
+  // Services: custom work the lab does that isn't a part (body kit / exhaust / suspension installs are just fitting, which the lab does for every part)
+  const SERVICES = INSTALLS.filter(p => !['Body kits', 'Exhaust', 'Suspension'].includes(p.cat));
+
+  const ALL = Object.fromEntries([...PARTS, ...INSTALLS].map(p => [p.id, p]));
+  const CAT_HOOKS = []; // things to refresh once the store catalogue has arrived
+
+  // Shopify-ready settings per product.
+  // Stock uses Shopify's own variant fields, so the theme can read the same thing and switch buttons by itself:
+  //   QTY[id]    = variant.inventory_quantity
+  //   POLICY[id] = variant.inventory_policy: 'continue' (default) keeps selling at 0, so a sold-out part flips to
+  //                Pre-order on its own; 'deny' shows Sold out instead
+  //   SPECIAL    = made-to-order parts (custom.lead_time metafield)
+  // Liquid: if variant.inventory_quantity > 0 → In stock / Add to build;
+  //         elsif variant.inventory_policy == 'continue' → Pre-order; else → Sold out (button disabled)
+  // manual: PDF url (live: custom.instructions_pdf metafield). No PDF = email request form.
+  // Set by the client: special-order parts (2 to 4 weeks), parts always ordered in, and install guide PDFs.
+  // Everything else comes from the store: the catalogue (setStock) and each product's live data (ensureDetail).
+  const FIXED_QTY = { p14: 0 };
+  const QTY = { ...FIXED_QTY }, POLICY = {}, SPECIAL = new Set(['p0', 'p4', 'p5', 'p6']);
+  const MANUALS = { p10: '#', p17: '#' };
+  // available = Shopify will sell it; q = units on the shelf when Shopify tracks stock (null = not tracked)
+  const setStock = (id, available, q) => {
+    if (id in FIXED_QTY) return;
+    delete QTY[id]; delete POLICY[id];
+    if (!available) { QTY[id] = 0; POLICY[id] = 'deny'; }                       // Sold out
+    else if (q != null && q <= 0) { QTY[id] = 0; POLICY[id] = 'continue'; }     // none on the shelf, still orderable: Pre-order
+    else if (q != null) QTY[id] = q;                                            // In stock
+  };
+  // reviews: filled from the store's review source (Shopify review app / Google reviews), per product:
+  // REVIEWS.p0 = [{ name, rating, date, text, source: 'Google' }]. Empty = "Be the first to write a review".
+  const REVIEWS = {};
+  // iilumo mascot (3D render) for the special-order banner. Not supplied yet, so the banner shows without it.
+  const MASCOT = null;
+  const stockOf = id => SPECIAL.has(id) ? 'special' : (QTY[id] ?? 5) > 0 ? 'in' : (POLICY[id] || 'continue') === 'continue' ? 'preorder' : 'out';
+  const STOCK_TXT = { in: 'In stock', preorder: 'Ships from supplier', out: 'Sold out', special: 'Special order' };
+  const addLabel = id => stockOf(id) === 'out' ? 'Sold out' : 'Add to build';
+  const stockBadge = (id, cls = '') => { const st = stockOf(id); return `<span class="stock stock--${st} ${cls}" title="${st === 'special' ? 'Made for you, ships in 2 to 4 weeks' : st === 'preorder' ? 'Ordered in from the supplier for you' : STOCK_TXT[st]}"><i aria-hidden="true"><b></b><b></b><b></b></i>${STOCK_TXT[st]}${st === 'special' ? '<small> · 2 to 4 weeks</small>' : ''}</span>`; };
+  const vName = (id, y) => id && VEHICLES[id] ? `${+y ? y + ' ' : ''}${VEHICLES[id][0]} ${VEHICLES[id][1]}` : '';
+  // Always name the exact model and chassis (M2 F87 and M2 G87 are different cars)
+  const modelName = id => `${VEHICLES[id][0]} ${VEHICLES[id][1]}`;
+  const fitsList = ids => {
+    const byMake = {};
+    ids.forEach(id => (byMake[VEHICLES[id][0]] = byMake[VEHICLES[id][0]] || []).push(VEHICLES[id][1]));
+    return Object.entries(byMake).map(([make, models]) => `${make} ${models.join(', ')}`).join(' · ');
+  };
+  const fitsLabel = p => p.fits === '*' ? 'Fits all vehicles' : !p.fits.length ? p.cat : 'Fits ' + (p.fits.length > 5 ? fitsList(p.fits.slice(0, 5)) + ` +${p.fits.length - 5} more` : fitsList(p.fits));
+
+  Object.entries(store.get('buildMeta') || {}).forEach(([id, p]) => { if (!ALL[id]) ALL[id] = p; });
+  let build = (store.get('build') || []).filter(id => ALL[id]);
+  let buildOpt = store.get('buildOpt') || {};
+  let deals = store.get('deals') || {}; // one-time offer prices, by item id
+
+  /* ---------- Promo bar + countdown ---------- */
+  const promo = $('#promo');
+  // touch devices: freeze looping decorative animations while the page is moving, resume when it settles
+  if (matchMedia('(hover:none)').matches) {
+    let st, on = false;
+    addEventListener('scroll', () => { if (!on) { on = true; document.documentElement.classList.add('is-scrolling'); } clearTimeout(st); st = setTimeout(() => { on = false; document.documentElement.classList.remove('is-scrolling'); }, 180); }, { passive: true });
+  }
+  // only write when it changes: iOS fires resize constantly while the toolbar collapses mid-scroll
+  let barH = '';
+  const setBar = () => { const v = document.body.classList.contains('no-promo') ? '0px' : promo.offsetHeight + 'px'; if (v !== barH) document.documentElement.style.setProperty('--bar-h', barH = v); };
+  // mirror body.locked onto <html> (cheaper than an html:has() rule, which restyles the page on every class change)
+  new MutationObserver(() => document.documentElement.classList.toggle('locked', document.body.classList.contains('locked'))).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  if (store.get('promoClosed')) document.body.classList.add('no-promo');
+  $('#promoClose').addEventListener('click', () => { document.body.classList.add('no-promo'); store.set('promoClosed', true); setBar(); });
+  setBar(); addEventListener('resize', setBar);
+  const sunday = () => { const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); d.setHours(23, 59, 59, 0); return d; };
+  const tickCount = () => {
+    let s = Math.max(0, Math.floor((sunday() - new Date()) / 1000));
+    const d = Math.floor(s / 86400); s %= 86400;
+    const h = Math.floor(s / 3600); s %= 3600;
+    const m = Math.floor(s / 60); s %= 60;
+    $('#countdown').textContent = `${d}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+  };
+  tickCount(); setInterval(tickCount, 1000);
+
+  /* ---------- Top bar ---------- */
+  const top = $('#top');
+  const onScroll = () => top.classList.toggle('is-solid', scrollY > 40 || document.body.classList.contains('on-view'));
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  /* ---------- Menu ---------- */
+  const menu = $('#menu'), burger = $('#burger');
+  const setMenu = open => {
+    menu.classList.toggle('is-open', open);
+    menu.setAttribute('aria-hidden', !open);
+    burger.setAttribute('aria-expanded', open);
+    document.body.classList.toggle('locked', open);
+    document.body.classList.toggle('menu-open', open);
+  };
+  burger.addEventListener('click', () => setMenu(!menu.classList.contains('is-open')));
+  $$('.menu__nav a').forEach(a => a.addEventListener('click', e => {
+    const href = a.getAttribute('href');
+    if (!href.startsWith('#')) return; // real Shopify pages
+    e.preventDefault();
+    setMenu(false); // unlock scroll first, then jump
+    if (href.startsWith('#/')) { location.hash = href; return; }
+    if (typeof current !== 'undefined' && current !== 'home') { history.pushState(null, '', '#/'); showView('home'); scrollTo(0, 0); }
+    requestAnimationFrame(() => href === '#finder' ? goFinder() : glide(href));
+  }));
+  const sectionIds = $$('.menu__nav a').map(a => a.getAttribute('href').slice(1)).filter(id => !id.startsWith('/'));
+  const io = new IntersectionObserver(entries => entries.forEach(en => {
+    if (en.isIntersecting) $$('.menu__nav a').forEach(a => a.classList.toggle('is-current', a.getAttribute('href') === '#' + en.target.id));
+  }), { rootMargin: '-45% 0px -50% 0px' });
+  sectionIds.forEach(id => $('#' + id) && io.observe($('#' + id)));
+
+  /* ---------- Hero slideshow ---------- */
+  const slides = $$('.hero__slide');
+  const labels = slides.map(s => [s.dataset.eyebrow || '', s.dataset.label || '']); // set per photo in the theme editor
+  const dots = $('#heroDots');
+  let cur = 0, timer;
+  slides.forEach((_, i) => { const b = document.createElement('button'); b.setAttribute('aria-label', labels[i][1]); b.onclick = () => go(i); dots.append(b); });
+  const go = i => {
+    slides[cur].classList.remove('is-on'); dots.children[cur].classList.remove('is-on');
+    cur = i;
+    slides[cur].classList.add('is-on');
+    const d = dots.children[cur]; d.classList.remove('is-on'); void d.offsetWidth; d.classList.add('is-on');
+    $('#heroEyebrow').textContent = labels[cur][0];
+    $('#heroLabel').textContent = labels[cur][1];
+    clearTimeout(timer); if (!reduce) timer = setTimeout(() => go((cur + 1) % slides.length), 6000);
+  };
+  if (slides.length) go(0);
+
+  /* ---------- Finder ---------- */
+  const selMake = $('#selMake'), selModel = $('#selModel'), selYear = $('#selYear');
+  const opt = (v, t) => Object.assign(document.createElement('option'), { value: v, textContent: t });
+  [...new Set(Object.values(VEHICLES).map(v => v[0]))].sort().forEach(m => selMake.append(opt(m, m)));
+  const fillModels = make => {
+    selModel.replaceChildren(opt('', selModel.dataset.empty || 'Select model'));
+    Object.entries(VEHICLES).filter(([, v]) => v[0] === make).forEach(([id, v]) => selModel.append(opt(id, v[1])));
+    selModel.disabled = !make;
+    fillYears('');
+  };
+  const fillYears = id => {
+    selYear.replaceChildren(opt('', selYear.dataset.empty || 'Select year'));
+    if (id) { const [, , a, b] = VEHICLES[id]; if (!a) selYear.append(opt(0, 'All years')); else for (let y = b; y >= a; y--) selYear.append(opt(y, y)); }
+    selYear.disabled = !id;
+  };
+  selMake.addEventListener('change', () => { fillModels(selMake.value); if (selMake.value) selModel.focus(); });
+  selModel.addEventListener('change', () => { fillYears(selModel.value); if (selModel.value) selYear.focus(); });
+
+  let mode = 'parts', filter = 'All';
+  const toggle = $('.toggle');
+  $$('button', toggle).forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode; toggle.dataset.mode = mode; filter = 'All';
+    $$('button', toggle).forEach(x => { x.classList.toggle('is-on', x === b); x.setAttribute('aria-selected', x === b); });
+    if (vehicle) renderResults();
+  }));
+
+  let vehicle = store.get('vehicle'); // {id, year}
+  if (vehicle && !VEHICLES[vehicle.id]) vehicle = null;
+  // My garage: every car they've searched, newest first
+  let garage = (store.get('garage') || []).filter(g => VEHICLES[g.id]);
+  if (vehicle && !garage.some(g => g.id === vehicle.id && g.year === vehicle.year)) garage.unshift(vehicle);
+  const saveGarage = () => { garage = garage.slice(0, 8); store.set('garage', garage); };
+
+  $('#searchForm').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!selMake.value || !selModel.value || !selYear.value) {
+      const f = $('#searchForm'); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake');
+      (!selMake.value ? selMake : !selModel.value ? selModel : selYear).focus();
+      return;
+    }
+    setVehicle(selModel.value, +selYear.value, true);
+  });
+
+  const setVehicle = (id, year, scroll) => {
+    vehicle = { id, year }; store.set('vehicle', vehicle);
+    garage = [vehicle, ...garage.filter(g => !(g.id === id && g.year === year))]; saveGarage();
+    selMake.value = VEHICLES[id][0]; fillModels(selMake.value); selModel.value = id; fillYears(id); selYear.value = year;
+    filter = 'All';
+    renderResults(); updateVehicleUI(); showViewer(id);
+    if (scroll) glide('#results');
+  };
+
+  // Parts for the chosen car: the store catalogue, featured parts first. The first 12 show here, the rest on All parts.
+  const RESULT_CAP = 12;
+  const matches = () => mode === 'services' ? SERVICES : (CAT || []).filter(p => fitsCar(p, vehicle.id)).sort(SORTS.featured);
+
+  const card = p => {
+    const inBuild = build.includes(p.id);
+    const photo = p.img.startsWith('s-');
+    return `<article class="card" data-pdp="${p.id}" tabindex="0" aria-label="View ${p.brand} ${p.title}">
+      ${p.tag ? `<span class="tag">${p.tag}</span>` : ''}
+      <div class="card__img${photo ? ' card__img--photo' : ''}"><img src="${src(p.img)}" alt="${escH(p.brand + ' ' + p.title)}" loading="lazy"></div>
+      <p class="card__brand">${p.brand}</p>
+      <h4 class="card__title">${p.title}</h4>
+      <p class="card__fit">${p.sub || fitsLabel(p)}</p>
+      ${p.from ? '' : stockBadge(p.id, 'card__stock')}
+      <div class="card__row">
+        <span class="card__price">${p.from ? '<small>from</small>' : ''}${money(p.price)}</span>
+        <button class="add${inBuild ? ' is-in' : ''}" data-add="${p.id}"${!inBuild && stockOf(p.id) === 'out' ? ' disabled' : ''}>${inBuild ? 'Added ✓' : addLabel(p.id)}</button>
+      </div>
+    </article>`;
+  };
+
+  let resultsRun = 0;
+  const renderResults = async () => {
+    const run = ++resultsRun;
+    $('#results').hidden = false;
+    $('#resultsTitle').textContent = vName(vehicle.id, vehicle.year);
+    if (mode === 'parts' && !CAT) { // the catalogue is still on its way
+      $('#resultsKicker').textContent = 'Finding parts for your';
+      $('#chips').innerHTML = ''; $('#resultsGrid').innerHTML = '<div class="empty">Loading the parts for your car&hellip;</div>';
+      await loadCatalog();
+      if (run !== resultsRun || !vehicle) return;
+    }
+    const list = matches(), n = list.length;
+    const cats = ['All', ...new Set(list.map(p => p.cat))];
+    if (!cats.includes(filter)) filter = 'All';
+    $('#resultsKicker').textContent = mode === 'parts' ? `${n} ${n === 1 ? 'part fits' : 'parts fit'} your` : `${n} ${n === 1 ? 'service' : 'services'} for your`;
+    $('#chips').innerHTML = cats.map(c => `<button class="chip${c === filter ? ' is-on' : ''}" data-cat="${c}">${c}<b>${c === 'All' ? n : list.filter(p => p.cat === c).length}</b></button>`).join('');
+    const shown = list.filter(p => filter === 'All' || p.cat === filter), more = mode === 'parts' && shown.length > RESULT_CAP;
+    $('#resultsGrid').innerHTML = shown.length
+      ? shown.slice(0, more ? RESULT_CAP : shown.length).map(card).join('') + (more ? `<div class="results__more"><a class="btn btn--black" href="#/parts?car=${vehicle.id}${filter === 'All' ? '' : '&cat=' + encodeURIComponent(filter)}">See all ${shown.length} ${filter === 'All' ? '' : esc(filter.toLowerCase()) + ' '}parts for your ${esc(modelName(vehicle.id))} <i>&rarr;</i></a></div>` : '')
+      : `<div class="empty">Nothing listed yet. Call <a href="tel:0483939304">our team</a> and we'll source it.</div>`;
+  };
+  // the chips stick under the header while scrolling the results; picking one keeps the row's swipe position
+  // and, if the row is stuck, brings the top of the new results up under it
+  $('#chips').addEventListener('click', e => {
+    const c = e.target.closest('[data-cat]'); if (!c) return;
+    const chips = $('#chips'), x = chips.scrollLeft, top = parseFloat(getComputedStyle(chips).top) || 0;
+    const stuck = chips.getBoundingClientRect().top <= top + 1;
+    filter = c.dataset.cat; renderResults(); chips.scrollLeft = x;
+    if (stuck) scrollTo({ top: $('#resultsGrid').getBoundingClientRect().top + scrollY - top - chips.offsetHeight - 8, behavior: reduce ? 'auto' : 'smooth' });
+  });
+  const resetFinder = () => {
+    $('#results').hidden = true; showViewer(null); vehicle = null; store.set('vehicle', null);
+    selMake.value = ''; fillModels(''); updateVehicleUI(); syncClear();
+  };
+  $('#resultsClear').addEventListener('click', () => {
+    resetFinder();
+    glide('#finder', () => selMake.focus({ preventScroll: true }));
+  });
+  // Clear only shows once something is picked
+  const syncClear = () => { $('#searchClear').hidden = !selMake.value; };
+  [selMake, selModel, selYear].forEach(sel => sel.addEventListener('change', syncClear));
+  $('#searchClear').addEventListener('click', () => { resetFinder(); selMake.focus({ preventScroll: true }); });
+
+  const updateVehicleUI = () => {
+    const btn = $('#myVehicleBtn');
+    btn.classList.toggle('has-veh', !!vehicle);
+    $('#myVehicleLabel').textContent = vehicle ? modelName(vehicle.id) : garage.length ? 'My garage' : 'Add my vehicle';
+    const n = $('#garageCount'); n.hidden = garage.length < 2; n.textContent = garage.length;
+    renderGarage(); if (typeof syncClear === 'function') syncClear();
+    $('#buildVeh').textContent = vehicle ? 'For your ' + vName(vehicle.id, vehicle.year) : 'Your build';
+    renderCartPage();
+  };
+  const garagePanel = $('#garagePanel'), garageBtn = $('#myVehicleBtn');
+  const goFinder = () => glide('#finder', () => selMake.focus({ preventScroll: true }));
+  const renderGarage = () => {
+    $('#garageList').innerHTML = garage.map((g, i) => {
+      const on = vehicle && vehicle.id === g.id && vehicle.year === g.year;
+      return `<li class="garage__item${on ? ' is-on' : ''}">
+        <button class="garage__pick" type="button" data-garage="${i}"><span class="garage__name">${vName(g.id, g.year)}</span>${on ? '<span class="garage__now">Current</span>' : ''}</button>
+        <button class="garage__del" type="button" data-garage-del="${i}" aria-label="Remove ${vName(g.id, g.year)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
+      </li>`;
+    }).join('');
+  };
+  const setGarage = open => {
+    garageBtn.setAttribute('aria-expanded', open);
+    clearTimeout(garagePanel._t);
+    if (open) {
+      garagePanel.hidden = false; void garagePanel.offsetWidth;
+      $$('.garage__item, .garage__add', garagePanel).forEach((el, i) => el.style.setProperty('--i', i));
+      garagePanel.classList.add('is-open');
+    } else {
+      garagePanel.classList.remove('is-open');
+      garagePanel._t = setTimeout(() => { garagePanel.hidden = true; }, reduce ? 0 : 260);
+    }
+  };
+  garageBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!garage.length) return goFinder();
+    renderGarage(); setGarage(garagePanel.hidden);
+  });
+  garagePanel.addEventListener('click', e => {
+    e.stopPropagation();
+    const del = e.target.closest('[data-garage-del]');
+    if (del) {
+      const g = garage[+del.dataset.garageDel];
+      garage.splice(+del.dataset.garageDel, 1); saveGarage();
+      if (vehicle && g.id === vehicle.id && g.year === vehicle.year) resetFinder(); else updateVehicleUI();
+      if (!garage.length) setGarage(false);
+      return;
+    }
+    const pick = e.target.closest('[data-garage]');
+    if (pick) { const g = garage[+pick.dataset.garage]; setGarage(false); setVehicle(g.id, g.year, true); }
+  });
+  $('#garageAdd').addEventListener('click', () => { setGarage(false); resetFinder(); goFinder(); });
+  document.addEventListener('click', () => { if (!garagePanel.hidden) setGarage(false); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !garagePanel.hidden) setGarage(false); });
+
+
+  /* ---------- 360 viewer ---------- */
+  // frame: [src, [W,H,x0,y0,x1,y1] car box in the photo, flip, spots [[part,u,v]] with u,v inside the car box]
+  const M2 = {
+    parts: {
+      front: ['Front bumper & lip', 'Aero', ['p0']],
+      hood: ['Vented carbon hood & intake', 'Aero + performance', ['p0', 'p10']],
+      skirts: ['Side skirts', 'Aero', ['p0']],
+      wheels: ['Brakes', 'Stopping power', ['p21']],
+      susp: ['Suspension', 'Stance & handling', ['p17', 'p19']],
+      cabin: ['Interior & lighting', 'Cabin', ['p20', 'p30', 'i0', 'i1']],
+      wing: ['Rear spoiler', 'Aero', ['p0']],
+      exhaust: ['Exhaust & diffuser', 'Sound', ['p12', 'p11', 'i5']]
+    },
+    frames: [
+      ['360/m2/raw10.jpg', [1600, 1067, 318, 312, 1304, 1002], 0, [['front', .5, .84], ['hood', .5, .4], ['wheels', .1, .88]]],
+      ['360/m2/raw4.jpg', [1600, 1067, 210, 162, 1426, 926], 0, [['front', .18, .78], ['hood', .34, .36], ['wheels', .45, .8], ['skirts', .7, .84]]],
+      ['360/m2/raw6.jpg', [1600, 1067, 88, 442, 1500, 932], 0, [['front', .04, .72], ['wheels', .22, .74], ['skirts', .52, .9], ['cabin', .5, .28], ['wing', .95, .2]]],
+      ['360/m2/raw8.jpg', [1600, 1067, 138, 226, 1448, 1012], 0, [['wing', .5, .34], ['exhaust', .62, .8], ['susp', .08, .82]]],
+      ['360/m2/raw18.jpg', [1600, 1067, 264, 186, 1350, 972], 0, [['wing', .5, .3], ['exhaust', .3, .84]]],
+      ['360/m2/raw2.jpg', [1600, 1067, 96, 374, 1496, 924], 0, [['exhaust', .08, .7], ['wing', .14, .26], ['susp', .3, .76], ['skirts', .57, .9]]],
+      ['360/m2/raw16.jpg', [1600, 1067, 136, 338, 1500, 782], 0, [['front', .96, .7], ['wheels', .79, .76], ['skirts', .5, .9], ['wing', .04, .3]]],
+      ['360/m2/raw4.jpg', [1600, 1067, 210, 162, 1426, 926], 1, [['front', .18, .78], ['hood', .34, .36], ['wheels', .45, .8], ['skirts', .7, .84]]]
+    ]
+  };
+  const GR86 = {
+    parts: {
+      front: ['Widebody front end', 'Aero', ['p2']],
+      wing: ['Swan neck wing', 'Aero', ['p2']],
+      wheels: ['Brakes', 'Stopping power', ['p22']],
+      body: ['Widebody arches & skirts', 'Aero', ['p2']],
+      exhaust: ['Cat back exhaust', 'Sound', ['p15', 'i5']],
+      cabin: ['Interior & lighting', 'Cabin', ['p30', 'i0', 'i1']]
+    },
+    frames: [
+      ['360/gr86/raw1.jpg', [1000, 667, 172, 76, 824, 604], 0, [['front', .5, .82], ['wing', .5, .05], ['cabin', .5, .38], ['wheels', .1, .85]]],
+      ['360/gr86/raw3.jpg', [1168, 779, 132, 262, 1056, 666], 0, [['front', .18, .74], ['wheels', .4, .78], ['body', .62, .7], ['cabin', .55, .25], ['wing', .92, .08]]],
+      ['360/gr86/raw4.jpg', [1168, 779, 52, 200, 1086, 680], 1, [['wing', .14, .1], ['exhaust', .1, .72], ['body', .5, .78], ['wheels', .82, .82], ['cabin', .5, .32]]],
+      ['360/gr86/raw4.jpg', [1168, 779, 52, 200, 1086, 680], 0, [['wing', .14, .1], ['exhaust', .1, .72], ['body', .5, .78], ['wheels', .82, .82], ['cabin', .5, .32]]],
+      ['360/gr86/raw5.jpg', [1168, 779, 54, 248, 1094, 590], 0, [['wing', .1, .12], ['body', .32, .74], ['wheels', .79, .8], ['front', .95, .72], ['cabin', .5, .35]]],
+      ['360/gr86/raw3.jpg', [1168, 779, 132, 262, 1056, 666], 1, [['front', .18, .74], ['wheels', .4, .78], ['body', .62, .7], ['cabin', .55, .25], ['wing', .92, .08]]]
+    ]
+  };
+
+  // TURNTABLE M2_TURN start
+  // smooth 48-frame studio turntable, every frame centred on the same floor line; the hand-placed dots sit on the main angles
+  const M2_TURN = (() => {
+    const B = [[546,328,2115,1285],[574,330,2091,1293],[617,332,2050,1302],[667,333,2010,1308],[743,333,1949,1312],[856,334,1925,1315],[940,335,1993,1314],[1002,335,2093,1314],[936,336,2194,1313],[842,336,2300,1306],[766,338,2371,1295],[692,339,2424,1280],[637,341,2462,1263],[568,343,2504,1238],[467,345,2533,1202],[423,347,2545,1172],[394,348,2554,1141],[380,352,2561,1110],[363,355,2556,1093],[371,357,2544,1120],[393,358,2534,1142],[399,356,2515,1165],[393,357,2465,1197],[399,355,2420,1222],[424,355,2366,1248],[484,357,2289,1277],[540,357,2221,1294],[629,356,2129,1309],[716,356,2046,1316],[827,355,1961,1316],[924,355,2009,1315],[997,354,2158,1317],[911,352,2268,1316],[828,351,2354,1312],[729,349,2440,1298],[652,348,2494,1283],[556,346,2564,1252],[490,344,2581,1227],[437,344,2586,1197],[403,343,2576,1171],[380,343,2573,1146],[357,342,2588,1109],[347,341,2573,1093],[358,336,2530,1132],[374,333,2472,1172],[402,330,2343,1217],[441,328,2265,1247],[484,329,2187,1271]];
+    const KEY = {"0":1,"6":0,"12":7,"18":6,"24":5,"30":4,"36":3,"42":2};
+    return { turntable: true, size: [2926, 1645], parts: M2.parts, zero: Number(Object.keys(KEY).find(k => KEY[k] === 0) || 0),
+      frames: B.map((b, k) => { const i = KEY[k], kf = i != null ? M2.frames[i] : null;
+        const spots = kf ? kf[3].map(([p, u, v]) => [p, kf[2] ? 1 - u : u, v]) : [];
+        return [`360/m2/v10-t${String(k).padStart(2, '0')}.jpg`, [2926, 1645, ...b], 0, spots, i != null]; }) };
+  })();
+  // TURNTABLE M2_TURN end
+  const VIEWS = { m2g87: M2_TURN, gr86: GR86, brz: GR86 };
+
+  // Every other car: real catalogue photos, cropped to fill the stage. Dots come from the view direction.
+  // [src, width, height, view, [x0,y0,x1,y1] car box as fractions of the photo]
+  const PHOTO_SETS = {"m4g82":[["360/m4g82/f0.jpg",1400,1400,"F",[0.2,0.3,0.82,0.62]],["360/m4g82/f1.jpg",1400,1400,"FR",[0.14,0.35,0.9,0.63]],["360/m4g82/f2.jpg",1400,1400,"R",[0.1,0.4,0.92,0.65]],["360/m4g82/f4.jpg",1400,1400,"BL",[0.1,0.35,0.9,0.65]],["360/m4g82/f3.jpg",1400,1400,"B",[0.14,0.3,0.86,0.68]]],"m3g80":[["360/m3g80/f0.jpg",1400,1402,"F",[0.1,0.25,0.9,0.78]],["360/m3g80/f1.jpg",1400,1400,"FR",[0.08,0.28,0.95,0.68]],["360/m3g80/f3.jpg",1400,1404,"R",[0.08,0.6,0.92,0.78]]],"m2f87":[["360/m2f87/f1.jpg",1400,1400,"B",[0.1,0.3,0.92,0.8]],["360/m2f87/f2.jpg",1400,1400,"BL",[0.08,0.38,0.95,0.68]]],"zn6":[["360/zn6/f0.jpg",1400,1400,"F",[0.05,0.1,0.95,0.85]],["360/zn6/f1.jpg",1400,1399,"FL",[0.05,0.32,0.95,0.68]],["360/zn6/f3.jpg",1400,1400,"B",[0.03,0.2,0.97,0.85]],["360/zn6/f2.jpg",1400,1400,"R",[0,0.32,1,0.75]]],"supra":[["360/supra/f0.jpg",1200,1200,"F",[0.03,0.12,0.97,0.85]],["360/supra/f1.jpg",1200,1200,"FR",[0.05,0.38,0.97,0.75]],["360/supra/f3.jpg",1200,1200,"R",[0.03,0.45,0.97,0.75]],["360/supra/f4.jpg",1200,1200,"B",[0.07,0.2,0.93,0.73]],["360/supra/f5.jpg",1200,1200,"BR",[0.03,0.3,0.97,0.72]],["360/supra/f2.jpg",1200,1200,"FL",[0.04,0.38,0.97,0.72]]],"wrxvb":[["360/wrxvb/f0.jpg",1400,1400,"F",[0.1,0.2,0.9,0.8]],["360/wrxvb/f1.jpg",1400,1400,"FL",[0.08,0.37,0.92,0.7]],["360/wrxvb/f3.jpg",1400,1400,"B",[0.12,0.25,0.88,0.8]]],"model3":[["360/model3/f1.jpg",1400,933,"FL",[0.08,0.3,0.93,0.78]],["360/model3/f3.jpg",1400,933,"L",[0.04,0.38,0.96,0.73]],["360/model3/f2.jpg",1400,933,"BR",[0.12,0.3,0.92,0.75]]],"modely":[["360/modely/f0.jpg",1400,933,"FL",[0.12,0.18,0.85,0.85]],["360/modely/f2.jpg",1400,933,"L",[0.08,0.25,0.95,0.78]],["360/modely/f3.jpg",1400,933,"BR",[0.12,0.15,0.88,0.85]],["360/modely/f4.jpg",1400,933,"B",[0.18,0.15,0.84,0.85]],["360/modely/f1.jpg",1400,909,"FR",[0.06,0.18,0.94,0.85]]],"ev6":[["360/ev6/f0.jpg",1400,933,"F",[0.12,0.12,0.88,0.82]],["360/ev6/f1.jpg",1400,933,"FL",[0.1,0.25,0.93,0.8]],["360/ev6/f2.jpg",1400,933,"L",[0.08,0.32,0.92,0.75]],["360/ev6/f4.jpg",1400,933,"B",[0.25,0.1,0.75,0.88]],["360/ev6/f3.jpg",1400,933,"BL",[0.08,0.2,0.92,0.82]]],"stinger":[["360/stinger/f0.jpg",1400,933,"FL",[0.08,0.3,0.94,0.78]],["360/stinger/f2.jpg",1400,933,"L",[0.06,0.33,0.94,0.75]],["360/stinger/f1.jpg",1400,933,"BR",[0.08,0.3,0.92,0.78]]],"golfr7":[["360/golfr7/f0.jpg",1400,1400,"F",[0.18,0.18,0.82,0.62]],["360/golfr7/f1.jpg",1400,1401,"FL",[0.1,0.33,0.92,0.68]],["360/golfr7/f2.jpg",1400,1400,"L",[0.12,0.38,0.9,0.62]],["360/golfr7/f3.jpg",1400,1400,"B",[0.18,0.2,0.82,0.67]]],"gti8":[["360/gti8/f1.jpg",1400,1400,"FL",[0.05,0.1,0.95,0.95]],["360/gti8/f2.jpg",1400,1400,"L",[0,0.25,1,0.7]],["360/gti8/f5.jpg",1400,1400,"BR",[0.05,0.25,0.95,0.7]],["360/gti8/f3.jpg",1400,1400,"B",[0.18,0.2,0.82,0.78]]],"focusrs":[["360/focusrs/f0.jpg",1400,933,"BR",[0.05,0.3,0.95,0.85]],["360/focusrs/f3.jpg",1400,933,"B",[0.18,0.25,0.82,0.85]]],"ctr":[["360/ctr/f0.jpg",1400,1400,"F",[0.12,0.2,0.88,0.68]],["360/ctr/f1.jpg",1400,1399,"FR",[0.1,0.25,0.92,0.68]],["360/ctr/f5.jpg",1400,1400,"R",[0.1,0.4,0.92,0.66]],["360/ctr/f4.jpg",1400,1400,"BL",[0.1,0.35,0.92,0.68]],["360/ctr/f3.jpg",1400,1400,"B",[0.15,0.2,0.85,0.78]],["360/ctr/f2.jpg",1400,1400,"L",[0.08,0.42,0.92,0.62]]],"rs3":[["360/rs3/f0.jpg",1000,667,"F",[0.2,0.18,0.8,0.68]],["360/rs3/f1.jpg",1000,667,"FL",[0.12,0.2,0.92,0.68]],["360/rs3/f3.jpg",1000,667,"L",[0,0.3,0.9,0.82]],["360/rs3/f4.jpg",1000,667,"BL",[0.1,0.2,0.9,0.72]]],"s3":[["360/s3/f0.jpg",1000,667,"F",[0.28,0.25,0.72,0.75]],["360/s3/f1.jpg",1000,667,"FL",[0.28,0.3,0.8,0.72]],["360/s3/f5.jpg",1000,667,"B",[0.15,0,0.9,0.75]],["360/s3/f3.jpg",1000,667,"BL",[0.3,0.3,0.8,0.75]]],"a45":[["360/a45/f1.jpg",1000,667,"FR",[0.08,0.2,0.85,0.82]],["360/a45/f2.jpg",1000,667,"L",[0.15,0.3,0.85,0.85]],["360/a45/f4.jpg",1000,667,"B",[0.1,0,0.9,0.9]],["360/a45/f3.jpg",1000,667,"BL",[0.12,0.15,0.95,0.9]]],"z370":[["360/z370/f0.jpg",1000,1000,"FL",[0.02,0.2,0.9,0.88]],["360/z370/f2.jpg",1000,1000,"BL",[0.05,0.25,0.95,0.8]],["360/z370/f4.jpg",1000,1000,"B",[0,0.2,0.85,1]]],"gtr":[["s-exhaust.jpg",1600,2000,"BL",[0.1,0.2,0.95,0.85]]]};
+  const TPL = {
+    F: [['front', .5, .82], ['hood', .5, .45], ['wheels', .1, .86], ['cabin', .5, .2]],
+    B: [['wing', .5, .22], ['exhaust', .3, .82], ['susp', .88, .85]],
+    FL: [['front', .18, .78], ['hood', .33, .4], ['wheels', .42, .8], ['skirts', .68, .86]],
+    L: [['front', .04, .7], ['wheels', .2, .78], ['skirts', .5, .9], ['cabin', .48, .25], ['wing', .95, .25]],
+    BL: [['exhaust', .12, .75], ['wing', .15, .25], ['susp', .32, .8], ['skirts', .6, .88]]
+  };
+  const MIRROR = { FR: 'FL', R: 'L', BR: 'BL' };
+  const tplFor = t => TPL[t] || TPL[MIRROR[t]].map(([k, u, v]) => [k, 1 - u, v]);
+  const partsFor = id => {
+    const fit = (CAT || []).filter(p => fitsCar(p, id)).sort(SORTS.featured);
+    const ids = cats => fit.filter(p => cats.includes(p.cat)).slice(0, 6).map(p => p.id);
+    const or = (a, b) => a.length ? a : b;
+    const aero = or(ids(['Body kits']), ['i4']);
+    return {
+      front: ['Front bumper & lip', 'Aero', aero],
+      hood: ['Bonnet & intake', 'Aero + performance', or([...ids(['Performance']), ...ids(['Body kits'])], ['i4'])],
+      skirts: ['Side skirts', 'Aero', aero],
+      wing: ['Rear spoiler', 'Aero', aero],
+      wheels: ['Brakes', 'Stopping power', [...ids(['Brakes']), 'i7']],
+      susp: ['Suspension & stance', 'Handling', [...ids(['Suspension']), 'i6']],
+      exhaust: ['Exhaust & diffuser', 'Sound', [...ids(['Exhaust']), 'i5']],
+      cabin: ['Interior & lighting', 'Cabin', [...ids(['Interior', 'Lighting']), 'i0', 'i1']]
+    };
+  };
+  Object.entries(PHOTO_SETS).forEach(([id, frames]) => {
+    VIEWS[id] = { photo: true, parts: null, frames: frames.map(([src, W, H, t, box]) => [src, [W, H, ...box], t, tplFor(t)]) };
+  });
+
+  const viewer = $('#viewer'), vStage = $('#viewerStage'), vFrames = $('#viewerFrames'), vSpots = $('#viewerSpots');
+  let view = null, frame = 0, imgs = [], openPart = null;
+
+  const layout = () => {
+    if (!view || imgs.length !== view.frames.length) return;
+    const SW = vStage.clientWidth, SH = vStage.clientHeight;
+    if (view.turntable) {
+      const [TW, TH] = view.size, s = Math.min(SW / TW, SH / TH), left = (SW - TW * s) / 2, top = (SH - TH * s) / 2; // frames carry their own even margins: fit and centre
+      view.frames.forEach(([, [, , x0, y0, x1, y1]], i) => {
+        Object.assign(imgs[i].style, { width: TW * s + 'px', left: left + 'px', top: top + 'px' });
+        imgs[i]._box = { left, top, s, x0, y0, cw: x1 - x0, ch: y1 - y0, flip: 0 };
+      });
+      return drawSpots();
+    }
+    if (view.photo) {
+      view.frames.forEach(([, [W, H, fx0, fy0, fx1, fy1]], i) => {
+        const cw = (fx1 - fx0) * W, ch = (fy1 - fy0) * H;
+        const s = Math.min(SW * .7 / cw, SH * .52 / ch);
+        const left = SW / 2 - (fx0 * W + cw / 2) * s, top = SH * .52 - (fy0 * H + ch / 2) * s;
+        Object.assign(imgs[i].style, { width: W * s + 'px', left: left + 'px', top: top + 'px' });
+        imgs[i]._box = { left, top, s, x0: fx0 * W, y0: fy0 * H, cw, ch, flip: 0 };
+      });
+      return drawSpots();
+    }
+    view.frames.forEach(([, [W, H, x0, y0, x1, y1], flip], i) => {
+      if (flip) [x0, x1] = [W - x1, W - x0];
+      const cw = x1 - x0, ch = y1 - y0;
+      const s = Math.min(SH * .56 / ch, SW * .84 / cw);
+      const left = SW / 2 - (x0 + cw / 2) * s, top = SH * .84 - y1 * s;
+      Object.assign(imgs[i].style, { width: W * s + 'px', left: left + 'px', top: top + 'px' });
+      imgs[i]._box = { left, top, s, x0, y0, cw, ch, flip };
+    });
+    drawSpots();
+  };
+
+  const drawSpots = () => {
+    if (!view || !imgs[frame] || !imgs[frame]._box) return;
+    const f = view.frames[frame], b = imgs[frame]._box;
+    vSpots.innerHTML = f[3].map(([k, u, v], i) => {
+      const uu = b.flip ? 1 - u : u;
+      const x = b.left + (b.x0 + uu * b.cw) * b.s, y = b.top + (b.y0 + v * b.ch) * b.s;
+      if (x < 20 || y < 20 || x > vStage.clientWidth - 20 || y > vStage.clientHeight - 20) return '';
+      return `<button class="spot${openPart === k ? ' is-on' : ''}" data-part="${k}" style="left:${x}px;top:${y}px;animation-delay:${i * 60}ms" aria-label="${view.parts[k][0]}"><span class="spot__tip">${view.parts[k][0]}</span></button>`;
+    }).join('');
+  };
+
+  const setFrame = n => {
+    const len = view.frames.length;
+    n = ((n % len) + len) % len;
+    imgs[frame].classList.remove('is-on'); frame = n; imgs[frame].classList.add('is-on');
+    if (view.photo) $('#viewerBg').style.backgroundImage = `url(${src(view.frames[frame][0])})`;
+    $('#viewerDeg').textContent = view.photo ? `${frame + 1} / ${len}` : Math.round((((frame - (view.zero || 0)) % len) + len) % len * 360 / len) + '°'; // front = 0°
+    if (!dragging && !spinning) drawSpots();
+  };
+
+  // Panel motion: GPU-only fade + rise (sideways on desktop overlay); switching parts crossfades the contents
+  const vPanel = $('#viewerPanel');
+  const panelShift = () => matchMedia('(max-width:720px)').matches ? 'translateY(14px)' : 'translateX(18px)';
+  const openPanel = k => {
+    const wasOpen = !vPanel.hidden && openPart !== null;
+    openPart = k;
+    const [title, kick, ids] = view.parts[k];
+    $('#viewerKick').textContent = kick;
+    $('#viewerTitle').textContent = title;
+    $('#viewerItems').innerHTML = ids.map(id => { const p = ALL[id]; const on = build.includes(id); return `<div class="vitem"><img src="${src(p.img)}" alt="" data-pdp="${id}"><div class="vitem__t" data-pdp="${id}">${p.title}<small>${p.brand}</small></div><div class="vitem__row"><b>${p.from ? 'from ' : ''}${money(p.price)}</b><button class="add${on ? ' is-in' : ''}" data-add="${id}">${on ? 'Added ✓' : addLabel(id)}</button></div></div>`; }).join('');
+    if (vPanel._a) { vPanel._a.cancel(); vPanel._a = null; }
+    vPanel.hidden = false;
+    if (!reduce) {
+      if (wasOpen) $$('#viewerKick, #viewerTitle, #viewerItems').forEach(el => el.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.22,1,.36,1)' }));
+      else vPanel.animate([{ opacity: 0, transform: panelShift() }, { opacity: 1, transform: 'none' }], { duration: 440, easing: 'cubic-bezier(.22,1,.36,1)' });
+    }
+    drawSpots();
+  };
+  const closePanel = instant => {
+    openPart = null; drawSpots();
+    if (vPanel.hidden) return;
+    if (instant === true || reduce) { if (vPanel._a) vPanel._a.cancel(); vPanel.hidden = true; return; }
+    const a = vPanel._a = vPanel.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: panelShift() }], { duration: 240, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
+    const done = () => { clearTimeout(a._t); if (vPanel._a !== a) return; vPanel._a = null; if (openPart === null) vPanel.hidden = true; a.cancel(); };
+    a.onfinish = done; a._t = setTimeout(done, 400); // safety net if frames are paused (background tab)
+  };
+  $('#viewerPanelClose').addEventListener('click', () => closePanel());
+  vSpots.addEventListener('click', e => { const b = e.target.closest('[data-part]'); if (b) openPanel(b.dataset.part); });
+
+  const showViewer = id => {
+    closePanel(true);
+    imgs = [];
+    view = VIEWS[id] || null;
+    if (view && view.photo) view.parts = partsFor(id);
+    if (!view) {
+      viewer.hidden = true;
+      return;
+    }
+    viewer.hidden = false;
+    vFrames.innerHTML = (view.photo ? '<div class="viewer__bg" id="viewerBg"></div>' : '') + view.frames.map(([f, , flip]) => view.turntable
+      ? `<img src="${src(f)}" srcset="${src(f.replace('.jpg', '-s.jpg'))} 640w, ${src(f)} 1600w" sizes="(max-width:720px) 94vw, 960px" alt="" draggable="false" decoding="async">`
+      : `<img src="${src(f)}" alt="" draggable="false"${flip === 1 ? ' class="flip"' : view.photo ? ' class="soft"' : ''}>`).join('');
+    imgs = $$('img', vFrames);
+    frame = 0; imgs[0].classList.add('is-on');
+    if (view.photo) $('#viewerBg').style.backgroundImage = `url(${src(view.frames[0][0])})`;
+    $('#viewerDeg').textContent = view.photo ? `1 / ${view.frames.length}` : Math.round((((0 - (view.zero || 0)) % view.frames.length) + view.frames.length) % view.frames.length * 360 / view.frames.length) + '°';
+    $('.viewer__ctrl').hidden = view.frames.length < 2;
+    $('#viewerHint').hidden = view.frames.length < 2;
+    $('#viewerHint').classList.remove('is-gone');
+    $('#viewerNote').textContent = view.turntable ? `The ${VEHICLES[id][0]} ${VEHICLES[id][1]} all the way round. Drag to turn it, tap any dot to see what fits there.` : view.frames.length > 1 ? `${view.frames.length} angles of the ${VEHICLES[id][0]} ${VEHICLES[id][1]}. Drag to turn it, tap any dot to see what fits there.` : `Tap any dot to see what fits your ${VEHICLES[id][0]} ${VEHICLES[id][1]}.`;
+    layout(); requestAnimationFrame(layout);
+    // one slow intro turn so people see it moves
+    if (!reduce && view.frames.length > 1) introSpin();
+  };
+  let spinning = false, spinIO;
+  const introSpin = () => {
+    if (spinIO) spinIO.disconnect();
+    spinIO = new IntersectionObserver(([en]) => {
+      if (!en.isIntersecting) return; spinIO.disconnect();
+      let k = 0; spinning = true; viewer.classList.add('is-dragging');
+      const stop = () => { clearInterval(spin); spinning = false; viewer.classList.remove('is-dragging'); };
+      const spin = setInterval(() => { if (dragging) return stop(); if (++k > view.frames.length) { stop(); setFrame(0); return; } setFrame(k); }, view.turntable ? 42 : 260);
+    }, { threshold: .6 });
+    spinIO.observe(vStage);
+  };
+  new ResizeObserver(layout).observe(vStage);
+
+  let dragging = false, pending = null, dx0 = 0, f0 = 0;
+  const startDrag = e => {
+    pending = null; dragging = true; f0 = frame; viewer.classList.add('is-dragging'); if (view && view.turntable) { cancelAnimationFrame(glideT); spinning = false; vSpots.innerHTML = ''; }
+    $('#viewerHint').classList.add('is-gone');
+    if (e.pointerType === 'mouse') vStage.setPointerCapture(e.pointerId);
+  };
+  vStage.addEventListener('pointerdown', e => {
+    if (e.target.closest('.spot,.viewer__panel,.viewer__ctrl')) return;
+    dx0 = e.clientX;
+    if (e.pointerType === 'mouse') startDrag(e); else pending = { x: e.clientX, y: e.clientY };
+  });
+  vStage.addEventListener('pointermove', e => {
+    if (pending) {
+      const ax = Math.abs(e.clientX - pending.x), ay = Math.abs(e.clientY - pending.y);
+      if (ay > 8 && ay > ax) pending = null; // it's a scroll: leave it alone
+      else if (ax > 10) { dx0 = e.clientX; startDrag(e); }
+      return;
+    }
+    if (!dragging) return;
+    const step = view.turntable ? Math.max(4, vStage.clientWidth / view.frames.length) : Math.max(40, vStage.clientWidth / (view.frames.length * 1.5));
+    setFrame(f0 - Math.round((e.clientX - dx0) / step));
+  });
+  // turntable: glide frame by frame to another angle (used by the arrows and after a drag)
+  let glideT = 0;
+  const turnTo = (to, done) => {
+    cancelAnimationFrame(glideT);
+    const len = view.frames.length; let d = ((to - frame) % len + len) % len; if (d > len / 2) d -= len;
+    if (!d || reduce) { setFrame(to); spinning = false; drawSpots(); done && done(); return; }
+    spinning = true; viewer.classList.add('is-dragging'); vSpots.innerHTML = ''; const from = frame, t0 = performance.now(), dur = Math.min(520, 120 + Math.abs(d) * 34);
+    const tick = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      setFrame(from + Math.round(d * e)); if (k < 1) glideT = requestAnimationFrame(tick); else { spinning = false; viewer.classList.remove('is-dragging'); drawSpots(); done && done(); } };
+    glideT = requestAnimationFrame(tick);
+  };
+  const nearestKey = n => { const len = view.frames.length; let best = n, bd = 1e9;
+    view.frames.forEach((f, i) => { if (!f[4]) return; let dd = Math.abs(i - n); dd = Math.min(dd, len - dd); if (dd < bd) { bd = dd; best = i; } }); return best; };
+  const endDrag = () => { pending = null; if (!dragging) return; dragging = false; viewer.classList.remove('is-dragging'); if (view && view.turntable) turnTo(nearestKey(frame)); else drawSpots(); };
+  vStage.addEventListener('pointerup', endDrag);
+  vStage.addEventListener('pointercancel', endDrag);
+  const keyStep = dir => { const len = view.frames.length; for (let i = 1; i <= len; i++) { const n = ((frame + dir * i) % len + len) % len; if (view.frames[n][4]) return n; } return frame; };
+  $('#viewerPrev').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); view && view.turntable ? turnTo(keyStep(-1)) : setFrame(frame - 1); });
+  $('#viewerNext').addEventListener('click', () => { $('#viewerHint').classList.add('is-gone'); view && view.turntable ? turnTo(keyStep(1)) : setFrame(frame + 1); });
+  vStage.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); setFrame(frame - 1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); setFrame(frame + 1); }
+  });
+
+  /* ---------- Product photos: one consistent frame on every card ----------
+     Supplier photos come with different amounts of empty space round the product. On load, each card photo is checked
+     (a small copy): where the product sits, and how white the background is. It is then zoomed and centred to fill the
+     same share of the card, near-white backgrounds are lifted to the card's white, and full scene photos fill the frame.
+     If a photo can't be checked it simply shows as before. */
+  const FIT_FILL = .84, fitCache = {};
+  const fitData = url => fitCache[url] || (fitCache[url] = new Promise(res => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const S = 96, c = document.createElement('canvas'), r = Math.min(S / im.naturalWidth, S / im.naturalHeight);
+        const w = c.width = Math.max(1, Math.round(im.naturalWidth * r)), h = c.height = Math.max(1, Math.round(im.naturalHeight * r));
+        const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, w, h);
+        const d = x.getImageData(0, 0, w, h).data, px = (i, j) => { const k = (j * w + i) * 4; return [d[k], d[k + 1], d[k + 2], d[k + 3]]; };
+        const corners = [px(1, 1), px(w - 2, 1), px(1, h - 2), px(w - 2, h - 2)];
+        const bg = corners.map(p => Math.min(p[0], p[1], p[2])), spread = Math.max(...bg) - Math.min(...bg), base = bg.reduce((a, b) => a + b) / 4;
+        if (base < 200 || spread > 26) return res({ photo: true });            // a scene photo, not a product on a plain background
+        const cut = Math.min(base - 14, 238); let x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+          const p = px(i, j); if (p[3] > 20 && Math.min(p[0], p[1], p[2]) < cut) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
+        }
+        if (x1 < 0) return res(null);
+        res({ box: [x0 / w, y0 / h, (x1 + 1) / w, (y1 + 1) / h], ar: im.naturalWidth / im.naturalHeight, lift: base < 250 ? Math.min(1.12, 255 / base) : 1 });
+      } catch (e) { res(null); }
+    };
+    im.onerror = () => res(null);
+    im.src = url.replace(/([?&])width=\d+/, '$1width=200');
+  }));
+  const fitApply = (img, f) => {
+    const box = img.parentElement, W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
+    if (f.photo) { box.classList.add('is-photo'); return; }
+    const rw = Math.min(W, H * f.ar), rh = rw / f.ar, ox = (W - rw) / 2, oy = (H - rh) / 2;
+    const [u0, v0, u1, v1] = f.box, cw = (u1 - u0) * rw, ch = (v1 - v0) * rh;
+    const s = Math.max(.9, Math.min(2.6, Math.min(FIT_FILL * W / cw, FIT_FILL * H / ch)));
+    const ccx = ox + (u0 + u1) / 2 * rw - W / 2, ccy = oy + (v0 + v1) / 2 * rh - H / 2;
+    img.style.setProperty('--fs', s.toFixed(3)); img.style.setProperty('--fx', (-s * ccx / W * 100).toFixed(2) + '%'); img.style.setProperty('--fy', (-s * ccy / H * 100).toFixed(2) + '%');
+    if (f.lift > 1.005) img.style.setProperty('--fb', `brightness(${f.lift.toFixed(3)})`);
+    box.classList.add('is-fit');
+  };
+  const fitImg = img => { if (img._fit) return; img._fit = true; const u = img.currentSrc || img.src; if (!u) return; fitData(u).then(f => { if (f) { img._fitData = f; fitApply(img, f); } }); };
+  document.addEventListener('load', e => { const t = e.target; if (t.tagName === 'IMG' && t.closest('.card__img')) fitImg(t); }, true);
+  const fitScan = () => document.querySelectorAll('.card__img img').forEach(i => { if (i.complete && i.naturalWidth) fitImg(i); });
+  new MutationObserver(() => fitScan()).observe(document.body, { childList: true, subtree: true });
+  let fitT; addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => document.querySelectorAll('.card__img img').forEach(i => i._fitData && fitApply(i, i._fitData)), 200); });
+
+  /* ---------- Popular parts & vehicles rails ---------- */
+  const popular = ['p0', 'h:blueghozt-plus-2-0', 'p2', 'p11', 'p10', 'p20', 'p4', 'p17', 'p13', 'p3'];
+  const popTrack = $('#popularTrack');
+  const drawPopular = () => { popTrack.innerHTML = popular.map(id => ALL[id]).filter(p => p && !p.gone).map(card).join(''); };
+  drawPopular();
+  const popHandles = ($('#parts') && $('#parts').dataset.handles || '').split(',').filter(Boolean);
+  CAT_HOOKS.push(() => {
+    const list = popHandles.map(h => CAT.find(p => p.h === h)).filter(Boolean);
+    if (list.length) popTrack.innerHTML = list.map(card).join(''); else drawPopular();
+    renderBuild();
+    $$('[data-veh]', vehTrack).forEach(b => { const n = CAT.filter(p => fitsCar(p, b.dataset.veh)).length; $('[data-veh-n]', b).textContent = `${n} part${n === 1 ? '' : 's'}`; });
+    if (vehicle && view && view.photo) view.parts = partsFor(vehicle.id);
+  });
+
+  const vehTrack = $('#vehicleTrack');
+  vehTrack.innerHTML = Object.entries(VEHICLES).filter(([, v]) => v[4]).map(([id, v]) => {
+    return `<button class="veh" data-veh="${id}">
+      <div class="veh__img"><img src="${src(v[4])}" alt="${v[0]} ${v[1]}" loading="lazy"></div>
+      <div class="veh__name">${v[0]} ${v[1]}</div>
+      <div class="veh__row"><span data-veh-n></span><span class="pill">Shop this car <i>&rarr;</i></span></div>
+    </button>`;
+  }).join('');
+  vehTrack.addEventListener('click', e => {
+    const b = e.target.closest('[data-veh]'); if (!b) return;
+    const v = VEHICLES[b.dataset.veh];
+    mode = 'parts'; $$('button', toggle)[0].click();
+    setVehicle(b.dataset.veh, v[3], true);
+    toast(`Showing parts for the ${v[0]} ${v[1]}`);
+  });
+
+  $$('[data-rail]').forEach(r => {
+    const t = $('.rail__track', r), bar = $('.rail__bar i', r);
+    const upd = () => {
+      const max = t.scrollWidth - t.clientWidth, w = Math.max(.12, t.clientWidth / t.scrollWidth);
+      bar.style.width = w * 100 + '%';
+      bar.style.left = (max > 0 ? t.scrollLeft / max : 0) * (1 - w) * 100 + '%';
+      r.querySelector('.rail__bar').style.visibility = max > 4 ? 'visible' : 'hidden';
+    };
+    t.addEventListener('scroll', upd, { passive: true }); addEventListener('resize', upd); upd();
+    // drag to scroll on desktop
+    let down = false, sx = 0, sl = 0, moved = false;
+    t.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; down = true; moved = false; sx = e.clientX; sl = t.scrollLeft; t.style.scrollSnapType = 'none'; });
+    addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - sx; if (Math.abs(dx) > 5) moved = true; t.scrollLeft = sl - dx; });
+    addEventListener('pointerup', () => { if (!down) return; down = false; t.style.scrollSnapType = ''; });
+    t.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+    t.addEventListener('dragstart', e => e.preventDefault());
+  });
+
+
+  /* ---------- Photos to leave out: other dealers' or detailers' shots (plates, watermarks), listed by file name ---------- */
+  let HIDDEN_IMGS = new Set();
+  const imgKey = u => String(u).split('?')[0].split('/').pop().toLowerCase();
+  const hiddenImg = u => HIDDEN_IMGS.has(imgKey(u));
+  // Zero Offset's own studio shots are hidden through cx-data-hidden-images.json (tools/hide_dealer_photos: grey or dark
+  // studio photos on products Zero Offset supplies). A product left with no photo of its own uses ours instead:
+  const PHOTO_SWAP = { 'adro-v1-dry-carbon-fibre-full-kit-bundle-for-bmw-g80-m3-2020': ['photo-adro-m3-g80-kit-1.jpg', 'photo-adro-m3-g80-kit-2.jpg', 'photo-adro-m3-g80-kit-3.jpg'] };
+  fetch((window.cx.data || {}).hidden || src('data/hidden-images.json')).then(r => r.ok ? r.json() : []).then(list => { HIDDEN_IMGS = new Set(list.map(x => String(x).toLowerCase())); }).catch(() => {});
+
+  /* ---------- Product pop-up (PDP) ---------- */
+  // Real descriptions, galleries and options from the iilumolab catalogue
+  const PDP = {"p0":{"full":"ADRO V2 Dry Carbon Fibre Full Kit Bundle for BMW G87 M2 2023+","gal":["pdp/p0_0.jpg","pdp/p0_1.jpg","pdp/p0_2.jpg","pdp/p0_3.jpg","pdp/p0_4.jpg"],"opts":[["Plastic (Standard) / V1",20520.0],["Plastic (Standard) / V2",20520.0],["Carbon Fiber / V1",22230.0],["Carbon Fiber / V2",22230.0]],"url":"https://iilumolab.com.au/products/adro-v2-dry-carbon-fibre-full-kit-bundle-for-bmw-g87-m2-2023","type":"","sku":"A14A90-1202, A14A90-2101, A14A90-1402, A14A90-1302, A14A90-1502","hl":["BMW G87 M2 Facelift Front Bumper with plastic Grille","BMW G87 M2 Carbon Fibre Vented Hood","BMW G87 Carbon Fibre Side Skirts V2","BMW G87 M2 Carbon Fibre Rear Diffuser V2","Choice of Front Lip BMW G87 M2 Front Lip for ADRO Bumper","BMW G87 M2 Front Lip V2 for ADRO Bumper"],"paras":["Introducing the Adro V2 Full Carbon Fibre Aero Kit for the BMW G87 M2 , a complete aerodynamic package that blends cutting edge design with premium craftsmanship. Developed by Adro , this kit delivers an aggressive yet refined appearance while maintaining the iconic styling.","Each component in this kit is meticulously crafted using high-quality wet carbon fibre, ensuring exceptional strength, durability, and a deep gloss finish. Adro's attention to detail and advanced manufacturing process allows every piece to integrate seamlessly with the factory body lines of the G87 M2, enhancing both the vehicle's aesthetics and aerodynamic performance."]},"p1":{"full":"ADRO Front Bumper V1 for BMW G80 G81 M3 / G82 G83 M4 2020+","gal":["pdp/p1_0.jpg","pdp/p1_1.jpg","pdp/p1_2.jpg","pdp/p1_3.jpg","pdp/p1_4.jpg"],"opts":[["Front Bumper",5600.0],["Front Bumper & Front Lip Set",6399.94]],"url":"https://iilumolab.com.au/products/adro-front-bumper-v1-for-bmw-g80-g81-m3-g82-g83-m4-2020","type":"Front Bumper","sku":"A14A11-2101, A14A11-9901","hl":["BMW G80 G81 M3 / G82 G83 M4 2020+"],"paras":["Love it or hate it, the G8X generation of the BMW 3 series is here to stay. Take that new look to a whole new level with the ADRO carbon fibre front bumper. This front bumper is made from TPO and manufactured with injection molding in the same fashion as many major OEMs. This front bumper kit will transform the look of any G8X M3 or M4 and has the fit and finish of an OEM part.","Complete the front fascia with our front lip made from real handcrafted carbon fibre and shaped to perfectly accent the redesigned ADRO front bumper. Purchase as a set with the bumper and receive 10% off."]},"p2":{"full":"ADRO Widebody Kit V2 for Toyota GR86 / Subaru BRZ 2022+","gal":["pdp/p2_0.jpg","pdp/p2_1.jpg","pdp/p2_2.jpg","pdp/p2_3.jpg","pdp/p2_4.jpg"],"opts":[["Widebody Kit without Front Bumper and Rear Diffuser",8800.0],["Widebody Kit with Diffuser (Front Bumper is not included.)",10700.0],["Widebody Kit Complete",13300.0]],"url":"https://iilumolab.com.au/products/adro-widebody-kit-v2-for-toyota-gr86-subaru-brz-2022","type":"Widebody Kit","sku":"A18A10-1203,  A18A10-1402,  A18A10-2701,  A18A10-2801,  A18A10-2901,  A18A10-3001,  A18A10-3201","hl":["2022-2026 Toyota GR86 Base","2022-2026 Toyota GR86 Premium","2022-2026 Subaru BRZ Premium","2022-2026 Subaru BRZ Limited"],"paras":["Transform your GR86/BRZ with the ADRO Widebody Kit V2. Featuring a sharper front-end design and a wider, aerodynamically refined silhouette, this kit is built to maximize downforce and visual impact. The ultimate evolution for the true enthusiast, delivering unmatched presence from every angle.","Toyota GR86 / Subaru BRZ Widebody Kit V2 without Front Bumper and Rear Diffuser"]},"p3":{"full":"ADRO Front Bumper for Toyota GR Supra A90 2019+","gal":["pdp/p3_0.jpg","pdp/p3_1.jpg","pdp/p3_2.jpg","pdp/p3_3.jpg","pdp/p3_4.jpg"],"opts":[["Front Bumper",3500.0],["Front Bumper & V1 Front Lip Set",4500.24],["Front Bumper & V2 Front Lip Set",4850.7]],"url":"https://iilumolab.com.au/products/adro-front-bumper-for-toyota-gr-supra-a90-2019","type":"Front Bumper","sku":"A18A20-2101","hl":["Aggressive, redesigned bumper for the GR Supra","Lower, wider stance for enhanced road presence","Open side intakes and removed fake air vents for a more streamlined appearance","Sharp angles for a performance-focused look","Eliminates factory hump for a sleeker, more aggressive stance","2019+ Toyota Supra"],"paras":["Transform your GR Supra with the ADRO Facelift kit, designed to unleash an aggressive, track-ready appearance that demands attention.","The ADRO redesign for the GR Supra unleashes an aggressive look that commands the road. With its bold curves and a lower, wider stance, this overhaul makes the Supra appear more powerful and exhilarating than ever."]},"p4":{"full":"ADRO V1 Dry Carbon Fibre Full Body Kit for Tesla Model Y 2022-2024","gal":["pdp/p4_0.jpg","pdp/p4_1.jpg","pdp/p4_2.jpg","pdp/p4_3.jpg","pdp/p4_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/adro-v1-dry-carbon-fibre-full-body-kit-for-tesla-model-y-2022-2024","type":"Full Kit","sku":"A15A20-1201, A15A20-1301, A15A20-1401, A15A20-1501","hl":["Tesla Model Y Premium Dry Carbon Fibre Front Lip 2022+","Tesla Model Y Premium Dry Carbon Fibre Side Skirts 2022+","Tesla Model Y Premium Dry Carbon Fibre Rear Diffuser 2022+","Tesla Model Y Premium Dry Carbon Fibre Spoiler 2022+","Tesla Model Y Standard Range 2022-2024","Tesla Model Y Long Range 2022-2024"],"paras":["Introducing the Adro Full Carbon Fibre Aero Kit for the Tesla Model Y 2022+ , a complete aerodynamic package that blends cutting edge design with premium craftsmanship. Developed by Adro , this kit delivers an aggressive yet refined appearance while maintaining the iconic styling.","Each component in this kit is meticulously crafted using high-quality wet carbon fibre, ensuring exceptional strength, durability, and a deep gloss finish. Adro's attention to detail and advanced manufacturing process allows every piece to integrate seamlessly with the factory body lines of the Model Y, enhancing both the vehicle's aesthetics and aerodynamic performance."]},"p5":{"full":"ADRO Carbon Fibre V2 Full Kit for Tesla Model 3 2019-2023","gal":["pdp/p5_0.jpg","pdp/p5_1.jpg","pdp/p5_2.jpg","pdp/p5_3.jpg","pdp/p5_4.jpg"],"opts":[["Lip Spoiler",6460.0],["AT-S Swan Neck Wing",10260.0]],"url":"https://iilumolab.com.au/products/adro-carbon-fibre-v2-full-kit-for-tesla-model-3-2019-2023","type":"Full Kit","sku":"A15A10-1202, A15A10-1302, A15A10-1402, A15A10-1502","hl":["Tesla Model 3 Pre Pregged Carbon Fibre Front Lip V2 2019-2023","Tesla Model 3 Carbon Fibre Side Skirts V2 2019-2023","Tesla Model 3 Carbon Fibre Rear Diffuser V2 2019-2023","Choice of the following spoilers Tesla Model 3 Carbon Fibre Spoiler V2 2019+","Tesla Model 3 Carbon Fibre AT-S Swan Neck Wing 2019-2023","Tesla Model 3 2019-2023"],"paras":["Introducing the Adro Full Carbon Fibre Aero Kit for the Tesla Model 3 2019-2023 , a complete aerodynamic package that blends cutting edge design with premium craftsmanship. Developed by Adro , this kit delivers an aggressive yet refined appearance while maintaining the iconic styling.","Each component in this kit is meticulously crafted using high-quality wet carbon fibre, ensuring exceptional strength, durability, and a deep gloss finish. Adro's attention to detail and advanced manufacturing process allows every piece to integrate seamlessly with the factory body lines of the Model 3, enhancing both the vehicle's aesthetics and aerodynamic performance."]},"p6":{"full":"ADRO Carbon Fibre Full Kit for Kia EV6 Air 2023+","gal":["pdp/p6_0.jpg","pdp/p6_1.jpg","pdp/p6_2.jpg","pdp/p6_3.jpg","pdp/p6_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/adro-carbon-fibre-full-kit-for-kia-ev6-air-2023","type":"Full Kit","sku":"A12A40-1201, A12A40-1401, A12A40-1301, A12A40-1501","hl":["Kia EV6 Air 2023+"],"paras":["The EV community is getting some love with the ADRO. Get better aerodynamics and a more aggressive look by adding this carbon fibre aero kit to the Kia EV6. The aerodynamic design assists with cornering capabilities as well as battery range while the real carbon fibre construction ensures this kit will last for years to come.","2022 EV6 AIR *Front lips are not compatible with the GT and GT Line."]},"p7":{"full":"ADRO Carbon Fibre Front Lip V2 for Kia Stinger 2018-2023","gal":["pdp/p7_0.jpg","pdp/p7_1.jpg","pdp/p7_2.jpg","pdp/p7_3.jpg","pdp/p7_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/adro-carbon-fibre-front-lip-v2-for-kia-stinger-2018-2023","type":"Front Lip / Splitter","sku":"A12A30-1212, A12A30-1222","hl":["Kia Stinger 2018-2023"],"paras":["Adro hand-crafted carbon fibre accessories for the automotive aftermarket. Designed in California. Engineered and made in Korea.","ADRO Kia Stinger carbon fibre V2 front lip is a two-piece kit that comes with an upper and lower part and still allows the vent to be 100% functional."]},"p8":{"full":"Maxton Design 'Aero' Front Splitter for Ford Focus 3 RS","gal":["pdp/p8_0.jpg","pdp/p8_1.jpg","pdp/p8_2.jpg","pdp/p8_3.jpg","pdp/p8_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/maxton-design-aero-front-splitter-for-ford-focus-3-rs","type":"Front Lip / Splitter","sku":"FO-FO-3-RS-FFD1FP","hl":["Front Splitter Lip","Ford Focus 3 RS"],"paras":["Product is made of Fiberglass. All parts are brand new. Material is weather resistant, will not deform in low and high temperatures. Parts made of Fiberglass characterize with increased strength and flexibility. Parts are unpainted. Buyer is advised to entrust the installation to an expert. Parts need to be prepared and trial fitted before painting.","This product has been TUV MATERIALGUTACHTEN certified (TUV certify for material)."]},"p9":{"full":"Maxton Design Central Rear Splitter for Audi RS3 8Y Sedan","gal":["pdp/p9_0.jpg","pdp/p9_1.jpg","pdp/p9_2.jpg","pdp/p9_3.jpg","pdp/p9_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/maxton-design-central-rear-splitter-for-audi-rs3-8y-sedan","type":"Rear Lip / Diffuser","sku":"AU-RS3-8Y-S-RD1G","hl":["Central Rear Splitter","Audi RS3 8Y Sedan"],"paras":["We highly recommend installations are completed by a professional to ensure the product is fitted correctly and according to our fitting manuals.","All products arrive with a protective film, this is a very thin plastic vacuum sealed around the product to avoid the item sustaining any damage. Once removed you will notice the product does not have any scuffs or scratches."]},"p10":{"full":"Eventuri Carbon Intake System for G8X M2/M3/M4","gal":["pdp/p10_0.jpg","pdp/p10_1.jpg","pdp/p10_2.jpg","pdp/p10_3.jpg","pdp/p10_4.jpg"],"opts":[["Gloss Carbon",5989.0],["Matte Carbon",5989.0]],"url":"https://iilumolab.com.au/products/eventuri-carbon-intake-system-for-g8x-m2-m3-m4","type":"Air Intake","sku":"EVE-G8XMV2-INT-GC","hl":["Performance Gain: 13-18hp, 12-16ft-lb (Stock Tune)","Turbo Inlet Area Increased up to 160%","Filtration Area Increased up to 40%"],"paras":["The Eventuri Carbon Intake for the BMW G80 M3 / G82 M4 is now officially released, including the new CSL model. Being the most ambitious and technically advanced intake to date. This intake has been over 1 year in development, as Eventuri pushed the boundaries of design and technology to bring something truly groundbreaking to the industry. Eventuri is the first company to redesign the entire G80 system, including the turbo inlets which are the biggest restriction on the stock intake. The aftermarket Eventuri inlets are made with state-of-the-art manufacturing methods and feature a unique dimp","Eventuri has carried out intensive R&D to develop an intake that not only improves on the stock M3/M4 but also is future proof in its capacity to cater for high-powered builds well in excess of 1000hp. Eventuri maximised the usage of the available space to employ 2 custom made filters with a 40% larger filtration area than stock. These are used in the Patented Venturi housings to smoothly funnel the air to the turbo inlets. The inlets themselves are up to 160% larger in cross-sectional area than stock and are designed with an advanced dimpled inner surface to reduce frictional losses between t"]},"p11":{"full":"IILUMOLAB BMW M2 G87 3.5\" HIGH FLOW SINGLE MIDPIPE","gal":["pdp/p11_0.jpg","pdp/p11_1.jpg","pdp/p11_2.jpg","pdp/p11_3.jpg","pdp/p11_4.jpg"],"opts":[["No",1649.0],["Yes - VALVEX",2448.0]],"url":"https://iilumolab.com.au/products/iilumolab-bmw-m2-g87-3-5-high-flow-single-midpipe","type":"","sku":"BMW-G87-SMP","hl":["TIG welded SS304","Quiet on comfort mode and m aximum burbles on Sports mode","Higher exhaust flow rate compared over the OEM midpipe","Tuning is not required","Lifetime warranty","iilumolab High Flow Single Midpipe"],"paras":["The iilumolab M2 (G87) High Flow Single Midpipe is the perfect solution for enhancing the exhilarating sound of your M2 without the added drone or rasp. Our midpipe is specifically designed to increase exhaust flow and improve the overall sound of your vehicle.","The iilumolab 3.5\" High Flow Single Midpipe is and constructed from high-quality 304 stainless steel, ensuring durability and longevity. Although a direct replacement for your factory midpipes, cutting is required."]},"p12":{"full":"Fi Exhaust Valvetronic Exhaust System for BMW M2 G87 S58 23+","gal":["pdp/p12_0.jpg"],"opts":[["None / Quad Tips in Silver (Standard) / None",8699.0],["None / Quad Tips in Silver (Standard) / Fi-EXHAUST Remote Control and Mobile APP (+$1400)",10099.0],["None / Quad Tips in Titanium Blue (+$700) / None",9399.0],["None / Quad Tips in Titanium Blue (+$700) / Fi-EXHAUST Remote Control and Mobile APP (+$1400)",10799.0],["None / Quad Tips in Diamond Black (+$700) / None",9399.0],["None / Quad Tips in Diamond Black (+$700) / Fi-EXHAUST Remote Control and Mobile APP (+$1400)",10799.0]],"url":"https://iilumolab.com.au/products/fi-exhaust-valvetronic-exhaust-system-for-bmw-m2-g87-s58-23","type":"Exhaust System","sku":"","hl":["BMW M2 G87 S58 23+"],"paras":["If you're unsure whether this will fit your vehicle, contact our team of experts via email at hello@iilumolab.com and send through a few photos of the car for us to verify fitment.","We always recommend professional fitment for guaranteed satisfaction. If you're wanting a hassle-free installation, feel free to contact our friendly team as we offer installation services in-store at our Melbourne workshop. For more details, contact us here ."]},"p13":{"full":"Invidia R400 Valved Cat Back Exhaust with Round Tips for Volkswagen Golf R MK7.5","gal":["pdp/p13_0.jpg","pdp/p13_1.jpg","pdp/p13_2.jpg","pdp/p13_3.jpg","pdp/p13_4.jpg"],"opts":[["Rolled Titanium Blue",2499.0],["Straight Cut Titanium Blue",2499.0],["Rolled Polished Stainless",2499.0],["Straight Cut Polished Stainless",2499.0],["Straight Cut Black Stainless",2499.0]],"url":"https://iilumolab.com.au/products/invidia-r400-valved-cat-back-exhaust-with-round-tips-for-volkswagen-golf-r-mk7-5","type":"Exhaust System","sku":"HS17GFR75GV4RT","hl":["Structural welds","Mufflers and internals","Manufacture defects","Catalytic Convertors (2 Years warranty)","Titan G5 Titanium Exhausts (12 months warranty)","Headers/Exhaust Manifolds (12 months warranty)"],"paras":["Specifically designed to fill the sound gap between the Q300 and N1 system, the R400 produces a unique, agressive note while minimising harsh cabin noise (particularly at highway speeds). The R400 muffler was designed using years of experience from Invidia's engineers to allow the perfect balance between unrestricted exhaust gas flow and sound dampening. This exhaust system will provides a pronounced exhaust note throughout the entire RPM band even when only installed as a cat-back system. The R400 muffler design also looks great with a race inspired design that will turn heads.","The Invidia R400 Exhaust takes quality, performance and looks to a new level."]},"p14":{"full":"XForce VW GOLF R MK7 & MK7.5 Varex Valved Cat Back Exhaust System","gal":["pdp/p14_0.jpg","pdp/p14_1.jpg","pdp/p14_2.jpg","pdp/p14_3.jpg","pdp/p14_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/xforce-vw-golf-r-mk7-mk7-5-varex-valved-cat-back-exhaust-system","type":"Exhaust System","sku":"ESVGR7HVKCS","hl":["Factory Control Harness","3″ Brushed finish stainless steel pipe work","Hot Dog resonator centre","Drone reduction pipe","Varex rear muffler","Quad 4″ polished stainless tip outlet"],"paras":["VW GOLF R MK7 & 7.5 3\" Varex valved cat back exhaust system re-invented!","Take your VW Golf MK7 & MK7.5 R to the next level with the all-new XFORCE VAREX cat-back exhaust system. Crafted from high-quality 304-grade stainless steel, this precision-engineered system features a 3” free-flowing design and an new VAREX valved muffler, to enhance both performance and sound adjustability."]},"p15":{"full":"Invidia R400 70mm Catback for Toyota 86 ZN6 / GR86 ZN8 & Subaru BRZ ZC6 ZD8 2012+","gal":["pdp/p15_0.jpg","pdp/p15_1.jpg","pdp/p15_2.jpg","pdp/p15_3.jpg","pdp/p15_4.jpg"],"opts":[["Rolled Titanium Blue",1599.0],["Straight Cut Titanium Blue",1599.0],["Rolled Polished Stainless",1599.0],["Straight Cut Polished Stainless",1599.0],["Straight Cut Black Stainless",1599.0],["Rolled Black Stainless",1599.0]],"url":"https://iilumolab.com.au/products/invidia-r400-70mm-catback-for-toyota-86-zn6-gr86-zn8-subaru-brz-zc6-zd8-2012","type":"Exhaust System","sku":"HS12SST7GM1RT","hl":["Piping Diameter: 70mm","Piping Thickness: 1.5mm","Piping Material: 304 Stainless Steel","Piping Finish: Polished","Flange Material: Cast 304 Stainless Steel","Resonated: Yes"],"paras":["Specifically designed to fill the sound gap between the Q300 and N1 system, the R400 produces a unique, agressive note while minimising harsh cabin noise (particularly at highway speeds). The R400 muffler was designed using years of experience from Invidia's engineers to allow the perfect balance between unrestricted exhaust gas flow and sound dampening. This exhaust system will provides a pronounced exhaust note throughout the entire RPM band even when only installed as a cat-back system. The R400 muffler design also looks great with a race inspired design that will turn heads.","The Invidia R400 Exhaust takes quality, performance and looks to a new level."]},"p16":{"full":"Invidia R400S Cat Back Exhaust with Ti Straight Cut Tips for Subaru WRX / STI 2011-2021","gal":["pdp/p16_0.jpg","pdp/p16_1.jpg","pdp/p16_2.jpg","pdp/p16_3.jpg","pdp/p16_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/invidia-r400s-cat-back-exhaust-with-ti-straight-cut-tips-for-subaru-wrx-sti-2011-2021","type":"Exhaust System","sku":"HS15STIAGM4ST","hl":["Structural welds","Mufflers and internals","Manufacture defects","Catalytic Convertors (2 Years warranty)","Titan G5 Titanium Exhausts (12 months warranty)","Headers/Exhaust Manifolds (12 months warranty)"],"paras":["INVIDIA R400S CAT BACK EXHAUST (UP TO 15% QUIETER THAN NORMAL R400)","Specifically designed to fill the sound gap between the Q300 and N1 system, the R400 produces a unique, agressive note while minimising harsh cabin noise (particularly at highway speeds). The R400 muffler was designed using years of experience from Invidia's engineers to allow the perfect balance between unrestricted exhaust gas flow and sound dampening. This exhaust system will provides a pronounced exhaust note throughout the entire RPM band even when only installed as a cat-back system. The R400 muffler design also looks great with a race inspired design that will turn heads."]},"p17":{"full":"KW Suspensions Height Adjustable Spring Kit (HAS) for BMW M2 G87 / M3 G80 / M4 G82","gal":["pdp/p17_0.jpg","pdp/p17_1.jpg","pdp/p17_2.jpg","pdp/p17_3.jpg","pdp/p17_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/kw-suspensions-height-adjustable-spring-kit-has-for-bmw-m2-g87-m3-g80-m4-g82","type":"Coilovers","sku":"253200EB","hl":["Suitable for BOTH rear-wheel drive & xDrive vehicles","Individual height adjustability of the original suspension","Does not interfere with factory electronic damper control","Composite Spring Seat and Trapezoidal Shock Threads provide industry-leading durability, load capacity, and ease of adjustment.","Front Lowering Range: 10-25mm (M3) / 15-30mm (M2/M4)","Rear Lowering Range: 5-25mm (M3) / 5-20mm (M2/M4)"],"paras":["KW Height Adjustable Springs are the perfect solution for owners of G8X M2/M3/M4 vehicles that want to achieve a lowered look without the expense of a full coilover kit. Each pack contains top-grade KW springs and specially-designed threaded collars that work with the OEM dampers to provide superior handling and a dynamic ride feel, all at a fraction of the cost.","KW's sleeve kit for G80/G82/G87 M2/M3/M4 RWD and X-Drive offers an advantage over a full coilover kit as you do not lose any features when lowering your car. With KW's renowned quality and racing pedigree, you can trust your modification work. Get the sleek sporty look you have been longing for on your G8X M2/M3/M4 with no more unsightly fender gap."]},"p18":{"full":"H&R Sport Springs for Subaru WRX VB Sedan 2022+","gal":["pdp/p18_0.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/h-r-sport-springs-for-subaru-wrx-vb-sedan-2022","type":"Lowering Springs","sku":"54471","hl":["Best-selling performance street springs","Superb comfort and balance with increased driver confidence","10-20% increase in spring rate over stock","Progressive design for optimal blend of comfort and performance when needed","Front height reduction: 28mm","Rear height reduction: 25mm"],"paras":["H&R Sport Springs are the most preferred choice when it comes to replacing the stock springs of your vehicle for suspension tuning. When you go for H&R, you are sure to maximize your ride comfort and driving confidence as a result of the decreased body roll and lowered center of gravity for improved handling and chassis balance.","The progressive spring rates of H&R Sports are increased by 10-20% over stock, and they're designed to provide superb ride quality and comfort during normal driving conditions, yet they stiffen up for proper chassis composure when the roads get twisty!"]},"p19":{"full":"SKID PLATE OIL COOLER GUARD FOR BMW G8X M2/M3/M4","gal":["pdp/p19_0.jpg","pdp/p19_1.jpg","pdp/p19_2.jpg","pdp/p19_3.jpg","pdp/p19_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/skid-plate-oil-cooler-guard-for-bmw-g8x-m2-m3-m4","type":"","sku":"G8X-SP","hl":["2021-2024 BMW M3 G80 G81","2021-2024 BMW M4 G82 G83","2023-2024 BMW M2 G87","1 x Center cooler guard","2 x Side cooler guards","Installation hardware"],"paras":["Due to its impressive power, the G80/G82/G87 M2/M3/M4 is equipped with heavy-duty cooling hardware. This includes a large oil cooler positioned low and horizontally under the car for optimal aerodynamics. However, this placement leaves it susceptible to damage from road debris, which can cause cracks and rapid oil leakage. Even a minor collision or contact with a parking block can damage the car's belly pan, compromising the cooling system and potentially leading to dangerously high engine temperatures. Without proper protection, the oil cooler may suffer catastrophic damage, resulting in a se","Crafted from 5052 aluminum and coated in black, this skid plate is built to provide ample protection for your oil cooler. The design retains OE mounting locations and hardware for straightforward installation without any cutting or modifications to your vehicle. Additionally, this has been designed to preserve the BMW engineers' cooling features, including a snug trim seal that mimics the stock vacuum cooling effect."]},"p20":{"full":"MAGNETIX : Magnetic Paddle Shifters For BMW / Mini / Toyota","gal":["pdp/p20_0.jpg","pdp/p20_1.jpg","pdp/p20_2.jpg","pdp/p20_3.jpg","pdp/p20_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/magnetix-magnetic-paddle-shifters-for-bmw-mini-toyota","type":"LED HEADLIGHTS","sku":"MPS-BMW-MIN-TOY","hl":["CNC machined 6061 anodized billet aluminium","Equipped with Neodymium magnets","High quality, high strength 4mm dry carbon fibre paddles","BMW G87 M2","BMW G80 G81 G82 G83 M3 M4","BMW G2X with M Sport Steering Wheel"],"paras":["Engineered and optimised for spirited driving and track application, the shifters provide an audible click and a speedy snapback into ready position for an enhanced driving experience."]},"p21":{"full":"DIXCEL Front Brake Pads for BMW M2 (G87) / M3 (G80) / M4 (G82)","gal":["pdp/p21_0.jpg","pdp/p21_1.jpg","pdp/p21_2.jpg","pdp/p21_3.jpg","pdp/p21_4.jpg"],"opts":[["Daily / Street / Premium",365.0],["Daily / Street / M Type",630.0],["Spirited / Track Day / Z Type",675.0],["Track / Competition / Specom B",885.0],["Spirited / Track Day / ES Type",575.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-pads-for-bmw-m2-g87-m3-g80-m4-g82","type":"Brake Pads","sku":"P-1219305","hl":[],"paras":["Upgrade your BMW M car's front braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the BMW M2 (G87), M3 (G80), and M4 (G82) platforms. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p22":{"full":"DIXCEL Front Brake Pads for Subaru WRX (GR / GV) / BRZ (ZC6 / ZD8) / Toyota 86 (ZN6) / GR86 (ZN8)","gal":["pdp/p22_0.jpg","pdp/p22_1.jpg","pdp/p22_2.jpg","pdp/p22_3.jpg","pdp/p22_4.jpg"],"opts":[["Daily / Street / EC Type",115.0],["Daily / Street / M Type",230.0],["Spirited / Track Day / ES Type",145.0],["Spirited / Track Day / S Type",200.0],["Spirited / Track Day / Z Type",295.0],["Track / Competition / RA Type",445.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-pads-for-subaru-wrx-gr-gv-brz-zc6-zd8-toyota-86-zn6-gr86-zn8","type":"Brake Pads","sku":"EC-361055","hl":[],"paras":["Upgrade your Subaru WRX, BRZ, Toyota 86, or GR86's front braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the Subaru WRX (GR / GV), BRZ (ZC6 / ZD8), Toyota 86 (ZN6), and GR86 (ZN8) platforms. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p23":{"full":"DIXCEL Front Brake Rotors for Toyota GR Supra (A90) / BMW Z4 (G29) - 348x36mm","gal":["pdp/p23_0.jpg","pdp/p23_1.jpg","pdp/p23_2.jpg","pdp/p23_3.jpg"],"opts":[["Daily / Street / PD Type",745.0],["Daily / Street / SD Type",890.0],["Spirited / Track Day / FP Type",920.0],["Spirited / Track Day / FS Type",1025.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-rotors-for-toyota-gr-supra-a90-bmw-z4-g29-348x36mm","type":"Brake Rotors","sku":"PD1218451S","hl":[],"paras":["Upgrade your Toyota Supra or BMW Z4's front braking performance with Dixcel brake rotors, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel rotors are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake rotor types shown for the Toyota GR Supra (A90) and BMW Z4 (G29) platforms fitted with 348x36mm front rotors . All rotors for this application are manufactured from high-carbon material for enhanced thermal performance and durability. Multiple rotor types are available, ranging from street-focused replacements to higher-performance applications. Use the product options on this page to select the rotor type best suited to your driving style and vehicle configuration."]},"p24":{"full":"DIXCEL Front Brake Rotors for Honda Civic Type R (FK8/FL5) - 350x32mm","gal":["pdp/p24_0.jpg","pdp/p24_1.jpg","pdp/p24_2.jpg","pdp/p24_3.jpg","pdp/p24_4.jpg"],"opts":[["Daily / Street / PD Type",520.0],["Daily / Street / SD Type",640.0],["Spirited / Track Day / FP Type",690.0],["Spirited / Track Day / FS Type",775.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-rotors-for-honda-civic-type-r-fk8-fl5-350x32mm","type":"Brake Rotors","sku":"PD3315137S","hl":["PD Type (Daily / Street): Standard replacement rotor with an anti-rust coating.","SD Type (Daily / Street): Six offset slits for up to 20% more braking power than a plain rotor.","FP Type (Spirited / Track Day): Plain, heat-treated high-carbon rotor (around 20% more carbon) for improved crack resistance.","FS Type (Spirited / Track Day): Slotted, heat-treated high-carbon rotor for stronger initial bite under hard use.","Dixcel Part Number: 3315137","Position: Front"],"paras":["Upgrade your Honda Civic Type R's front braking performance with Dixcel brake rotors, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel rotors are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake rotor types shown for the Honda Civic Type R FK8 (2017-2021) and FL5 (2022+) platforms fitted with 350x32mm front disc brakes . Both generations are powered by the 2.0L K20C1 turbocharged DOHC VTEC engine. Multiple rotor types are available, ranging from street-focused replacements to higher-performance applications. Use the product options on this page to select the rotor type best suited to your driving style and vehicle configuration."]},"p25":{"full":"DIXCEL Rear Brake Pads for Nissan GT-R (R35)","gal":["pdp/p25_0.jpg","pdp/p25_1.jpg","pdp/p25_2.jpg"],"opts":[["Daily / Street / M Type",305.0],["Spirited / Track Day / Z Type",335.0]],"url":"https://iilumolab.com.au/products/dixcel-rear-brake-pads-for-nissan-gt-r-r35","type":"Brake Pads","sku":"M-3250001","hl":[],"paras":["Upgrade your Nissan GT-R's rear braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the Nissan GT-R (R35) platform. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p26":{"full":"DIXCEL Front Brake Pads for Mercedes-AMG A45S (W177)","gal":["pdp/p26_0.jpg","pdp/p26_1.jpg","pdp/p26_2.jpg","pdp/p26_3.jpg"],"opts":[["Daily / Street / Premium",275.0],["Daily / Street / M Type",385.0],["Spirited / Track Day / Z Type",445.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-pads-for-mercedes-amg-a45s-w177","type":"Brake Pads","sku":"P-1112203","hl":[],"paras":["Upgrade your Mercedes-AMG A45S's front braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the Mercedes-AMG A45S (W177) platform. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p27":{"full":"DIXCEL Front Brake Pads for VW Golf GTI (Mk7 / Mk8) / Golf R (Mk7) / T-Roc R (A1) / Audi S3 (8V)","gal":["pdp/p27_0.jpg","pdp/p27_1.jpg","pdp/p27_2.jpg","pdp/p27_3.jpg","pdp/p27_4.jpg"],"opts":[["Daily / Street / Premium",175.0],["Daily / Street / M Type",335.0],["Spirited / Track Day / ES Type",245.0],["Spirited / Track Day / Z Type",385.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-pads-for-vw-golf-gti-mk7-mk8-golf-r-mk7-t-roc-r-a1-audi-s3-8v","type":"Brake Pads","sku":"P-1314738","hl":[],"paras":["Upgrade your VW Golf, T-Roc R, or Audi S3's front braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the VW Golf GTI (Mk7 / Mk8), Golf R (Mk7), T-Roc R (A1), and Audi S3 (8V) platforms. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p28":{"full":"DIXCEL Rear Brake Pads for VW Golf GTI / R (Mk8) / Audi S3 (8Y)","gal":["pdp/p28_0.jpg","pdp/p28_1.jpg","pdp/p28_2.jpg","pdp/p28_3.jpg"],"opts":[["Daily / Street / Premium",130.0],["Daily / Street / M Type",275.0],["Spirited / Track Day / Z Type",350.0],["Spirited / Track Day / ES Type",230.0]],"url":"https://iilumolab.com.au/products/dixcel-rear-brake-pads-for-vw-golf-gti-r-mk8-audi-s3-8y","type":"Brake Pads","sku":"P-1356206","hl":[],"paras":["Upgrade your VW Golf GTI, Golf R, or Audi S3's rear braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the VW Golf GTI (Mk8), Golf R (Mk8), and Audi S3 (8Y) platforms. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p29":{"full":"DIXCEL Front Brake Pads for Subaru WRX STI 2018+ 6-Piston (VAB)","gal":["pdp/p29_0.jpg","pdp/p29_1.jpg","pdp/p29_2.jpg","pdp/p29_3.jpg","pdp/p29_4.jpg"],"opts":[["Daily / Street / EC Type",290.0],["Daily / Street / M Type",385.0],["Spirited / Track Day / ES Type",375.0],["Spirited / Track Day / S Type",295.0],["Spirited / Track Day / Z Type",460.0],["Circuit / Race / RA Type",660.0]],"url":"https://iilumolab.com.au/products/dixcel-front-brake-pads-for-subaru-wrx-sti-2018-6-piston-vab","type":"Brake Pads","sku":"EC-3611591","hl":[],"paras":["Upgrade your Subaru WRX STI's front braking performance with Dixcel brake pads, engineered in Japan and developed through decades of OEM supply and motorsport experience. Dixcel pads are designed to deliver consistent braking performance, stable pedal feel, and reliable control for daily driving through to more spirited use.","This listing covers the Dixcel brake pad compounds shown for the Subaru WRX STI (VAB) 2018+ models equipped with 6-piston front calipers. Multiple compound options are available, ranging from street-focused replacements to higher-performance applications. Use the comparison chart on this product page to select the compound best suited to your driving style and vehicle configuration."]},"p30":{"full":"AMBIENCE+ : RGB FLOW AMBIENT LIGHTING KIT","gal":["pdp/p30_0.jpg","pdp/p30_1.jpg","pdp/p30_2.jpg","pdp/p30_3.jpg","pdp/p30_4.jpg"],"opts":[],"url":"https://iilumolab.com.au/products/ambience-rgb-flow-ambient-lighting-kit","type":"LED BULBS","sku":"RGB-AMB-P-KIT","hl":["High clarity flexible acrylic ambient strips for superior bright uniform light","Acrylic ambient strips can be cut to size","Expandable system","Designed to run via bluetooth modules to eliminate messy wiring","1 Year Warranty","1 x Master module"],"paras":["Our universal DIY kit can be installed into any vehicle. You have complete control on where each component is installed. Use the whole kit, part of it, or expand it - Get creative because it's totally up to you!","Just like the original AMBIENCE kit, we've eliminated all the messy wiring so each module can be powered independently on its own making installation quicker with less hassles and headaches."]},"p31":{"full":"T10 EXTREME OUTPUT 360° LED BULB","gal":["pdp/p31_0.jpg","pdp/p31_1.jpg","pdp/p31_2.jpg","pdp/p31_3.jpg"],"opts":[["6000K (Cool white)",18.0],["5000K (Pure white)",18.0]],"url":"https://iilumolab.com.au/products/t10-extreme-output-360-led-bulb","type":"LED BULBS","sku":"T10-EO-360-6K","hl":["Input Range: 9-30V","Lumen Rating: 180LM","LED Chips: 1 x 3030, 24 x 3014","Body: 6063 Aviation aluminium","Dimensions: 11mm x 30.5mm","CNC machined aluminium body for excellent thermal capabilities"],"paras":["360° of evenly spread extremely bright light to fill the darkness and beyond.","This stylish premium LED bulb is perfect for applications where housings can limit the amount of light being projected. Enjoy consistent light output around and inside the vehicle."]}};
+
+
+  const priceOf = id => { if (deals[id] != null) return deals[id]; const o = PDP[id] && PDP[id].opts[buildOpt[id]]; return o ? o[1] : ALL[id].price; };
+  const optName = id => { const o = PDP[id] && PDP[id].opts[buildOpt[id]]; return o ? o[0] : ''; };
+  const pdpEl = $('#pdp');
+  let pdpId = null, pdpImg = 0, pdpOpt = null;
+  const pdpShow = n => {
+    const imgsP = $$('#pdpMain img'); if (!imgsP.length) return;
+    pdpImg = (n + imgsP.length) % imgsP.length;
+    imgsP.forEach((im, i) => im.classList.toggle('is-on', i === pdpImg));
+    $$('#pdpThumbs button').forEach((b, i) => b.classList.toggle('is-on', i === pdpImg));
+    $('#pdpCount').textContent = `${pdpImg + 1} / ${imgsP.length}`;
+  };
+  const pdpPaint = () => {
+    const p = ALL[pdpId], d = PDP[pdpId], o = d && d.opts[pdpOpt];
+    $('#pdpPrice').innerHTML = (p.from ? '<small>from</small>' : '') + money(o ? o[1] : p.price);
+    $$('#pdpOpts .pdp__row').forEach((b, i) => b.classList.toggle('is-on', i === pdpOpt));
+    const on = build.includes(pdpId);
+    $('#pdpAdd').classList.toggle('is-in', on);
+    $('#pdpAdd').textContent = on ? (buildOpt[pdpId] !== pdpOpt && d && d.opts.length ? 'Update option in build' : 'Added to build ✓') : addLabel(pdpId);
+  };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // You may also like: parts that fit the same car (theirs, or this part's), same category first, then the rest
+  const renderAlso = id => {
+    const p = ALL[id], car = vehicle && (p.fits === '*' || p.fits.includes(vehicle.id)) ? vehicle.id : p.fits !== '*' ? p.fits[0] : null;
+    if (!CAT) loadCatalog().then(() => { if (pdpId === id) renderAlso(id); });
+    const list = (CAT || []).filter(x => x.id !== id && stockOf(x.id) !== 'out' && (car ? fitsCar(x, car) : x.fits === '*'))
+      .sort((a, b) => (b.cat === p.cat) - (a.cat === p.cat) || (b.fits !== '*') - (a.fits !== '*') || SORTS.featured(a, b)).slice(0, 4);
+    $('#pdpAlso').innerHTML = list.map(x => { const on = build.includes(x.id); return `<div class="also__item" data-pdp="${x.id}" tabindex="0">
+      <img src="${src(x.img)}" alt=""><span class="also__txt"><small>${esc(x.brand)}</small>${esc(x.title)}<b>${money(x.price)}</b></span>
+      <button type="button" class="add${on ? ' is-in' : ''}" data-add="${x.id}"${!on && stockOf(x.id) === 'out' ? ' disabled' : ''}>${on ? 'Added ✓' : addLabel(x.id)}</button></div>`; }).join('');
+    $('#pdpAlsoWrap').hidden = !list.length || !!p.from;
+  };
+  const openPdpNow = (id, asPage) => {
+    const p = ALL[id], d = PDP[id] || {};
+    pdpId = id; renderAlso(id);
+    // at most 5 photos, and never a photo on the hide list (other dealers' or detailers' shots); the next clean photo moves up
+    let gal = (PHOTO_SWAP[p.h] ? PHOTO_SWAP[p.h].map(src) : (d.gal || [p.img])).filter(u => !hiddenImg(u)).slice(0, 5); if (!gal.length) gal = [p.img];
+    const title = d.full || p.title;
+    const fitIds = p.fits === '*' ? [] : p.fits;
+    const fitsMine = vehicle && (p.fits === '*' || p.fits.includes(vehicle.id));
+    $('#pdpCrumb').textContent = `${p.from ? 'Installs' : 'Parts'} / ${p.cat} / ${title}`;
+    const full = $('#pdpFull'); full.hidden = !!asPage; full.href = '#/product/' + encodeURIComponent(id);
+    $('#pdpMain').innerHTML = gal.map((g, i) => `<img src="${src(g)}" alt="${esc(p.brand + ' ' + p.title)}, photo ${i + 1}"${g.startsWith('s-') ? ' class="cover"' : ''}>`).join('');
+    $('#pdpThumbs').style.setProperty('--n', gal.length);
+    $('#pdpThumbs').innerHTML = gal.length > 1 ? gal.map((g, i) => `<button aria-label="Photo ${i + 1}"><img src="${src(g)}" alt=""></button>`).join('') : '';
+    $('#pdpPrev').hidden = $('#pdpNext').hidden = $('#pdpCount').hidden = gal.length < 2;
+    $('#pdpBadge').textContent = p.tag || p.cat;
+    $('#pdpSpecial').hidden = p.from || stockOf(id) !== 'special';
+    $('#soSteps').hidden = true; $('#soMore').setAttribute('aria-expanded', 'false'); $('#soMore').firstChild.textContent = 'Learn more ';
+    if (MASCOT) { $('#soMascot').hidden = false; $('#soMascot').innerHTML = `<img src="${MASCOT}" alt="iilumo mascot">`; }
+    $('#pdpStock').outerHTML = p.from ? '<span class="stock" id="pdpStock" hidden></span>' : stockBadge(id).replace('<span class="stock', '<span id="pdpStock" class="stock');
+    $('#pdpTitle').textContent = title;
+    $('#pdpSub').textContent = [p.brand, d.type || p.cat].filter(Boolean).join(' · ');
+    // fitment card
+    const fit = $('#pdpFit');
+    fit.className = 'pdp__fit' + (vehicle && fitsMine ? ' is-yes' : '');
+    fit.textContent = vehicle && fitsMine ? `✓ Fits your ${vName(vehicle.id, vehicle.year)}` : vehicle ? `Not listed for your ${VEHICLES[vehicle.id][1]}, call us to check` : p.sub || fitsLabel(p);
+    // options card
+    const opts = d.opts || [];
+    $('#pdpOpts').hidden = !opts.length;
+    $('#pdpOpts').innerHTML = opts.map(([t, pr]) => `<button class="pdp__row" type="button">${esc(t)}<b>${money(pr)}</b></button>`).join('');
+    const match = opts.findIndex(o => o[1] === p.price);
+    pdpOpt = buildOpt[id] ?? (opts.length ? (match < 0 ? 0 : match) : null);
+    $('#pdpPerks').innerHTML = [p.from ? 'Done by our own team' : `Genuine ${esc(p.brand)} part`, 'Fitted in-house at the lab', 'Melbourne workshop, 6 days', 'Talk to a human'].map(t => `<li>${t}</li>`).join('');
+    // specs
+    const specs = [['Brand', p.brand], ['Product type', d.type || p.cat], ['Part number', d.sku], ['Fits', p.fits === '*' ? 'All vehicles' : fitIds.map(v => VEHICLES[v][0] + ' ' + VEHICLES[v][1]).join(', ')], ['Options', opts.length ? opts.map(o => o[0]).join(', ') : ''], ['Install', 'Available at our Keysborough lab']].filter(r => r[1]);
+    $('#pdpSpecs').innerHTML = '<h4>Specifications</h4>' + specs.map(([k, v]) => `<div class="pdp__spec"><span>${k}</span><span>${esc(v)}</span></div>`).join('');
+    // left column body
+    const paras = d.paras && d.paras.length ? d.paras : [`${p.sub ? p.sub + '. ' : ''}Done in-house by the iilumolab team in Keysborough. Tell us your car and we'll quote it, book a time and have it done properly.`];
+    const tags = [p.cat, p.brand, ...(p.fits === '*' ? ['Universal fit'] : fitIds.map(modelName)), 'Fitted in-house'];
+    $('#pdpBody').innerHTML =
+      paras.map(t => `<p>${esc(t)}</p>`).join('') +
+      (d.hl && d.hl.length ? `<h4>Highlights</h4><ul>${d.hl.map(h => `<li>${esc(h)}</li>`).join('')}</ul>` : '') +
+      `<h4>Fitted at the lab</h4><p>Book it in at <b>22 Atlantic Drive, Keysborough VIC 3173</b>. Monday to Friday 9am to 5pm, Saturday 10am to 2pm. Or call or text <a href="tel:0483939304"><b>our team</b></a>.</p>` +
+      `<div class="pdp__tags">${[...new Set(tags)].map(t => `<span>${esc(t)}</span>`).join('')}</div>`;
+    const man = MANUALS[id];
+    $('#pdpInst').innerHTML = man ? `
+      <div class="inst inst--pdf">
+        <div class="inst__icon"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg></div>
+        <div class="inst__copy"><b>Installation guide</b><span>PDF · ${esc(p.brand)} · ${esc(title)}</span></div>
+        <a class="btn btn--amber" href="${man}" data-manual download>Download</a>
+      </div>
+      <p class="inst__note">Rather we fit it? <button type="button" class="link" data-book-this>Book the install</button></p>` : `
+      <div class="inst inst--ask">
+        <div class="inst__icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></div>
+        <div class="inst__copy"><b>Get the install guide</b><span>We'll email you instructions for this part, matched to your car.</span></div>
+        <form class="inst__form" novalidate>
+          <input type="email" required placeholder="Your email" aria-label="Email for install guide" autocomplete="email">
+          <button class="btn btn--black" type="submit">Send me the guide</button>
+        </form>
+        <p class="inst__fine">You'll also join the iilumolab list for new releases and offers. Unsubscribe anytime.</p>
+      </div>`;
+    const revs = REVIEWS[id] || [];
+    const avg = revs.length ? revs.reduce((t, r) => t + r.rating, 0) / revs.length : 0;
+    const stars = n => '★★★★★'.slice(0, Math.round(n)) + '<i>' + '★★★★★'.slice(Math.round(n)) + '</i>';
+    const revForm = `<button type="button" class="btn btn--black" data-rev-open>Write a review</button>
+        <form class="rev__form" hidden>
+          <div class="rev__rate" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-rate="${n}" aria-label="${n} stars">★</button>`).join('')}</div>
+          <input required placeholder="Your name" aria-label="Your name">
+          <textarea required rows="3" placeholder="How did it go?" aria-label="Your review"></textarea>
+          <button class="btn btn--amber" type="submit">Post review</button>
+        </form>`;
+    $('#pdpRev').innerHTML = revs.length ? `
+      <div class="rev rev--has">
+        <div class="rev__sum"><span class="rev__stars">${stars(avg)}</span><b>${avg.toFixed(1)}</b><span>${revs.length} review${revs.length > 1 ? 's' : ''}</span></div>
+        <ul class="rev__list">${revs.map(r => `<li><div class="rev__top"><b>${esc(r.name)}</b><span class="rev__stars">${stars(r.rating)}</span></div><p>${esc(r.text)}</p><small>${esc(r.date || '')}${r.source ? ' · via ' + esc(r.source) : ''}</small></li>`).join('')}</ul>
+        ${revForm}
+      </div>` : `
+      <div class="rev">
+        <div class="rev__stars" aria-hidden="true"><i>★★★★★</i></div>
+        <b>No reviews yet</b>
+        <span>Be the first to write a review for this part.</span>
+        ${revForm}
+      </div>`;
+    setTab('desc');
+    pdpShow(0); pdpPaint();
+    if (asPage) { setTab('desc'); pdpShow(0); return; }
+    clearTimeout(pdpEl._t); pdpEl.hidden = false; document.body.classList.add('locked'); setTab('desc');
+    void pdpEl.offsetWidth; requestAnimationFrame(() => pdpEl.classList.add('open'));
+    $('#pdpScroll').scrollTop = 0;
+    setTimeout(() => $('#pdpClose').focus({ preventScroll: true }), 300);
+  };
+  function setTab(t) {
+    const tabs = $$('.pdp__tabs [data-tab]');
+    tabs.forEach(b => { const on = b.dataset.tab === t; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', on); });
+    $$('.pdp__pane').forEach(p => { p.hidden = p.dataset.pane !== t; });
+    const on = tabs.find(b => b.dataset.tab === t), th = $('.pdp__tabthumb');
+    if (on && on.offsetWidth) { th.style.width = on.offsetWidth + 'px'; th.style.transform = `translateX(${on.offsetLeft - th.offsetLeft}px)`; }
+  }
+  $('.pdp__tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+  // on the card itself: it moves between the pop-up and the full product page, and its forms must work in both
+  $('.pdp__card').addEventListener('submit', e => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.classList.contains('inst__form')) {
+      const em = f.querySelector('input');
+      if (!/^\S+@\S+\.\S+$/.test(em.value)) { em.focus(); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); return; }
+      // the team gets the request by email and replies with the guide; the address joins the list, as the note under the form says
+      sendNote(['Install guide request', partLine(pdpId), vehicle && 'Vehicle: ' + vName(vehicle.id, vehicle.year), 'Send the guide to: ' + em.value], em.value).catch(() => {});
+      fetch(ROOT + 'contact', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ form_type: 'customer', utf8: '✓', 'contact[email]': em.value, 'contact[tags]': 'install-guide, newsletter' }) }).catch(() => {});
+      f.closest('.inst').innerHTML = `<div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><div class="inst__copy"><b>Request sent</b><span>The team will email the guide for ${esc(ALL[pdpId].title)} to ${esc(em.value)}.</span></div>`;
+      toast('Request sent. The team will email your guide.');
+    }
+    if (f.classList.contains('rev__form')) {
+      const stars = $$('[data-rate].is-on', f).length, who = f.querySelector('input').value.trim(), words = f.querySelector('textarea').value.trim();
+      if (!stars || !who || !words) { f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); return; }
+      sendNote(['Product review', partLine(pdpId), `Rating: ${stars} out of 5`, 'From: ' + who, '', words], '', who).catch(() => {});
+      f.closest('.rev').innerHTML = '<b>Thanks for the review</b><span>It has gone to the iilumolab team.</span>';
+    }
+  });
+  $('.pdp__card').addEventListener('click', e => {
+    if (e.target.closest('[data-book-this]')) $('#pdpBook').click();
+    if (e.target.closest('[data-rev-open]')) { const b = e.target.closest('[data-rev-open]'); b.hidden = true; b.nextElementSibling.hidden = false; b.nextElementSibling.querySelector('input').focus(); }
+    if (e.target.closest('[data-manual]')) { e.preventDefault(); toast('In the live store this opens the PDF from Shopify.'); }
+    const r = e.target.closest('[data-rate]');
+    if (r) $$('[data-rate]', r.parentElement).forEach(x => x.classList.toggle('is-on', +x.dataset.rate <= +r.dataset.rate));
+  });
+  $('#soMore').addEventListener('click', () => {
+    const open = $('#soSteps').hidden;
+    $('#soSteps').hidden = !open; $('#soMore').setAttribute('aria-expanded', open);
+    $('#soMore').firstChild.textContent = open ? 'Show less ' : 'Learn more ';
+  });
+  // Shopify: details, photos, options and price come live from the store (/products/<handle>.js)
+  const ensureDetail = async id => {
+    const p = ALL[id]; if (!p) return;
+    const h = p.h || (PDP[id] && PDP[id].url ? PDP[id].url.split('/products/')[1] : null);
+    if (!h || (PDP[id] && PDP[id].live)) return;
+    try {
+      const d = await fetch(ROOT + 'products/' + h + '.js').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+      const box = document.createElement('div'); box.innerHTML = d.description || '';
+      const paras = [...box.querySelectorAll('p')].map(x => x.textContent.trim()).filter(Boolean);
+      const hl = [...box.querySelectorAll('li')].map(x => x.textContent.trim()).filter(Boolean).slice(0, 12);
+      const old = PDP[id] || {}, multi = d.variants.length > 1;
+      PDP[id] = { ...old, live: true, full: d.title, gal: d.images.map(u => u + (u.includes('?') ? '&' : '?') + 'width=1000'),
+        opts: multi ? d.variants.map(v => [v.title, v.price / 100]) : [], vids: d.variants.map(v => v.id), avail: d.variants.map(v => v.available),
+        first: Math.max(0, d.variants.findIndex(v => v.available)), type: d.type || old.type, sku: (d.variants[0] && d.variants[0].sku) || old.sku,
+        paras: paras.length ? paras : (old.paras || [box.textContent.trim()].filter(Boolean)), hl: hl.length ? hl : (old.hl || []), url: ROOT + 'products/' + h };
+      p.h = h; p.price = d.price / 100; p.compare = d.compare_at_price > d.price ? d.compare_at_price / 100 : 0;
+      if ((d.tags || []).some(t => /^special order$/i.test(t))) SPECIAL.add(id);
+      setStock(id, d.available, d.available ? await liveStock(p) : null);
+    } catch (e) {}
+  };
+  const openPdp = async id => { await ensureDetail(id); openPdpNow(id); };
+  const closePdp = () => { if (!pdpEl.classList.contains('open')) return; pdpEl.classList.remove('open'); clearTimeout(pdpEl._t); pdpEl._t = setTimeout(() => { pdpEl.hidden = true; }, reduce ? 0 : 420); if (menu.classList.contains('is-open') || !$('#modal').hidden) return; document.body.classList.remove('locked'); };
+  $('#pdpClose').addEventListener('click', closePdp);
+  pdpEl.addEventListener('click', e => { if (e.target === pdpEl) closePdp(); });
+  $('#pdpPrev').addEventListener('click', () => pdpShow(pdpImg - 1));
+  $('#pdpNext').addEventListener('click', () => pdpShow(pdpImg + 1));
+  $('#pdpThumbs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) pdpShow($$('#pdpThumbs button').indexOf(b)); });
+  $('#pdpOpts').addEventListener('click', e => { const b = e.target.closest('.pdp__row'); if (b) { pdpOpt = $$('#pdpOpts .pdp__row').indexOf(b); pdpPaint(); } });
+  addEventListener('keydown', e => { if (pdpEl.hidden) return; if (e.key === 'ArrowLeft') pdpShow(pdpImg - 1); if (e.key === 'ArrowRight') pdpShow(pdpImg + 1); });
+  let tx = 0;
+  $('#pdpMain').addEventListener('touchstart', e => tx = e.touches[0].clientX, { passive: true });
+  $('#pdpMain').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 40) pdpShow(pdpImg + (dx < 0 ? 1 : -1)); });
+  $('#pdpAdd').addEventListener('click', () => {
+    const optChanged = build.includes(pdpId) && buildOpt[pdpId] !== pdpOpt && PDP[pdpId] && PDP[pdpId].opts.length;
+    if (pdpOpt != null) buildOpt[pdpId] = pdpOpt;
+    if (!build.includes(pdpId)) { build.push(pdpId); toast(`${ALL[pdpId].title} added to your build`); }
+    else if (optChanged) toast('Option updated in your build');
+    else { build = build.filter(x => x !== pdpId); delete buildOpt[pdpId]; }
+    renderBuild(true); pdpPaint();
+  });
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-add],[data-remove]')) return;
+    const t = e.target.closest('[data-pdp]');
+    if (t && !(t.closest('.rail__track') && t.closest('.rail__track').dataset.dragged)) openPdp(t.dataset.pdp);
+  });
+  document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.card[data-pdp]')) { e.preventDefault(); openPdp(e.target.dataset.pdp); } });
+
+  /* ---------- Build (cart) ---------- */
+  const buildEl = $('#build');
+  // the count bubble pops on the GPU (no class swap, no forced layout)
+  const popCount = () => { if (!reduce) $('#buildCount').animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: .5 }, { transform: 'scale(1)' }], { duration: 400, easing: 'cubic-bezier(.2,.7,.1,1)' }); };
+  const renderBuild = (pop) => {
+    deals = Object.fromEntries(Object.entries(deals).filter(([id]) => build.includes(id)));
+    store.set('build', build); store.set('buildOpt', buildOpt); store.set('deals', deals);
+    store.set('buildMeta', Object.fromEntries(build.filter(id => ALL[id] && ALL[id].remote).map(id => [id, ALL[id]])));
+    const appearing = buildEl.hidden && build.length > 0;
+    const emptying = !buildEl.hidden && !build.length;
+    if (emptying && !reduce) {
+      // outro: the bar folds back into a black circle, then drops away
+      buildEl.classList.remove('is-open'); buildEl.style.pointerEvents = 'none';
+      clearTimeout(buildEl._t);
+      const parts = [...$('.build__bar').children];
+      parts.forEach(el => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' }));
+      buildEl.classList.add('is-growing');
+      const cl = barClip(), C = cl.cap, FULL = cl.full;
+      buildEl.animate([
+        // hold while the contents fade, fold smoothly (ease in + out) into a tall capsule, then drop away
+        { clipPath: FULL, webkitClipPath: FULL, transform: 'translateY(0) scale(1)', opacity: 1, offset: 0 },
+        { clipPath: FULL, webkitClipPath: FULL, transform: 'translateY(0) scale(1)', opacity: 1, offset: .18, easing: 'cubic-bezier(.65,0,.3,1)' },
+        { clipPath: C, webkitClipPath: C, transform: 'translateY(0) scale(1)', opacity: 1, offset: .72, easing: 'cubic-bezier(.5,0,.75,0)' },
+        { clipPath: C, webkitClipPath: C, transform: 'translateY(30px) scale(.8)', opacity: 0, offset: 1 }
+      ], { duration: 900, easing: 'linear', fill: 'forwards' }).onfinish = function () {
+        if (!build.length) buildEl.hidden = true;
+        buildEl.style.pointerEvents = ''; buildEl.classList.remove('is-growing'); this.cancel();
+        parts.forEach(el => el.getAnimations().forEach(a => a.cancel()));
+      };
+    } else {
+      buildEl.hidden = !build.length;
+    }
+    // the bar rises in once, only when it first appears (the add-to-build orb does its own reveal)
+    if (appearing && !buildEl._fromOrb && !reduce) buildEl.animate([{ transform: 'translateY(30px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 500, easing: 'cubic-bezier(.16,1,.3,1)' });
+    if (!build.length) buildEl.classList.remove('is-open');
+    $('#buildCount').textContent = build.length;
+    if (pop) popCount();
+    const total = build.reduce((s, id) => s + priceOf(id), 0);
+    const quote = build.some(id => ALL[id].price == null);
+    $('#buildTotal').textContent = !total && quote ? 'Quote' : (build.some(id => ALL[id].from) || quote ? 'from ' : '') + money(total);
+    $('#buildList').innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="${src(p.img)}" alt=""><span>${p.brand} ${p.title}${optName(id) ? `<small style="display:block;color:var(--grey)">${optName(id)}</small>` : ''}</span><b>${money(priceOf(id))}</b><button data-remove="${id}" aria-label="Remove">&times;</button></li>`; }).join('');
+    $$('[data-add]').forEach(b => { const on = build.includes(b.dataset.add); b.classList.toggle('is-in', on); b.textContent = on ? 'Added ✓' : addLabel(b.dataset.add); });
+    renderCartPage();
+  };
+  // Cart page (/cart, sections/cx-cart): My build opened up as a page, with the bar's own list, total and buttons.
+  // No build: the Shopify cart's lines stay as the page printed them, or the empty message shows.
+  function renderCartPage() {
+    const el = document.getElementById('cartPage'); if (!el) return;
+    if (build.length) el.dataset.had = 1;
+    el.dataset.mode = build.length ? 'build' : el.dataset.had ? 'empty' : el.dataset.rest; // emptied on this page: the empty message, not an older Shopify cart
+    document.getElementById('home').dataset.cart = el.dataset.mode; // the bar steps aside while the page itself shows the build
+    $('#ctList', el).innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="${src(p.img)}" alt="" data-pdp="${id}"><span class="ct__t" data-pdp="${id}"><small>${escH(p.brand)}</small><span>${escH(p.title)}</span>${optName(id) ? `<small>${escH(optName(id))}</small>` : ''}</span><b>${money(priceOf(id))}</b><button type="button" data-remove="${id}" aria-label="Remove">&times;</button></li>`; }).join('');
+    $('#ctTotal', el).textContent = $('#buildTotal').textContent;
+    const car = $('#ctCar', el); car.hidden = !(vehicle && build.length);
+    car.textContent = vehicle ? el.dataset.carLine.replace('[car]', vName(vehicle.id, vehicle.year)) : '';
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-ct-go]'); if (b) openModal(null, true, b.dataset.ctGo); }); // Checkout / Book this build
+  document.addEventListener('shopify:section:load', renderCartPage); // theme editor: the section was redrawn
+  // Add to build: the button squeezes into an amber circle, is thrown down to the bottom middle,
+  // turns black as it lands, then stretches out into the My build bar (or bounces it if already there).
+  const barClip = () => {
+    const w = buildEl.offsetWidth || 520, h = buildEl.offsetHeight || 58, x = Math.max(0, (w - 46) / 2), y = Math.max(0, (h - 46) / 2);
+    const cx = Math.max(0, (w - 38) / 2); // closing shape: a tall capsule (full bar height, 38px wide)
+    return { full: 'inset(0px 0px 0px 0px round 999px)', dot: `inset(${y}px ${x}px ${y}px ${x}px round 999px)`, cap: `inset(0px ${cx}px 0px ${cx}px round 999px)` };
+  };
+  const flyToBuild = (btn, update) => {
+    buildEl.getAnimations().forEach(x => x.cancel()); buildEl.style.pointerEvents = ''; buildEl.classList.remove('is-growing');
+    const wasHidden = buildEl.hidden;
+    if (reduce || !btn.getBoundingClientRect) { update(); return; }
+    const r = btn.getBoundingClientRect(), D = 46;
+    // 1) do all the DOM work now, before anything moves (keeps the landing frame-perfect)
+    buildEl._fromOrb = true; update(); buildEl._fromOrb = false;
+    if (wasHidden) buildEl.style.visibility = 'hidden';
+    const bar = buildEl.getBoundingClientRect();
+    const sx = r.left + r.width / 2, sy = r.top + r.height / 2, tx = bar.left + bar.width / 2, ty = bar.top + bar.height / 2;
+    // 2) the orb flies on the compositor: transform + opacity only
+    const orb = document.createElement('div');
+    orb.className = 'orb';
+    orb.innerHTML = '<i class="orb__ink"></i>';
+    document.body.appendChild(orb);
+    const cx = sx + (tx - sx) * .15, cy = ty, N = 28, DUR = 640;
+    const ease = t => 1 - Math.pow(1 - t, 3.2);                // fast start, soft landing
+    const frames = [], ink = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N, k = ease(u);
+      const x = (1 - k) * (1 - k) * sx + 2 * (1 - k) * k * cx + k * k * tx;
+      const y = (1 - k) * (1 - k) * sy + 2 * (1 - k) * k * cy + k * k * ty;
+      const sc = u < .18 ? .55 + .45 * (u / .18) : 1;           // pops out of the button as it leaves
+      frames.push({ offset: u, transform: `translate3d(${(x - D / 2).toFixed(2)}px,${(y - D / 2).toFixed(2)}px,0) scale(${sc.toFixed(3)})` });
+      ink.push({ offset: u, opacity: Math.max(0, Math.min(1, (k - .35) / .5)) });
+    }
+    const fly = orb.animate(frames, { duration: DUR, easing: 'linear', fill: 'forwards' });
+    orb.firstChild.animate(ink, { duration: DUR, easing: 'linear', fill: 'forwards' });
+    btn.animate([{ transform: 'scale(1)' }, { transform: 'scale(.92)' }, { transform: 'scale(1)' }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    // 3) landing: nothing to compute, just reveal / bounce
+    let landed = false;
+    const land = () => {
+      if (landed) return; landed = true;
+      if (wasHidden) {
+        buildEl.style.visibility = '';
+        const cl = barClip();
+        // ease in AND out: gentle start, smooth middle, soft settle
+        buildEl.classList.add('is-growing');
+        const grow = buildEl.animate([{ clipPath: cl.dot, webkitClipPath: cl.dot }, { clipPath: cl.full, webkitClipPath: cl.full }], { duration: 760, easing: 'cubic-bezier(.65,0,.3,1)' });
+        grow.onfinish = grow.oncancel = () => buildEl.classList.remove('is-growing');
+      } else {
+        buildEl.animate([
+          { transform: 'scale(1)', offset: 0, easing: 'cubic-bezier(.45,0,.55,1)' },
+          { transform: 'scale(1.05)', offset: .4, easing: 'cubic-bezier(.45,0,.55,1)' },
+          { transform: 'scale(.995)', offset: .75, easing: 'cubic-bezier(.45,0,.55,1)' },
+          { transform: 'scale(1)', offset: 1 }
+        ], { duration: 700, easing: 'linear' });
+        popCount();
+      }
+      orb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: wasHidden ? 120 : 160, easing: 'ease-out', fill: 'forwards' }).onfinish = () => orb.remove();
+      setTimeout(() => orb.remove(), 400);
+    };
+    // hand over just before the orb settles, so there's no pause
+    setTimeout(land, DUR * .82);
+    fly.onfinish = land;
+  };
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-add]');
+    if (a) {
+      const id = a.dataset.add;
+      if (build.includes(id)) {
+        build = build.filter(x => x !== id); delete buildOpt[id]; renderBuild();
+        if (build.length && !reduce) buildEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(.955)' }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+      }
+      else { build.push(id); flyToBuild(a, () => renderBuild(false)); }
+    }
+    const r = e.target.closest('[data-remove]');
+    if (r) { build = build.filter(x => x !== r.dataset.remove); delete buildOpt[r.dataset.remove]; renderBuild(); if (build.length && !reduce) buildEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(.955)' }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' }); }
+  });
+  $('#buildToggle').addEventListener('click', () => {
+    const open = !buildEl.classList.contains('is-open');
+    buildEl.classList.toggle('is-open', open); $('#buildToggle').setAttribute('aria-expanded', open);
+  });
+
+  /* ---------- Booking modal ---------- */
+  const modal = $('#modal');
+  const fillWork = service => {
+    const items = build.map(id => ALL[id].brand + ' ' + ALL[id].title + (optName(id) ? ` (${optName(id)})` : ''));
+    if (service && !items.includes(service)) items.unshift(service);
+    $('#bfWork').value = items.join('\n');
+  };
+
+  /* One-time offer, shown before booking and before checkout (lifts order value). Always exactly 3 add-ons from the real
+     catalogue that fit their car and go with what's in their build, behind a countdown.
+     Price rule: a part at full price is 5% off; a part already on sale (Shopify "compare at" price) shows its own sale
+     discount and gets nothing extra on top. Parts on bigger sales rank higher. No 3 good matches = no offer. */
+  const OFFER = window.cx.offer || {};
+  // extra % off full-price parts. 0 until a discount app that honours it is installed (Shopify only runs our own
+  // discount rule on Plus); then set it in Theme settings > One-time offer and the cart marks those parts for the app
+  const OFFER_PCT = Math.max(0, +OFFER.percent || 0) / 100;
+  // tempting lines per kind of part, under its name; two parts of the same kind get different lines
+  const OFFER_HOOK = { Lighting: ['Finishes the light show', 'Turns heads after dark', 'Lights up every arrival'],
+    Interior: ['You\'ll feel it every drive', 'Upgrades every drive', 'The detail you\'ll love most'],
+    Exhaust: ['Unlock the full sound', 'Hear the difference'], Performance: ['More power, same visit', 'Sharper response, every drive'],
+    Brakes: ['Stop as hard as you go', 'Confidence on every corner'], Suspension: ['Sits lower, drives sharper', 'Corners flatter, looks meaner'],
+    'Body kits': ['Completes the look', 'Turns heads everywhere'], Accessories: ['The finishing touch', 'Small part, big difference'] };
+  const offerHooks = ids => { const used = {}; return ids.map(id => { const c = ALL[id].cat, list = OFFER_HOOK[c] || OFFER_HOOK.Accessories, n = used[c] = (used[c] || 0) + 1; return list[(n - 1) % list.length]; }); };
+  const OFFER_MS = (+OFFER.minutes || 3) * 60 * 1000;
+  // what goes with what: ambient lighting -> steering wheel, DRL modules; exhaust -> intake ...
+  const GOES = { Lighting: ['Interior', 'Lighting'], Interior: ['Lighting', 'Interior'], 'Body kits': ['Lighting', 'Body kits', 'Accessories'], Exhaust: ['Performance', 'Exhaust'],
+    Performance: ['Exhaust', 'Performance', 'Brakes'], Suspension: ['Brakes', 'Suspension'], Brakes: ['Suspension', 'Brakes'], Accessories: ['Lighting', 'Interior'] };
+  let offerIds = [], offerPick = new Set(), offerTick, offerNext = 'book'; // where the offer leads: the booking form or checkout
+  const offerEnd = () => { let t = +sessionStorage.getItem('offerEnd'); if (!t) { t = Date.now() + OFFER_MS; sessionStorage.setItem('offerEnd', t); } return t; };
+  const offerLive = () => !sessionStorage.getItem('offerEnd') || +sessionStorage.getItem('offerEnd') > Date.now();
+  const onSale = p => p.compare > p.price;
+  const salePct = p => onSale(p) ? Math.round((1 - p.price / p.compare) * 100) : 0;
+  const offerPrice = p => onSale(p) || !OFFER_PCT ? p.price : Math.round(p.price * (1 - OFFER_PCT) * 100) / 100;
+  const offerOff = p => onSale(p) ? salePct(p) : Math.round(OFFER_PCT * 100); // the % shown on the pill, 0 = no pill
+  const offerWas = p => onSale(p) ? p.compare : p.price;
+  const offerPicks = () => {
+    const pool = (CAT && CAT.length ? CAT : PARTS), inBuild = build.map(id => ALL[id]).filter(Boolean);
+    const cars = vehicle ? [vehicle.id] : [...new Set(inBuild.flatMap(p => p.fits === '*' ? [] : p.fits))];
+    const brands = new Set(inBuild.map(p => p.brand)), cats = new Set(inBuild.map(p => p.cat));
+    const want = new Set(inBuild.flatMap(p => GOES[p.cat] || []));
+    const total = inBuild.reduce((s, p) => s + (p.price || 0), 0), cap = Math.min(2500, Math.max(300, total * 1.2));
+    const fitsCar = p => !cars.length ? p.fits === '*' : p.fits === '*' || cars.some(c => p.fits.includes(c));
+    // parts already on sale come first (the real discount Shopify charges at checkout), bigger sales first
+    const score = p => (p.fits !== '*' && cars.some(c => p.fits.includes(c)) ? 4 : 0) + (want.has(p.cat) ? 3 : 0) + (brands.has(p.brand) ? 1 : 0) + (onSale(p) ? 5 : 0) + salePct(p) / 10;
+    const ok = p => p.h && fitsCar(p) && !build.includes(p.id) && stockOf(p.id) === 'in' && p.price >= 15 && !HIDDEN_BRANDS.test(p.brand) && !/spare part|replacement part/i.test(p.title);
+    // already buying an ambient kit: don't offer another ambient kit
+    const hasAmbient = inBuild.some(p => /ambien/i.test(p.title));
+    const ranked = pool.filter(p => ok(p) && !(hasAmbient && /ambien/i.test(p.title))).sort((a, b) => score(b) - score(a) || a.price - b.price);
+    // the same part in another colour or finish counts once ("RGB DRL modules" / "CSL yellow DRL modules")
+    const kind = p => p.title.toLowerCase().replace(/\b(rgb|csl|yellow|white|red|black|blue|burnt|amber|silver|chrome|polished|titanium|bronze|gold|green|purple|pink|carbon|gloss|glossy|matte|satin|forged|dry|pre-preg|v\d)\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 22);
+    const picks = [], kinds = new Set();
+    const take = list => { for (const p of list) { if (picks.length === 3) return; if (picks.includes(p) || kinds.has(kind(p))) continue; picks.push(p); kinds.add(kind(p)); } };
+    take(ranked.filter(p => want.has(p.cat) && p.price <= cap));  // parts that go with what they're buying (ambient kit -> DRLs, steering wheel)
+    take(ranked.filter(p => p.price <= cap));                      // then the best of the rest for their car
+    take(ranked);                                                  // then anything that fits, whatever the price
+    return picks.length === 3 ? picks : [];
+  };
+  const stockCache = {};
+  const liveStock = p => stockCache[p.h] || (stockCache[p.h] = fetch(`${ROOT}products/${encodeURIComponent(p.h)}?view=cx-stock`)
+    .then(r => r.ok ? r.text() : '').then(t => { try { return JSON.parse(t).q; } catch (e) { return null; } }).catch(() => null));
+  const offerPaint = () => {
+    const sel = offerIds.filter(id => offerPick.has(id)), use = sel.length ? sel : offerIds;
+    const save = use.reduce((s, id) => s + offerWas(ALL[id]) - offerPrice(ALL[id]), 0);
+    $$('.offer__item', modal).forEach(b => b.setAttribute('aria-pressed', offerPick.has(b.dataset.offer)));
+    $('#offerAdd').textContent = `${sel.length ? `Add ${sel.length === 1 ? 'it' : sel.length}` : 'Add all 3'} to my build${save > 0 ? ` · save ${money(save)}` : ''}`;
+  };
+  const offerClock = () => {
+    const left = Math.max(0, offerEnd() - Date.now()), m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+    $('#offerClock').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    if (!left) { clearInterval(offerTick); $('#offerTimer').textContent = 'This offer has ended'; $('#offer').classList.add('is-over'); $('#offerSkip').textContent = 'Continue'; }
+  };
+  const offerShow = () => {
+    if (OFFER.on === false || !offerLive()) return false;
+    offerIds = offerPicks().map(p => p.id); offerPick = new Set();
+    if (offerIds.length < 3) return false;
+    $('#offerVeh').textContent = vehicle ? modelName(vehicle.id) : 'car';
+    $('#offer .h3').textContent = 'Finish your build for less';
+    $('#offerTimer').hidden = false;
+    $('#offerTimer').innerHTML = 'Special offer ends in <b id="offerClock">--:--</b>';
+    const hooks = offerHooks(offerIds);
+    $('#offerList').innerHTML = offerIds.map((id, k) => { const p = ALL[id], pct = offerOff(p);
+      return `<button type="button" class="offer__item" data-offer="${id}" aria-pressed="false">
+      <img src="${src(p.img)}" alt="">
+      <span class="offer__txt"><small>${esc(p.brand)}</small>${esc(p.title)}<em>${hooks[k]}</em></span>
+      <span class="offer__price">${pct ? `<s>${money(offerWas(p))}</s>` : ''}<b>${money(offerPrice(p))}</b>${pct ? `<i>${pct}% off</i>` : ''}</span>
+      <span class="offer__check" aria-hidden="true"></span></button>`; }).join('');
+    $('#offer').classList.remove('is-over'); $('#offerSkip').textContent = 'No thanks, maybe later';
+    offerPaint(); clearInterval(offerTick); offerClock(); offerTick = setInterval(offerClock, 1000);
+    // real stock only (when Shopify tracks it): 1-5 left shows the number, 6-10 "a few", more keeps the tempting line
+    offerIds.forEach(id => liveStock(ALL[id]).then(q => {
+      const em = $(`.offer__item[data-offer="${CSS.escape(id)}"] .offer__txt em`, modal), at = offerOff(ALL[id]) ? ' at this price' : '';
+      if (em && q > 0 && q <= 5) em.textContent = `Only ${q} left${at}`;
+      else if (em && q > 5 && q <= 10) em.textContent = `Only a few left${at}`;
+    }));
+    return true;
+  };
+  // move to the booking form inside the same card: the card eases to its new height while the form fades up
+  const toBooking = () => {
+    clearInterval(offerTick); fillWork();
+    const card = $('.modal__card', modal), from = $('#offer'), to = $('#bookStep'), h0 = card.offsetHeight;
+    from.hidden = true; to.hidden = false; card.scrollTop = 0;
+    if (!reduce) {
+      const h1 = card.offsetHeight;
+      card.animate([{ height: h0 + 'px', overflow: 'hidden' }, { height: h1 + 'px', overflow: 'hidden' }], { duration: 420, easing: 'cubic-bezier(.16,1,.3,1)' });
+      to.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 90, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' });
+    }
+  };
+  $('#offerList').addEventListener('click', e => {
+    const b = e.target.closest('[data-offer]'); if (!b || $('#offer').classList.contains('is-over')) return;
+    offerPick.has(b.dataset.offer) ? offerPick.delete(b.dataset.offer) : offerPick.add(b.dataset.offer); offerPaint();
+  });
+  $('#offerAdd').addEventListener('click', () => {
+    const ids = offerPick.size ? offerIds.filter(id => offerPick.has(id)) : offerIds;
+    ids.forEach(id => { if (!build.includes(id)) build.push(id); if (!onSale(ALL[id]) && OFFER_PCT) deals[id] = offerPrice(ALL[id]); });
+    renderBuild(true); buildEl.classList.remove('is-open'); offerDone();
+  });
+  const offerDone = () => { if (offerNext === 'checkout') { clearInterval(offerTick); closeModal(); openCheckout(); } else toBooking(); };
+  $('#offerSkip').addEventListener('click', offerDone);
+
+  const openModal = (service, withOffer, next = 'book') => {
+    offerNext = next;
+    const offer = withOffer && build.length && offerShow();
+    if (next === 'checkout' && !offer) { openCheckout(); return; }
+    $('#bfVehicle').value = vehicle ? vName(vehicle.id, vehicle.year) : '';
+    fillWork(service);
+    $('#offer').hidden = !offer; $('#bookStep').hidden = !!offer;
+    const d = new Date(); d.setDate(d.getDate() + 2); $('#bfDate').min = new Date().toISOString().slice(0, 10); $('#bfDate').value = d.toISOString().slice(0, 10);
+    clearTimeout(modal._t); modal.hidden = false; void modal.offsetWidth; modal.classList.add('open'); document.body.classList.add('locked');
+    buildEl.classList.remove('is-open');
+    if (!offer) setTimeout(() => ($('#bfVehicle').value ? $('#bfWork') : $('#bfVehicle')).focus(), 50);
+  };
+  const closeModal = () => { clearInterval(offerTick); modal.classList.remove('open'); clearTimeout(modal._t); modal._t = setTimeout(() => { modal.hidden = true; }, reduce ? 0 : 320); if (!menu.classList.contains('is-open') && pdpEl.hidden) document.body.classList.remove('locked'); };
+  // "Add your vehicle" step: jump to the finder and open Make
+  $$('[data-step="vehicle"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); goFinder(); }));
+  $$('[data-book]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); openModal(b.dataset.service, b.hasAttribute('data-offer')); }));
+  $('#pdpBook').addEventListener('click', () => { const id = pdpId, p = ALL[id]; closePdp(); openModal(p.brand + ' ' + p.title + (PDP[id] && PDP[id].opts[pdpOpt] ? ` (${PDP[id].opts[pdpOpt][0]})` : '')); });
+  $('#modalClose').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  // Book this build: the install details ride along to the same checkout (in Shopify, as cart notes the lab gets by email)
+  $('#bookForm').addEventListener('submit', e => {
+    e.preventDefault(); closeModal();
+    if (!build.length) { const [nm, ph] = $$('.two input', e.target).map(i => i.value.trim()); sendRequest({ name: nm, phone: ph, vehicle: $('#bfVehicle').value.trim(), work: $('#bfWork').value.trim(), day: $('#bfDate').value }); return; }
+    const [name, phone] = $$('.two input', e.target).map(i => i.value.trim()), d = $('#bfDate').value;
+    openCheckout({ name, phone, day: d ? new Date(d + 'T00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '' });
+  });
+
+  /* ---------- Header search: bar on desktop, magnifier on phones ---------- */
+  const qs = $('#qs'), qsIn = $('#qsInput'), qsPanel = $('#qsPanel');
+  const qsHay = p => `${p.brand} ${p.title} ${p.h || ''} ${p.cat} ${p.sub || ''} ${p.fits === '*' ? '' : p.fits.map(id => VEHICLES[id][0] + ' ' + VEHICLES[id][1]).join(' ')}`.toLowerCase();
+  const qsRender = () => {
+    const q = qsIn.value.trim();
+    if (!q) { qsPanel.hidden = true; return; }
+    const words = q.toLowerCase().split(/\s+/);
+    // the whole store catalogue once it's loaded (the curated parts until then); parts for your car first
+    if (!CAT || !CAT.length) loadCatalog().then(() => { if (qsIn.value.trim() === q) qsRender(); });
+    const pool = CAT && CAT.length ? CAT : PARTS, mine = p => vehicle && fitsCar(p, vehicle.id) ? 0 : 1;
+    const hits = [...pool, ...INSTALLS].filter(p => { const h = qsHay(p); return words.every(w => h.includes(w)); }).sort((a, b) => mine(a) - mine(b)).slice(0, 6);
+    qsPanel.innerHTML = (hits.length
+      ? hits.map(p => `<button type="button" class="qs__item" data-pdp="${p.id}"><img src="${src(p.img)}" alt=""><span><small>${esc(p.brand)}</small>${esc(p.title)}</span><b>${p.from ? '<small>from</small> ' : ''}${money(p.price)}</b></button>`).join('')
+      : `<p class="qs__none">No quick matches. Call <a href="tel:0483939304">our team</a> and we'll source it.</p>`)
+      + `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`;
+    qsPanel.hidden = false;
+  };
+  // Phones: the field grows out of the magnifier (CSS transition); tell it, in exact pixels, where the button sits
+  const qsBox = $('.qs__box', qs);
+  let qsWant = false; // open or closed as last asked, even mid-animation
+  const qsOpen = on => {
+    qsWant = on;
+    const b = $('#qsBtn').getBoundingClientRect(), r = qsBox.getBoundingClientRect();
+    qs.style.setProperty('--qs-l', Math.max(0, Math.round(b.left - r.left)) + 'px');
+    qs.style.setProperty('--qs-r', Math.max(0, Math.round(r.right - b.right)) + 'px');
+    qs.classList.toggle('is-open', on); $('#qsBtn').setAttribute('aria-expanded', on);
+    if (on) { qsIn.focus(); qsRender(); } else { qsPanel.hidden = true; qsIn.blur(); }
+  };
+  $('#qsBtn').addEventListener('click', () => qsOpen(!qsWant));
+  $('#qsClose').addEventListener('click', () => { qsIn.value = ''; qsOpen(false); });
+  qsIn.addEventListener('input', qsRender);
+  qsIn.addEventListener('focus', qsRender);
+  qs.addEventListener('submit', e => { e.preventDefault(); const q = qsIn.value.trim(); if (!q) return; qsOpen(false); location.hash = '#/parts?q=' + encodeURIComponent(q); });
+  qsPanel.addEventListener('click', e => { if (e.target.closest('[data-pdp], .qs__all')) setTimeout(() => qsOpen(false)); });
+  document.addEventListener('click', e => { if (!qs.contains(e.target) && (qsWant || !qsPanel.hidden)) qsOpen(false); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && (qsWant || !qsPanel.hidden)) qsOpen(false); });
+
+  // Shopify contact form: a note to the store's inbox (install guide requests, reviews)
+  const sendNote = (lines, email, name) => fetch(ROOT + 'contact', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ form_type: 'contact', utf8: '✓', 'contact[name]': name || '', 'contact[email]': email || window.cx.shopEmail || '', 'contact[body]': lines.filter(Boolean).join('\n') }) });
+  const partLine = id => { const q = ALL[id]; return `Part: ${q.brand} ${(PDP[id] && PDP[id].full) || q.title}${q.h ? ' (' + location.origin + ROOT + 'products/' + q.h + ')' : ''}`; };
+  // Shopify contact form: booking requests land in the store's inbox
+  const sendRequest = r => {
+    const f = new URLSearchParams({ form_type: 'contact', utf8: '✓', 'contact[name]': r.name || '', 'contact[email]': r.email || window.cx.shopEmail || '', 'contact[phone]': r.phone || '',
+      'contact[body]': ['Install booking request', r.vehicle && 'Vehicle: ' + r.vehicle, r.work && 'Work: ' + r.work, r.day && 'Preferred day: ' + r.day].filter(Boolean).join('\n') });
+    fetch(ROOT + 'contact', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: f })
+      .then(() => toast('Request sent. The lab will call you within one business day.'))
+      .catch(() => toast('That did not send. Please call the team on 0483 939 304.'));
+  };
+  /* ---------- Checkout ---------- */
+  const co = $('#checkout');
+  const openCheckout = install => {
+    $('#coKick').textContent = install ? 'Book this build' : 'Secure checkout';
+    $('#coTitle').textContent = install ? 'Confirm your build' : 'Your order';
+    $('#coGo').innerHTML = (install ? 'Checkout &amp; book install' : 'Checkout') + ' <i>&rarr;</i>';
+    $('#coVeh').textContent = vehicle ? 'For your ' + vName(vehicle.id, vehicle.year) : '';
+    $('#coList').innerHTML = build.map(id => { const p = ALL[id]; return `<li><img src="${src(p.img)}" alt=""><span>${p.brand} ${p.title}${optName(id) ? `<small>${optName(id)}</small>` : ''}</span><b>${money(priceOf(id))}</b></li>`; }).join('');
+    $('#coTotal').textContent = $('#buildTotal').textContent;
+    const ci = $('#coInstall'); ci.hidden = !install;
+    if (install) ci.innerHTML = `<b>Install request</b><span>${esc(install.name)} · ${esc(install.phone)}${install.day ? ' · ' + esc(install.day) : ''}</span><small>Sent to the lab with your order. They'll call to lock in your day.</small>`;
+    co._install = install; clearTimeout(co._t); co.hidden = false; void co.offsetWidth; co.classList.add('open'); document.body.classList.add('locked');
+    buildEl.classList.remove('is-open');
+  };
+  const closeCheckout = () => { co.classList.remove('open'); clearTimeout(co._t); co._t = setTimeout(() => { co.hidden = true; }, reduce ? 0 : 320); if (!menu.classList.contains('is-open') && pdpEl.hidden) document.body.classList.remove('locked'); };
+  $$('[data-checkout]').forEach(b => b.addEventListener('click', () => openModal(null, true, 'checkout')));
+  $('#coClose').addEventListener('click', closeCheckout);
+  co.addEventListener('click', e => { if (e.target === co) closeCheckout(); });
+  // Shopify: put the build in the real cart (car, install services and booking details as order notes), then open checkout
+  const postJSON = (path, body) => fetch(ROOT + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) })
+    .then(r => { if (!r.ok) throw new Error(path); return r.json(); });
+  $('#coGo').addEventListener('click', async () => {
+    // the static copy of this design (illumolab.strydedigital.com.au) has no Shopify cart behind it
+    if (window.cx.static) { closeCheckout(); toast('This is where the secure Shopify checkout opens.'); return; }
+    const btn = $('#coGo'), install = co._install; btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+    try {
+      const items = [], services = [];
+      for (const id of build) {
+        const p = ALL[id];
+        if (!p.h && !(PDP[id] && PDP[id].url)) { services.push(p.title); continue; }
+        await ensureDetail(id);
+        const d = PDP[id] || {}, vid = d.vids && d.vids[buildOpt[id] != null ? buildOpt[id] : d.first];
+        if (vid) items.push(deals[id] != null ? { id: vid, quantity: 1, properties: { _one_time_offer: Math.round(OFFER_PCT * 100) + '%' } } : { id: vid, quantity: 1 }); else services.push(p.brand + ' ' + p.title);
+      }
+      await postJSON('cart/clear.js', {});
+      if (items.length) await postJSON('cart/add.js', { items });
+      // start from blanks so notes from an earlier visit (an old booking, another car) never ride along on this order
+      const attributes = { 'Vehicle': '', 'Install services': '', 'Install booking': '', 'Name': '', 'Phone': '', 'Preferred day': '' };
+      if (vehicle) attributes['Vehicle'] = vName(vehicle.id, vehicle.year);
+      if (services.length) attributes['Install services'] = services.join(', ');
+      if (install) Object.assign(attributes, { 'Install booking': 'Yes', 'Name': install.name || '', 'Phone': install.phone || '', 'Preferred day': install.day || '' });
+      await postJSON('cart/update.js', { attributes });
+      if (!items.length) { closeCheckout(); sendRequest({ name: install && install.name, phone: install && install.phone, day: install && install.day, work: services.join(', ') }); return; }
+      // offer parts added at the offer price: the real discount code goes with them to checkout
+      location.href = OFFER.code && Object.keys(deals).length ? `${ROOT}discount/${encodeURIComponent(OFFER.code)}?redirect=${encodeURIComponent(ROOT + 'checkout')}` : ROOT + 'checkout';
+    } catch (e) { btn.disabled = false; btn.removeAttribute('aria-busy'); toast('Checkout did not open. Please try again or call the team.'); }
+  });
+
+  /* ---------- Content pages: #/pages/<handle>, the same handle Shopify uses for /pages/<handle> ---------- */
+  const PG = window.PAGES || {};
+  const pgP = arr => (arr || []).map(x => `<p>${x}</p>`).join('');
+  const pgList = arr => arr && arr.length ? `<ul class="pg__list${arr.some(x => x.length > 90) ? ' pg__list--long' : ''}">${arr.map(x => `<li>${x}</li>`).join('')}</ul>` : '';
+  const pgSec = s => `<section class="pg__sec">
+      ${s.h ? `<h2 class="pg__h">${s.h}</h2>` : '<span></span>'}
+      <div class="pg__body">${pgP(s.p)}${pgList(s.list)}${pgP(s.after)}
+        ${s.cards ? `<div class="pg__cards">${s.cards.map(c => `<div class="pg__card"><b>${c.t}</b>${pgP(c.p)}${pgList(c.list)}</div>`).join('')}</div>` : ''}
+        ${s.table ? `<div class="pg__table" style="--n:${s.table[0].length}">${s.table.map((r, i) => `<div class="pg__row${s.thead && !i ? ' pg__row--head' : ''}">${r.map(c => `<span>${c}</span>`).join('')}</div>`).join('')}</div>` : ''}
+        ${s.faq ? `<div class="pg__faq">${s.faq.map(([q, a]) => `<details><summary>${q}</summary><div>${a}</div></details>`).join('')}</div>` : ''}
+      </div></section>`;
+  const temp = t => { const m = (t || '').match(/(\d+)\s*-\s*(\d+)/); return m ? [+m[1], +m[2]] : null; };
+  const pgPads = pads => `<div class="pg__pads">${pads.map(d => { const r = temp(d.temp); return `<article class="pg__pad">
+      <span class="pg__use">${d.use || ''}</span><h3>${d.t}</h3>${pgP(d.p)}
+      <dl><div><dt>Material</dt><dd>${d.material}</dd></div><div><dt>Temperature</dt><dd>${d.temp.replace('c', '°C')}</dd></div></dl>
+      ${r ? `<div class="pg__temp" aria-hidden="true"><i style="left:${r[0] / 9}%;right:${100 - r[1] / 9}%"></i></div><div class="pg__scale"><span>0°C</span><span>900°C</span></div>` : ''}
+    </article>`; }).join('')}</div>`;
+  const pgModels = brands => `<label class="pg__find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input type="search" id="pgFind" placeholder="Search your make or model" aria-label="Search your make or model"></label>
+    <div class="pg__brands" id="pgBrands">${brands.map(b => `<details class="pg__brand"><summary>${b.b}<b>${b.models.length}</b></summary><div>${b.models.map(m => `<span>${m}</span>`).join('')}</div></details>`).join('')}</div>
+    <p class="pg__none" id="pgNone" hidden>Not listed yet. Email <a href="mailto:hello@iilumolab.com">hello@iilumolab.com</a> and we'll check your car.</p>`;
+  const pgContact = () => `<div class="pg__contact">
+      <div class="pg__cards pg__cards--contact">
+        <div class="pg__card"><b>Email</b><p><a href="mailto:hello@iilumolab.com">hello@iilumolab.com</a></p></div>
+        <div class="pg__card"><b>Call or text</b><p><a href="tel:0483939304">0483 939 304</a><br>International <a href="tel:+61483939304">+61 483 939 304</a></p></div>
+        <div class="pg__card"><b>Workshop</b><p>22 Atlantic Drive, Keysborough VIC 3173</p><a class="pill pill--outline" href="https://www.google.com/maps/dir/?api=1&destination=22+Atlantic+Drive+Keysborough+VIC+3173" target="_blank" rel="noopener">Directions <i>&rarr;</i></a></div>
+        <div class="pg__card"><b>Hours</b><dl class="pg__hours"><div><dt>Monday to Friday</dt><dd>9am to 5pm</dd></div><div><dt>Saturday</dt><dd>10am to 2pm</dd></div><div><dt>Sunday &amp; public holidays</dt><dd>Closed</dd></div></dl><p class="pg__small">Appointments are needed for installs.</p></div>
+      </div>
+      <iframe class="pg__map" title="Map to iilumolab, Keysborough" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=22+Atlantic+Drive+Keysborough+VIC+3173&output=embed"></iframe>
+    </div>`;
+  const pgJobs = jobs => jobs.map(j => `<article class="pg__job">
+      <header><div><p class="eyebrow eyebrow--dark">Now hiring</p><h2>${j.t}</h2><p class="pg__small">${j.meta}</p></div>
+        <a class="btn btn--amber" href="${j.apply}" target="_blank" rel="noopener">Apply now <i>&rarr;</i></a></header>
+      ${j.sections.map(pgSec).join('')}
+      <p class="pg__small">All applications are strictly confidential.</p>
+    </article>`).join('');
+  const renderPage = slug => {
+    if (slug === 'iilumo-rewards') return renderRewards();
+    let p = PG[slug];
+    if (!p && window.cx.page === slug && window.cx.pageTitle) {
+      const box = $('#cxPage');
+      p = { group: 'Info', title: window.cx.pageTitle, lead: [], facts: [], sections: [], html: box ? box.innerHTML : '' };
+    }
+    if (!p) { location.hash = '#/'; return; }
+    const svc = p.group === 'Services';
+    const ctas = `${p.book ? `<button type="button" class="btn btn--amber" data-book-page="${esc(p.book)}">Book now <i>&rarr;</i></button>` : ''}
+      ${(p.links || []).map(([t, u]) => `<a class="btn btn--black" href="${u}"${u.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${t} <i>&rarr;</i></a>`).join('')}
+      <a class="btn btn--line" href="tel:0483939304">Call our team</a>`;
+    const more = svc ? Object.entries(PG).filter(([k, v]) => v.group === 'Services' && k !== slug) : [];
+    $('#pgBody').innerHTML = `
+      <header class="pg__hero${p.img ? '' : ' pg__hero--plain'}">
+        <div class="pg__intro">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><span>${p.group}</span><span>/</span><b>${p.title}</b></nav>
+          <h1 class="pg__title">${p.title}</h1>
+          <div class="pg__lead">${pgP(p.lead)}</div>
+          ${p.group === 'Policies' ? '' : `<div class="pg__ctas">${ctas}</div>`}
+        </div>
+        ${p.img ? `<figure class="pg__img"><img src="${p.img}" alt="${esc(p.title)} by iilumolab"></figure>` : ''}
+      </header>
+      ${p.facts.length ? `<div class="pg__facts">${p.facts.map(([b, s]) => `<div class="pg__fact"><b>${b}</b><span>${s}</span></div>`).join('')}</div>` : ''}
+      ${p.contact ? pgContact() : ''}
+      ${p.before_after ? `<div class="pg__ba">${p.before_after.map((u, i) => `<figure><img src="${u}" alt="Steering wheel ${i ? 'after' : 'before'} the wrap" loading="lazy"><figcaption>${i ? 'After' : 'Before'}</figcaption></figure>`).join('')}</div>` : ''}
+      ${p.pads ? pgPads(p.pads) : ''}
+      ${p.models ? pgModels(p.models) : ''}
+      ${p.jobs ? pgJobs(p.jobs) : ''}
+      ${p.html ? `<div class="pg__secs"><div class="pg__sec pg__rte">${p.html}</div></div>` : ''}
+      <div class="pg__secs">${p.sections.map(pgSec).join('')}</div>
+      ${more.length ? `<nav class="pg__more" aria-label="More services"><p class="eyebrow eyebrow--dark">More from the lab</p><div>${more.map(([k, v]) => `<a class="pill pill--outline" href="#/pages/${k}">${v.title}</a>`).join('')}</div></nav>` : ''}
+      <section class="pg__cta">
+        <div><h2>${svc ? 'Ready when you are.' : 'Questions? Talk to a human.'}</h2><p>${svc ? 'Book a time at the Keysborough lab, or ask our team anything first.' : 'Our team answers six days a week, by phone, text or email.'}</p></div>
+        <div class="pg__ctas">${p.book ? `<button type="button" class="btn btn--amber" data-book-page="${esc(p.book)}">Book now <i>&rarr;</i></button>` : `<a class="btn btn--amber" href="#/pages/contact-us">Contact us <i>&rarr;</i></a>`}<a class="btn btn--line" href="tel:0483939304">Call our team</a></div>
+      </section>`;
+    document.title = `${p.title} | iilumolab`;
+    const find = $('#pgFind');
+    if (find) find.addEventListener('input', () => {
+      const q = find.value.trim().toLowerCase(); let any = false;
+      $$('.pg__brand', $('#pgBrands')).forEach(d => {
+        const brandHit = d.querySelector('summary').textContent.toLowerCase().includes(q);
+        let n = 0; $$('span', d).forEach(s => { const on = !q || brandHit || s.textContent.toLowerCase().includes(q); s.hidden = !on; n += on; });
+        d.hidden = !n; d.open = !!q && n > 0; any = any || n > 0;
+      });
+      $('#pgNone').hidden = any;
+    });
+  };
+  document.addEventListener('click', e => { const b = e.target.closest('[data-book-page]'); if (b) openModal(b.dataset.bookPage); });
+
+  // iilumo Rewards early access (coming soon): email capture pop-up
+  const cm = $('#clubModal');
+  const openClub = () => {
+    clearTimeout(cm._t); cm.hidden = false; void cm.offsetWidth; cm.classList.add('open');
+    document.body.classList.add('locked');
+    setTimeout(() => { const i = $('#cmForm input'); if (i) i.focus({ preventScroll: true }); }, 350);
+  };
+  const closeClub = () => {
+    if (cm.hidden) return;
+    cm.classList.remove('open'); cm._t = setTimeout(() => { cm.hidden = true; }, reduce ? 0 : 380);
+    if (pdpEl.hidden && $('#modal').hidden && $('#checkout').hidden && !menu.classList.contains('is-open')) document.body.classList.remove('locked');
+  };
+  document.addEventListener('click', e => { if (e.target.closest('[data-club]')) { e.preventDefault(); openClub(); } });
+  $('#cmClose').addEventListener('click', closeClub);
+  cm.addEventListener('click', e => { if (e.target === cm) closeClub(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !cm.hidden) { e.stopImmediatePropagation(); closeClub(); } }, true);
+  cm.addEventListener('submit', e => {
+    e.preventDefault();
+    const f = $('#cmForm'), em = f.querySelector('input');
+    if (!/^\S+@\S+\.\S+$/.test(em.value)) { em.focus(); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); return; }
+    fetch(ROOT + 'contact', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ form_type: 'customer', utf8: '✓', 'contact[email]': em.value, 'contact[tags]': 'iilumo-rewards, newsletter' }) }).catch(() => {});
+    $('#cmBody').innerHTML = `<div class="cm__done"><div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><b>You're on the list</b><span>We'll email ${esc(em.value)} the moment iilumo Rewards opens.</span></div>`;
+  });
+
+
+  /* ---------- iilumo Rewards (coming soon): five tier cards, a fan on the home page and the #/pages/iilumo-rewards page ---------- */
+  const TIERS = [
+    { k: 'premier', n: 'Premier', line: 'Your first card. Every member starts here.' },
+    { k: 'gold', n: 'Gold', line: 'For the regulars. More back on every build.' },
+    { k: 'platinum', n: 'Platinum', line: 'For serious builds. Priority at the lab.' },
+    { k: 'diamond', n: 'Diamond', line: 'For the garage that never stops.' },
+    { k: 'black', n: 'Black', line: 'The top card. Few will hold it.' },
+  ];
+  // Engraved line art on every card: a coupe side-on (front to the right), drawn as one stroke set
+  const RC_ART = `<svg class="rc__art" viewBox="0 0 400 132" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 104 22 88Q26 78 52 75L120 70Q160 42 206 37L250 36Q286 38 318 60L362 68Q388 72 392 86L390 104H352A28 28 0 0 0 296 104H126A28 28 0 0 0 70 104Z"/>
+    <path d="M140 68Q168 48 205 44L244 43Q270 45 292 62Z M222 44 218 66"/>
+    <path d="M74 86Q200 77 372 80 M150 72 148 100 M262 68Q266 84 262 102 M366 74 386 78 M24 86 40 83 M284 60 292 56"/>
+    <circle cx="98" cy="104" r="22"/><circle cx="98" cy="104" r="12"/><circle cx="324" cy="104" r="22"/><circle cx="324" cy="104" r="12"/>
+    <path d="M10 127H390" opacity=".45"/></g></svg>`;
+  const rcard = (t, i, more = '') => `<div class="rc rc--${t.k}" data-tier="${t.k}" style="--i:${i}"${more}>
+      <i class="rc__sheen"></i>
+      <div class="rc__top"><div class="rc__tier"><b>${t.n}</b><span>Tier 0${i + 1} of 05</span></div>
+        <div class="rc__brand"><i class="rc__cube"></i><b>iilumo</b><span>Rewards</span></div></div>
+      ${RC_ART}
+    </div>`;
+  // Cards lean toward the cursor (mouse only; phones and reduced motion keep them still)
+  const rcHover = matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce;
+  const rcTilt = (el, area = el) => {
+    if (!rcHover) return;
+    area.addEventListener('pointermove', e => {
+      const r = el.getBoundingClientRect();
+      const x = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1), y = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1);
+      el.style.setProperty('--rx', ((.5 - y) * 14).toFixed(2) + 'deg');
+      el.style.setProperty('--ry', ((x - .5) * 20).toFixed(2) + 'deg');
+      el.style.setProperty('--mx', (x * 100).toFixed(1) + '%');
+      el.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+    });
+    area.addEventListener('pointerleave', () => ['--rx', '--ry', '--mx', '--my'].forEach(v => el.style.removeProperty(v)));
+  };
+  let rwStart = 'premier';
+  const fan = $('#rwFan');
+  if (fan && fan.isConnected) {
+    fan.innerHTML = TIERS.map((t, i) => rcard(t, i, ` role="link" tabindex="0" aria-label="${t.n} card"`)).join('');
+    $$('.rc', fan).forEach(c => {
+      rcTilt(c);
+      const go = () => { rwStart = c.dataset.tier; location.hash = '#/pages/iilumo-rewards'; };
+      c.addEventListener('click', go);
+      c.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    });
+  }
+  const renderRewards = () => {
+    $('#pgBody').innerHTML = `
+      <header class="rw-hero">
+        <div class="rw-hero__copy">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><b>iilumo Rewards</b></nav>
+          <p class="eyebrow eyebrow--dark">iilumo Rewards <span class="soon">Coming soon</span></p>
+          <h1 class="pg__title">Five cards.<br>One garage.</h1>
+          <div class="pg__lead"><p>Every order and install moves you closer to the next card, and every card gives you more back. Join the early list and be first in when it opens.</p></div>
+          <div class="pg__ctas"><button type="button" class="btn btn--amber" data-club>Get early access <i>&rarr;</i></button></div>
+        </div>
+        <div class="rw-stage">
+          <div class="rw-flip" id="rwFlip"></div>
+          <div class="rw-tabs" role="tablist" aria-label="Card tiers">${TIERS.map(t => `<button type="button" role="tab" class="rw-tab rw-tab--${t.k}" data-tier="${t.k}"><i></i>${t.n}</button>`).join('')}</div>
+        </div>
+      </header>
+      <section class="rw-sec">
+        <div class="rw-sec__head"><p class="eyebrow eyebrow--dark">The cards</p><h2 class="h2">Start at Premier. Finish at Black.</h2></div>
+        <div class="rw-tiers">${TIERS.map((t, i) => `<article class="rw-tier"><button type="button" class="rw-tier__card" data-tier="${t.k}" aria-label="Show the ${t.n} card">${rcard(t, i)}</button>
+          <span class="rw-tier__no">Tier 0${i + 1}</span><h3>${t.n}</h3><p>${t.line}</p></article>`).join('')}</div>
+      </section>
+      <section class="rw-teases">
+        <article class="rw-tease">
+          <div class="rw-tease__art">${rcard(TIERS[1], 1, ' aria-hidden="true"').replace('<i class="rc__sheen"></i>', '<i class="rc__sheen"></i><span class="rc__stamp">Your<br>club</span>')}</div>
+          <div><p class="eyebrow eyebrow--dark">Club editions</p><h3>Your car club gets its own card.</h3><p>Clubs we back get a club-edition card: your tier, your club's stamp, and perks just for your crew.</p></div>
+        </article>
+        <article class="rw-tease rw-tease--soon">
+          <div class="rw-tease__lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg></div>
+          <div><p class="eyebrow eyebrow--dark">How it works <span class="soon">Coming soon</span></p><h3>How you earn and move up is nearly ready.</h3><p>Credit back, install perks and member drops, with more at every card. The full details land when iilumo Rewards opens. Early list members hear first.</p></div>
+        </article>
+      </section>
+      <section class="pg__cta">
+        <div><h2>Be first in.</h2><p>Leave your email and we'll tell you the moment iilumo Rewards opens.</p></div>
+        <div class="pg__ctas"><button type="button" class="btn btn--amber" data-club>Get early access <i>&rarr;</i></button></div>
+      </section>`;
+    document.title = 'iilumo Rewards | iilumolab';
+    const flip = $('#rwFlip'), tabs = $$('.rw-tab');
+    let cur = null;
+    const show = k => {
+      if (k === cur) return;
+      const t = TIERS.find(x => x.k === k) || TIERS[0], i = TIERS.indexOf(t);
+      tabs.forEach(b => b.setAttribute('aria-selected', b.dataset.tier === t.k));
+      const paint = () => { flip.innerHTML = rcard(t, i, ` aria-label="${t.n} card"`); rcTilt($('.rc', flip), flip); };
+      // Swap with a half turn: the card turns edge-on, changes, and turns back
+      if (cur && !reduce) flip.animate([{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 220, easing: 'cubic-bezier(.5,0,.75,0)' })
+        .finished.then(() => { paint(); flip.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0)' }], { duration: 320, easing: 'cubic-bezier(.2,.7,.1,1)' }); });
+      else paint();
+      cur = t.k;
+    };
+    tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tier)));
+    $$('.rw-tier__card').forEach(b => b.addEventListener('click', () => { show(b.dataset.tier); scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); }));
+    show(rwStart); rwStart = 'premier';
+  };
+  addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!pdpEl.hidden) closePdp();
+    else if (!modal.hidden) closeModal();
+    else if (!co.hidden) closeCheckout();
+    else if (menu.classList.contains('is-open')) setMenu(false);
+    else buildEl.classList.remove('is-open');
+  });
+
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || a.hasAttribute('data-book') || a.matches('.menu__nav a') || a.dataset.step) return;
+    const id = a.getAttribute('href');
+    if (id.length < 2 || id.startsWith('#/') || !document.querySelector(id)) return;
+    e.preventDefault();
+    if (id === '#finder') goFinder(); else glide(id);
+  });
+
+  // Brand strip: turn every logo into clean transparent white, trim its empty edges,
+  // then size it by visual weight so wide wordmarks and square badges look equally big.
+  (() => {
+    const imgs = $$('.ticker .tl img');
+    // equal visual weight: area stays constant, height kept between 13px and 27px
+    const logoH = ratio => Math.max(13, Math.min(27, 20 * Math.sqrt(3.2 / ratio)));
+    const cache = {};
+    const process = img => new Promise(res => {
+      const src = img.getAttribute('src');
+      if (cache[src]) return res(cache[src]);
+      const im = new Image();
+      im.onload = () => {
+        const S = 240 / im.naturalHeight, W = Math.round(im.naturalWidth * S) || 240, H = 240;
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, W, H);
+        const d = x.getImageData(0, 0, W, H), p = d.data, mode = img.dataset.mode;
+        let x0 = W, y0 = H, x1 = 0, y1 = 0;
+        for (let i = 0; i < p.length; i += 4) {
+          const a = p[i + 3] / 255, l = (p[i] * .299 + p[i + 1] * .587 + p[i + 2] * .114) / 255;
+          let o = mode === 'light' ? a * (1 - l) : mode === 'dark' ? a * l : mode === 'thresh' ? (l - .55) / .3 : mode === 'bright' ? a * (l - .3) / .4 : a;
+          o = Math.max(0, Math.min(1, o)) * (mode === 'light' || mode === 'dark' ? 1 : 1);
+          if (mode === 'light' || mode === 'dark') o = o < .12 ? 0 : Math.min(1, (o - .12) / .7);
+          p[i] = p[i + 1] = p[i + 2] = 255; p[i + 3] = Math.round(o * 255);
+          if (o > .08) { const k = i / 4, px = k % W, py = (k / W) | 0; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; }
+        }
+        x.putImageData(d, 0, 0);
+        if (x1 <= x0) return res(null);
+        // store it at display size x3 (sharp on any screen), not the 240px working size: a 2000px logo
+        // shown 70px wide x30 in a moving strip is a big redraw cost on phones
+        const tw = x1 - x0 + 1, th = y1 - y0 + 1, ratio = tw / th;
+        const oh = Math.min(th, Math.ceil(logoH(ratio) * 3)), ow = Math.max(1, Math.round(oh * ratio));
+        const t = document.createElement('canvas'); t.width = ow; t.height = oh;
+        const tx = t.getContext('2d'); tx.imageSmoothingQuality = 'high'; tx.drawImage(c, x0, y0, tw, th, 0, 0, ow, oh);
+        res(cache[src] = { url: t.toDataURL('image/png'), ratio });
+      };
+      im.onerror = () => res(null);
+      im.src = src;
+    });
+    Promise.all(imgs.map(img => process(img).then(r => {
+      if (!r) return;
+      img.src = r.url;
+      img.style.height = logoH(r.ratio).toFixed(1) + 'px';
+    }))).then(() => $('.ticker').classList.add('is-ready'));
+  })();
+
+  /* ---------- Toast ---------- */
+  let tt;
+  const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('is-on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('is-on'), 2600); };
+
+  /* ---------- Brands cycler ---------- */
+  const BRANDS = (() => { // set in the theme editor (Brands we fit), the design's list as a fallback
+    const el = $('#brands');
+    try { const n = JSON.parse(el.dataset.names), c = JSON.parse(el.dataset.cats); if (n.length) return n.map((x, i) => [x, c[i] || '']); } catch (e) {}
+    return [['ADRO', 'Carbon aero & body kits'], ['Maxton Design', 'Splitters & diffusers'], ['Invidia', 'Cat back exhausts'], ['H&R', 'Lowering springs'], ['KW', 'Coilovers & spring kits'], ['Eventuri', 'Carbon intakes'], ['DIXCEL', 'Brake pads & rotors'], ['XForce', 'Valved exhausts'], ['Fi Exhaust', 'Valvetronic systems'], ['iilumo', 'LED & ambient lighting']];
+  })();
+  const bName = $('#brandName'), bCat = $('#brandCat'), bBar = $('#brandBar');
+  let bi = 0, bt = 0, paused = false, last = performance.now();
+  const DUR = 2600;
+  const nextBrand = () => {
+    bi = (bi + 1) % BRANDS.length;
+    bName.classList.add('out');
+    setTimeout(() => {
+      bName.classList.remove('out'); bName.classList.add('in');
+      bName.textContent = BRANDS[bi][0]; bCat.textContent = BRANDS[bi][1];
+      void bName.offsetWidth; bName.classList.remove('in');
+    }, 450);
+  };
+  const stage = $('#brandStage');
+  stage.addEventListener('mouseenter', () => paused = true);
+  stage.addEventListener('mouseleave', () => paused = false);
+  const loop = now => {
+    const dt = now - last; last = now;
+    if (!paused && !reduce) { bt += dt; if (bt >= DUR) { bt = 0; nextBrand(); } }
+    bBar.style.width = (bt / DUR) * 100 + '%';
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+  if (reduce) setInterval(() => !paused && nextBrand(), 4000);
+
+  /* ---------- Reveal, counters, parallax, hours ---------- */
+  const rio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-in'); rio.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  $$('.reveal').forEach(el => rio.observe(el));
+
+  const cio = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return; cio.unobserve(e.target);
+    const end = +e.target.dataset.count, t0 = performance.now(), d = reduce ? 1 : 1400;
+    const step = n => { const k = Math.min(1, (n - t0) / d); e.target.textContent = Math.round(end * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }), { threshold: .6 });
+  $$('[data-count]').forEach(el => cio.observe(el));
+
+  if (!reduce && !matchMedia('(max-width:760px), (hover:none)').matches) { // scroll-linked motion lags on phones; desktop only
+    const px = $$('.parallax');
+    const par = () => px.forEach(el => {
+      const r = el.getBoundingClientRect(), c = r.top + r.height / 2 - innerHeight / 2;
+      el.firstElementChild.style.transform = `translateY(${Math.max(-30, Math.min(30, -c * +el.dataset.speed))}px) scale(1.08)`;
+    });
+    addEventListener('scroll', par, { passive: true }); par();
+  }
+
+  // live open / closed badge (Melbourne lab hours)
+  (() => {
+    const now = new Date(), d = now.getDay(), hr = now.getHours() + now.getMinutes() / 60;
+    const HRS = {}; // from the Opening hours blocks in the theme editor
+    $$('#hours [data-days]').forEach(row => { const o = parseFloat(row.dataset.open), c = parseFloat(row.dataset.close); row.dataset.days.split(',').forEach(x => { HRS[+x] = isNaN(o) || isNaN(c) ? null : [o, c]; }); });
+    if (!Object.values(HRS).some(Boolean)) { HRS[0] = null; HRS[6] = [10, 14]; for (let i = 1; i <= 5; i++) HRS[i] = [9, 17]; }
+    const fmt = h => { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return (hh > 12 ? hh - 12 : hh) + (mm ? ':' + String(mm).padStart(2, '0') : '') + (hh >= 12 ? 'pm' : 'am'); };
+    const t = HRS[d], el = $('#openNow');
+    if (t && hr >= t[0] && hr < t[1]) { el.className = 'visit__now is-open'; el.innerHTML = `<i></i>Open now · until ${fmt(t[1])}`; }
+    else {
+      let k = 0, nd, nt; do { k++; nd = (d + k) % 7; nt = HRS[nd]; } while (!nt);
+      if (t && hr < t[0]) { nd = d; nt = t; k = 0; }
+      const day = k === 0 ? 'today' : k === 1 ? 'tomorrow' : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][nd];
+      el.className = 'visit__now'; el.innerHTML = `<i></i>Closed · opens ${day} ${fmt(nt[0])}`;
+    }
+  })();
+  const today = new Date().getDay();
+  $$('#hours [data-days]').forEach(el => el.classList.toggle('is-today', el.dataset.days.split(',').includes(String(today))));
+
+  /* ---------- Views: All parts + full product pages (hash routes, ready to map to Shopify templates) ---------- */
+  const views = { home: $('#home'), parts: $('#viewParts'), product: $('#viewProduct'), page: $('#viewPage') };
+  let current = 'home', CAT = null, catLoading = null;
+  const HIDDEN_BRANDS = /^zero\s*offset$/i;
+  const loadCatalog = () => catLoading || (catLoading = fetch((window.cx.data || {}).catalog || src('data/catalog.json')).then(r => r.json()).then(j => {
+    const seen = new Set(), featured = Object.fromEntries(PARTS.filter(p => p.h).map(p => [p.h, p]));
+    CAT = [];
+    j.rows.forEach(([id, h, b, t, pr, ci, fi, img, inStock, d, cmp, q]) => {
+      if (HIDDEN_BRANDS.test(b)) return; // brands the redesign doesn't feature
+      id = id || 'h:' + h; const pic = /^https?:/.test(img) ? img : j.cdn + img;
+      const fits = fi === '*' ? '*' : fi.map(k => j.veh[k]); // '*' = the store marks it as fitting every car
+      // a featured part keeps its short name and studio photo; everything else about it is the store's
+      let p = featured[h];
+      if (p) { p.fits = fits; p.price = pr; }
+      else { p = ALL[id] || (ALL[id] = { id, remote: true }); Object.assign(p, { h: h || id, brand: b, title: t, price: pr, cat: j.cats[ci], fits, img: pic + '?width=600', remote: true }); }
+      if (seen.has(p.id)) return;
+      if (PHOTO_SWAP[h]) p.img = src(PHOTO_SWAP[h][0]);
+      p.date = d; p.compare = cmp || 0; p.gone = false; setStock(p.id, inStock, q);
+      CAT.push(p); seen.add(p.id);
+    });
+    // a featured part the store no longer sells is dropped everywhere, the build included
+    PARTS.forEach(p => { if (!seen.has(p.id)) p.gone = true; });
+    if (build.some(id => ALL[id] && ALL[id].gone)) { build = build.filter(id => !(ALL[id] && ALL[id].gone)); renderBuild(); }
+    CAT_HOOKS.forEach(f => { try { f(); } catch (e) {} });
+    return CAT;
+  }).catch(() => { catLoading = null; return CAT = CAT || []; }));
+
+  // filter state
+  const F = { veh: null, cats: new Set(), brands: new Set(), stock: new Set(), min: null, max: null, sort: 'featured', q: '' };
+  let shown = 24;
+  const fitsCar = (p, v) => !v || p.fits === '*' || p.fits.includes(v);
+  const pass = (p, skip) => fitsCar(p, F.veh) && (!F.only || F.only.has(p.h))
+    && (skip === 'cat' || !F.cats.size || F.cats.has(p.cat))
+    && (skip === 'brand' || !F.brands.size || F.brands.has(p.brand))
+    && (skip === 'stock' || !F.stock.size || F.stock.has(stockOf(p.id)))
+    && (F.min == null || p.price >= F.min) && (F.max == null || p.price <= F.max)
+    && (!F.q || F.q.split(/\s+/).every(w => qsHay(p).includes(w))); // every word, any order ("g87 drl")
+  const isFeatured = p => !p.remote && /^p\d+$/.test(p.id);
+  const SORTS = {
+    // sold out goes last; then the featured parts, then what's on the shelf before what is ordered in, dearest first
+    featured: (a, b) => (stockOf(a.id) === 'out') - (stockOf(b.id) === 'out') || !!b.tag - !!a.tag || isFeatured(b) - isFeatured(a) || (stockOf(a.id) === 'preorder') - (stockOf(b.id) === 'preorder') || b.price - a.price,
+    low: (a, b) => a.price - b.price, high: (a, b) => b.price - a.price,
+    az: (a, b) => (a.brand + a.title).localeCompare(b.brand + b.title), new: (a, b) => (b.date || '').localeCompare(a.date || '')
+  };
+  const facet = (key, skip, label) => {
+    const counts = {};
+    CAT.forEach(p => { if (pass(p, skip)) { const k = key(p); counts[k] = (counts[k] || 0) + 1; } });
+    return counts;
+  };
+  const listHTML = (name, counts, set, opts = {}) => {
+    const keys = Object.keys(counts).sort((a, b) => opts.order ? opts.order.indexOf(a) - opts.order.indexOf(b) : counts[b] - counts[a]);
+    [...set].forEach(k => { if (!keys.includes(k)) keys.push(k); });
+    return keys.map((k, i) => `<label class="fl${i >= (opts.limit || 99) ? ' fl--more' : ''}"><input type="checkbox" data-f="${name}" value="${escH(k)}"${set.has(k) ? ' checked' : ''}><span>${escH(opts.label ? opts.label(k) : k)}</span><b>${counts[k] || 0}</b></label>`).join('');
+  };
+  const pvCarSelects = () => {
+    const mk = $('#pvMake'), md = $('#pvModel'), yr = $('#pvYear');
+    const makes = [...new Set(Object.values(VEHICLES).map(v => v[0]))].sort();
+    mk.innerHTML = '<option value="">All makes</option>' + makes.map(m => `<option>${m}</option>`).join('');
+    const sync = () => {
+      const v = F.veh ? VEHICLES[F.veh] : null;
+      mk.value = v ? v[0] : (mk.value || '');
+      md.innerHTML = '<option value="">' + (mk.value ? 'All models' : 'Model') + '</option>' + Object.entries(VEHICLES).filter(([, x]) => x[0] === mk.value).map(([id, x]) => `<option value="${id}">${x[1]}</option>`).join('');
+      md.disabled = !mk.value; md.value = F.veh || '';
+      yr.innerHTML = '<option value="">Year</option>' + (F.veh ? (VEHICLES[F.veh][2] ? Array.from({ length: VEHICLES[F.veh][3] - VEHICLES[F.veh][2] + 1 }, (_, i) => VEHICLES[F.veh][3] - i).map(y => `<option>${y}</option>`).join('') : '<option value="0">All years</option>') : '');
+      yr.disabled = !F.veh; yr.value = vehicle && vehicle.id === F.veh ? vehicle.year : '';
+    };
+    mk.onchange = () => { F.veh = null; sync(); renderParts(true); };
+    md.onchange = () => { F.veh = md.value || null; sync(); renderParts(true); };
+    yr.onchange = () => { if (F.veh && yr.value) { setVehicle(F.veh, +yr.value, false); toast(`Saved ${vName(F.veh, +yr.value)} to My garage`); } };
+    const clr = $('#pvCarClear');
+    clr.onclick = () => { F.veh = null; mk.value = ''; if (vehicle) resetFinder(); sync2(); renderParts(true); };
+    const syncClear = () => { clr.hidden = !(mk.value || F.veh); };
+    const sync0 = sync; const sync2 = () => { sync0(); syncClear(); };
+    mk.onchange = () => { F.veh = null; sync2(); renderParts(true); };
+    md.onchange = () => { F.veh = md.value || null; sync2(); renderParts(true); };
+    pvCarSelects.sync = sync2; sync2();
+  };
+  const renderParts = resetPage => {
+    if (!CAT) return;
+    if (resetPage) shown = 24;
+    const list = CAT.filter(p => pass(p)).sort(SORTS[F.sort]);
+    const carTxt = F.veh ? (vehicle && vehicle.id === F.veh ? vName(F.veh, vehicle.year) : `${VEHICLES[F.veh][0]} ${VEHICLES[F.veh][1]}`) : '';
+    $('#pvCount').textContent = `${list.length.toLocaleString()} part${list.length === 1 ? '' : 's'}${carTxt ? ' for your ' + carTxt : ''}`;
+    $('#pvGrid').innerHTML = list.length ? list.slice(0, shown).map(card).join('') : `<div class="empty">No parts match yet. <button class="link" data-pv-reset>Clear filters</button> or call <a href="tel:0483939304">our team</a> and we'll source it.</div>`;
+    $('#pvMore').hidden = shown >= list.length;
+    $('#pvShown').textContent = list.length ? `Showing ${Math.min(shown, list.length)} of ${list.length.toLocaleString()}` : '';
+    // facets (counts respect every other active filter)
+    $('#fCat').innerHTML = listHTML('cats', facet(p => p.cat, 'cat'), F.cats);
+    $('#fBrand').innerHTML = listHTML('brands', facet(p => p.brand, 'brand'), F.brands, { limit: 8 });
+    $('#fStock').innerHTML = listHTML('stock', facet(p => stockOf(p.id), 'stock'), F.stock, { order: ['in', 'preorder', 'special', 'out'], label: k => STOCK_TXT[k] });
+    $('#fBrandMore').hidden = $$('#fBrand .fl--more').length === 0;
+    // active chips
+    const chips = [];
+    if (F.veh) chips.push(['veh', '', carTxt]);
+    F.cats.forEach(c => chips.push(['cats', c, c]));
+    F.brands.forEach(b => chips.push(['brands', b, b]));
+    F.stock.forEach(k => chips.push(['stock', k, STOCK_TXT[k]]));
+    if (F.min != null || F.max != null) chips.push(['price', '', `${F.min != null ? money(F.min) : '$0'} to ${F.max != null ? money(F.max) : 'any'}`]);
+    if (F.q) chips.push(['q', '', `“${F.q}”`]);
+    $('#pvChips').innerHTML = chips.map(([k, v, t]) => `<button class="achip" data-chip="${k}" data-v="${escH(v)}">${escH(t)}<i>&times;</i></button>`).join('') + (chips.length > 1 ? '<button class="link" data-pv-reset>Clear all</button>' : '');
+    $('#pvApply').textContent = `Show ${list.length.toLocaleString()} result${list.length === 1 ? '' : 's'}`;
+    $('#pvFCount').textContent = chips.length ? chips.length : '';
+    $('#pvFCount').hidden = !chips.length;
+    // keep the URL shareable
+    const q = new URLSearchParams();
+    if (F.veh) q.set('car', F.veh); if (F.cats.size) q.set('cat', [...F.cats].join(',')); if (F.brands.size) q.set('brand', [...F.brands].join(','));
+    if (F.stock.size) q.set('stock', [...F.stock].join(',')); if (F.sort !== 'featured') q.set('sort', F.sort); if (F.q) q.set('q', F.q);
+    const h = '#/parts' + (q.toString() ? '?' + q : '');
+    if (location.hash !== h) history.replaceState(null, '', h);
+  };
+  const readPartsQuery = () => {
+    const q = new URLSearchParams((location.hash.split('?')[1] || ''));
+    F.veh = q.get('car') && VEHICLES[q.get('car')] ? q.get('car') : (vehicle ? vehicle.id : null);
+    F.cats = new Set((q.get('cat') || '').split(',').filter(Boolean)); F.brands = new Set((q.get('brand') || '').split(',').filter(Boolean));
+    F.stock = new Set((q.get('stock') || '').split(',').filter(Boolean)); F.sort = q.get('sort') || 'featured'; F.q = (q.get('q') || '').toLowerCase();
+    if (PAGE_T === 'search' && !F.q && window.cx.terms) F.q = String(window.cx.terms).toLowerCase(); // Shopify search page
+    $('#pvSort').value = F.sort; $('#pvSearch').value = F.q;
+  };
+  // Shopify collection pages: the All parts view, limited to that collection's products (new products are added from the store)
+  const collectionOnly = async h => {
+    await loadCatalog();
+    const byH = {}; Object.values(ALL).forEach(p => { if (p.h) byH[p.h] = p; });
+    const set = new Set();
+    for (let page = 1; page <= 8; page++) {
+      const r = await fetch(`${ROOT}collections/${h}/products.json?limit=250&page=${page}`).then(x => x.json()).catch(() => ({ products: [] }));
+      (r.products || []).forEach(x => {
+        if (HIDDEN_BRANDS.test(x.vendor)) return;
+        set.add(x.handle);
+        if (!byH[x.handle]) {
+          const v = x.variants.find(y => y.available) || x.variants[0] || {}, id = 'h:' + x.handle;
+          ALL[id] = byH[x.handle] = { id, h: x.handle, brand: x.vendor, title: x.title, price: +v.price || 0, cat: 'Accessories', fits: '*', img: x.images[0] ? x.images[0].src + '?width=600' : '', remote: true, date: (x.published_at || '').slice(0, 10).replace(/-/g, '') };
+          if (!x.variants.some(y => y.available)) QTY[id] = 0;
+          CAT.push(ALL[id]);
+        }
+      });
+      if (!r.products || r.products.length < 250) break;
+    }
+    return set;
+  };
+  const openParts = async () => {
+    $('#pvGrid').innerHTML = '<div class="pv__loading"><i></i><i></i><i></i></div>';
+    readPartsQuery();
+    if (PAGE_T === 'collection' && window.cx.collection && window.cx.collection !== 'all' && !F.only) F.only = await collectionOnly(window.cx.collection);
+    await loadCatalog();
+    pvCarSelects(); renderParts(true);
+  };
+  // filter events
+  $('#viewParts').addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset.f) { const set = F[t.dataset.f]; t.checked ? set.add(t.value) : set.delete(t.value); renderParts(true); }
+    if (t.id === 'pvSort') { F.sort = t.value; renderParts(true); }
+    if (t.id === 'pvMin' || t.id === 'pvMax') { F.min = $('#pvMin').value ? +$('#pvMin').value : null; F.max = $('#pvMax').value ? +$('#pvMax').value : null; renderParts(true); }
+  });
+  let qT;
+  $('#pvSearch').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { F.q = e.target.value.trim().toLowerCase(); renderParts(true); }, 180); });
+  $('#viewParts').addEventListener('click', e => {
+    const c = e.target.closest('[data-chip]');
+    if (c) {
+      const k = c.dataset.chip, v = c.dataset.v;
+      if (k === 'veh') F.veh = null; else if (k === 'price') { F.min = F.max = null; $('#pvMin').value = $('#pvMax').value = ''; } else if (k === 'q') { F.q = ''; $('#pvSearch').value = ''; } else F[k].delete(v);
+      pvCarSelects.sync(); renderParts(true);
+    }
+    if (e.target.closest('[data-pv-reset]') || e.target.closest('#pvReset')) {
+      F.veh = null; F.cats.clear(); F.brands.clear(); F.stock.clear(); F.min = F.max = null; F.q = '';
+      $('#pvMin').value = $('#pvMax').value = $('#pvSearch').value = ''; pvCarSelects.sync(); renderParts(true);
+    }
+    if (e.target.closest('#pvMore')) { shown += 24; renderParts(); }
+    if (e.target.closest('#fBrandMore')) { $('#fBrand').classList.toggle('show-all'); e.target.closest('#fBrandMore').textContent = $('#fBrand').classList.contains('show-all') ? 'Show fewer' : 'Show all brands'; }
+    if (e.target.closest('[data-pv-garage]')) { const g = garage[+e.target.closest('[data-pv-garage]').dataset.pvGarage]; F.veh = g.id; setVehicle(g.id, g.year, false); pvCarSelects.sync(); renderParts(true); }
+    if (e.target.closest('#pvFOpen')) setDrawer(true);
+    if (e.target.closest('#pvFClose') || e.target.closest('#pvApply') || e.target === $('#pvScrim')) setDrawer(false);
+  });
+  const setDrawer = open => { $('#viewParts').classList.toggle('filters-open', open); document.body.classList.toggle('locked', open); };
+
+  // full product page = the same product layout, placed on the page instead of in the pop-up
+  const pdpCard = $('.pdp__card');
+  const openProductPage = async id => {
+    id = decodeURIComponent(id);
+    if (!ALL[id]) await loadCatalog();
+    if (!ALL[id]) { location.hash = '#/parts'; return; }
+    await ensureDetail(id);
+    if (!pdpEl.hidden) { pdpEl.classList.remove('open'); pdpEl.hidden = true; document.body.classList.remove('locked'); }
+    $('#ppSlot').appendChild(pdpCard); pdpCard.classList.add('pdp__card--page');
+    openPdpNow(id, true);
+    scrollTo(0, 0);
+    const p = ALL[id];
+    $('#ppCrumbs').innerHTML = `<a href="#/">Home</a><span>/</span><a href="#/parts">Parts</a><span>/</span><a href="#/parts?cat=${encodeURIComponent(p.cat)}">${escH(p.cat)}</a><span>/</span><b>${escH(p.title)}</b>`;
+    document.title = `${(PDP[id] && PDP[id].full) || p.title} | iilumolab`;
+    // more parts like this, for the same car where possible
+    await loadCatalog();
+    const v = vehicle && fitsCar(p, vehicle.id) ? vehicle.id : (p.fits !== '*' ? p.fits[0] : null);
+    const rel = CAT.filter(x => x.id !== id && fitsCar(x, v) && (x.cat === p.cat || x.brand === p.brand)).slice(0, 8);
+    $('#ppRelTitle').textContent = v ? `More for the ${VEHICLES[v][0]} ${VEHICLES[v][1]}` : 'You might also like';
+    $('#ppRel').innerHTML = rel.map(card).join('');
+    $('#ppRelWrap').hidden = !rel.length;
+  };
+  const leaveProductPage = () => {
+    if (pdpCard.parentElement !== pdpEl) { pdpCard.classList.remove('pdp__card--page'); pdpEl.appendChild(pdpCard); }
+    document.title = HOME_TITLE;
+  };
+
+  const showView = name => {
+    if (current === 'product' && name !== 'product') leaveProductPage();
+    if (name !== 'page' && name !== 'product') document.title = name === 'parts' && (PAGE_T === 'collection' || PAGE_T === 'search') ? PAGE_TITLE : name === 'parts' ? 'All parts | iilumolab' : HOME_TITLE;
+    Object.entries(views).forEach(([k, el]) => { el.hidden = k !== name; });
+    const inner = name !== 'home' || SECTION_PAGE; // an inside page: solid header, rises in
+    document.body.classList.toggle('on-view', inner);
+    $('#garagePanel') && !$('#garagePanel').hidden && garageBtn.click();
+    if (menu.classList.contains('is-open')) setMenu(false);
+    current = name;
+    onScroll();
+    if (inner && !reduce) views[name].animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.16,1,.3,1)' });
+  };
+  // Shopify templates: the real address opens the matching view (product, collection, search, page)
+  if (PAGE_T !== 'index' && 'scrollRestoration' in history) history.scrollRestoration = 'manual'; // each page opens at the top
+  const tplView = async () => {
+    const c = window.cx;
+    if (PAGE_T === 'product' && c.product) {
+      showView('product'); scrollTo(0, 0); await loadCatalog();
+      let p = Object.values(ALL).find(x => x.h === c.product);
+      if (!p) { const d = c.productData || {}, id = 'h:' + c.product; p = ALL[id] = { id, h: c.product, brand: d.vendor || '', title: d.title || '', price: d.price || 0, cat: d.type || 'Parts', fits: '*', img: d.image || '', remote: true }; }
+      openProductPage(p.id); return true;
+    }
+    if (PAGE_T === 'collection' || PAGE_T === 'search') {
+      showView('parts'); scrollTo(0, 0);
+      const t = PAGE_T === 'search' ? (c.terms ? `Results for “${c.terms}”` : 'Search') : (c.collection === 'all' ? 'All parts' : c.collectionTitle);
+      if (t) { $('#viewParts h1').textContent = t; const b = $('#viewParts .crumbs b'); if (b) b.textContent = t; }
+      openParts(); return true;
+    }
+    if (PAGE_T === 'page' && c.page) { showView('page'); renderPage(c.page); scrollTo(0, 0); return true; }
+    if (SECTION_PAGE) { showView('home'); scrollTo(0, 0); return true; }
+    return false;
+  };
+  const route = () => {
+    const h = location.hash;
+    if (PAGE_T !== 'index' && (h === '' || h === '#')) { tplView(); return; }
+    if (PAGE_T !== 'index' && h === '#/') { location.href = ROOT; return; }
+    if (h.startsWith('#/parts')) { const was = current; showView('parts'); if (was !== 'parts') scrollTo(0, 0); openParts(); }
+    else if (h.startsWith('#/product/')) { showView('product'); scrollTo(0, 0); openProductPage(h.slice(10)); }
+    else if (h.startsWith('#/pages/')) { showView('page'); scrollTo(0, 0); renderPage(decodeURIComponent(h.slice(8))); }
+    else if (h === '#/' || h === '' || h === '#') { const was = current; showView('home'); if (was !== 'home') scrollTo(0, 0); }
+  };
+  addEventListener('hashchange', route);
+  // links to home sections from a parts / product page: go home first, then glide
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const id = a.getAttribute('href');
+    if (PAGE_T !== 'index' && id.length > 1 && !id.startsWith('#/') && !a.hasAttribute('data-book') && !document.querySelector(id)) { e.preventDefault(); e.stopImmediatePropagation(); location.href = ROOT + id; return; }
+    if (current === 'home') return;
+    if (id.startsWith('#/') || a.hasAttribute('data-book') || !document.querySelector(id) || !views.home.contains(document.querySelector(id))) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    history.pushState(null, '', '#/'); showView('home'); scrollTo(0, 0);
+    requestAnimationFrame(() => id === '#finder' ? goFinder() : glide(id));
+  }, true);
+  // close button on the full product page goes back
+  $('#pdpClose').addEventListener('click', e => { if (current === 'product') { e.stopImmediatePropagation(); history.length > 1 ? history.back() : (location.hash = '#/parts'); } }, true);
+
+  /* ---------- Init ---------- */
+  setTimeout(() => loadCatalog(), 1500); // the one-time offer and search pick from the full catalogue
+  renderBuild();
+  updateVehicleUI();
+  if (vehicle) { setVehicle(vehicle.id, vehicle.year, false); }
+  route();
+})();
