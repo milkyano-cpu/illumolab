@@ -1733,13 +1733,18 @@ html{-webkit-tap-highlight-color:transparent}
 
 /* ================= iilumo Rewards page: its own look. A St Kilda sunset across the top that fades into dusk,
    and the rest of the page on that dusk. Same layout as every content page. ================= */
-#viewPage.is-rewards{--dusk:#1b1631;--art-h:clamp(760px,60vw,980px);position:relative;isolation:isolate;overflow-x:clip;background:var(--dusk)}
-#viewPage.is-rewards::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:0;height:var(--art-h);background:url(cx-rewards-stkilda-v3.jpg) 50% 80%/cover no-repeat;-webkit-mask:linear-gradient(#000 72%,transparent);mask:linear-gradient(#000 72%,transparent)}
+#viewPage.is-rewards{--dusk:#1b1631;--lift:calc(var(--bar-h) + var(--top-h) + 34px);position:relative;isolation:isolate;overflow-x:clip;background:var(--dusk)}
+/* the sunset fills the hero edge to edge (from under the header), with the beach scene showing below the text, then fades into dusk;
+   a soft light wash sits behind the text so it always reads on the pink sky */
+#viewPage.is-rewards .rw-hero{position:relative;min-height:clamp(620px,50vw,880px);align-items:start;padding:clamp(28px,4.5vw,84px) 0 clamp(200px,20vw,340px)}
+#viewPage.is-rewards .rw-hero::before{content:"";position:absolute;z-index:-1;top:calc(-1 * var(--lift));bottom:0;left:calc(50% - 50vw);width:100vw;
+  background:radial-gradient(60% 55% at 22% 34%,rgba(255,244,250,.62),rgba(255,244,250,0) 70%),url(cx-rewards-stkilda-v3.jpg) 50% 82%/cover no-repeat;
+  -webkit-mask:linear-gradient(#000 82%,transparent);mask:linear-gradient(#000 82%,transparent)}
 #viewPage.is-rewards .pg__title,#viewPage.is-rewards .crumbs b{color:#1d1d1f}
-#viewPage.is-rewards .pg__lead p{color:#2c2742}
-#viewPage.is-rewards .crumbs a,#viewPage.is-rewards .crumbs span{color:#4b4366}
-#viewPage.is-rewards .rw-hero .eyebrow--dark{color:#3a3354}
-#viewPage.is-rewards .rw-tab{color:rgba(43,34,72,.62)}
+#viewPage.is-rewards .pg__lead p{color:#221c38;font-weight:500}
+#viewPage.is-rewards .crumbs a,#viewPage.is-rewards .crumbs span{color:#3a3256}
+#viewPage.is-rewards .rw-hero .eyebrow--dark{color:#2a2342;font-weight:600}
+#viewPage.is-rewards .rw-tab{color:#2f2650;font-weight:700;text-shadow:0 0 6px rgba(255,240,248,.9),0 0 14px rgba(255,240,248,.7)}
 #viewPage.is-rewards .rw-tab[aria-selected="true"]{color:#1d1d1f}
 #viewPage.is-rewards .rw-tab[aria-selected="true"] i{box-shadow:0 0 0 2px rgba(255,255,255,.75),0 0 0 3.5px #1d1d1f,0 14px 22px -10px rgba(29,29,31,.55)}
 #viewPage.is-rewards .rw-sec{border-top-color:rgba(255,255,255,.12)}
@@ -1751,5 +1756,4 @@ html{-webkit-tap-highlight-color:transparent}
 #viewPage.is-rewards .rw-tease--soon{background:rgba(0,0,0,.22)}
 #viewPage.is-rewards .pg__cta{background:linear-gradient(110deg,#f7a98f 0%,#ef8fae 45%,#a993e6 100%);color:#1d1d1f}
 #viewPage.is-rewards .pg__cta p{color:#2c2742}
-@media (max-width:900px){#viewPage.is-rewards{--art-h:1180px}#viewPage.is-rewards::before{background-position:72% 85%}}
-@media (max-width:640px){#viewPage.is-rewards{--art-h:1120px}}
+@media (max-width:900px){#viewPage.is-rewards .rw-hero{min-height:0;padding-bottom:clamp(180px,40vw,260px)}#viewPage.is-rewards .rw-hero::before{background-position:center,78% 100%}}
