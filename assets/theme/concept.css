@@ -1726,3 +1726,30 @@ html{-webkit-tap-highlight-color:transparent}
 .rw-tab--diamond i{box-shadow:0 8px 16px -10px rgba(29,29,31,.35),inset 0 0 0 1px rgba(29,29,31,.1)}
 .rw-tab--black{--sw:linear-gradient(135deg,#2c2c31 0%,#141417 45%,#09090b 70%,#1d1d22 100%)}
 @media (max-width:640px){.rw-tabs{gap:8px}.rw-tab{gap:8px;font-size:9.5px;letter-spacing:.1em}}
+/* the iilumo cube on each mini card, in that card's foil, top right like the big card */
+.rw-tab i{position:relative;overflow:hidden}
+.rw-tab i::after{content:"";position:absolute;right:9%;top:13%;width:20%;aspect-ratio:946/697;background:var(--swf,#fff);-webkit-mask:url(cx-logo.png) center/contain no-repeat;mask:url(cx-logo.png) center/contain no-repeat;opacity:.95}
+.rw-tab--premier{--swf:#fff}.rw-tab--gold{--swf:#fff5dc}.rw-tab--platinum{--swf:#fdf7e8}.rw-tab--diamond{--swf:#a8894c}.rw-tab--black{--swf:#dcc283}
+
+/* ================= iilumo Rewards page: its own look. A St Kilda sunset across the top that fades into dusk,
+   and the rest of the page on that dusk. Same layout as every content page. ================= */
+#viewPage.is-rewards{--dusk:#1b1631;--art-h:clamp(760px,60vw,980px);position:relative;isolation:isolate;overflow-x:clip;background:var(--dusk)}
+#viewPage.is-rewards::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:0;height:var(--art-h);background:url(cx-rewards-stkilda-poster.jpg) 60% 75%/cover no-repeat;-webkit-mask:linear-gradient(#000 72%,transparent);mask:linear-gradient(#000 72%,transparent)}
+#viewPage.is-rewards .pg__title,#viewPage.is-rewards .crumbs b{color:#1d1d1f}
+#viewPage.is-rewards .pg__lead p{color:#2c2742}
+#viewPage.is-rewards .crumbs a,#viewPage.is-rewards .crumbs span{color:#4b4366}
+#viewPage.is-rewards .rw-hero .eyebrow--dark{color:#3a3354}
+#viewPage.is-rewards .rw-tab{color:rgba(43,34,72,.62)}
+#viewPage.is-rewards .rw-tab[aria-selected="true"]{color:#1d1d1f}
+#viewPage.is-rewards .rw-tab[aria-selected="true"] i{box-shadow:0 0 0 2px rgba(255,255,255,.75),0 0 0 3.5px #1d1d1f,0 14px 22px -10px rgba(29,29,31,.55)}
+#viewPage.is-rewards .rw-sec{border-top-color:rgba(255,255,255,.12)}
+#viewPage.is-rewards .rw-sec .eyebrow--dark,#viewPage.is-rewards .rw-tease .eyebrow--dark{color:rgba(255,255,255,.6)}
+#viewPage.is-rewards .rw-sec .h2,#viewPage.is-rewards .rw-tier h3,#viewPage.is-rewards .rw-tease h3{color:#fff}
+#viewPage.is-rewards .rw-tier p,#viewPage.is-rewards .rw-tease p:not(.eyebrow){color:rgba(255,255,255,.7)}
+#viewPage.is-rewards .rw-tier__no{color:#c9b6f5}
+#viewPage.is-rewards .rw-tease{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);color:#fff}
+#viewPage.is-rewards .rw-tease--soon{background:rgba(0,0,0,.22)}
+#viewPage.is-rewards .pg__cta{background:linear-gradient(110deg,#f7a98f 0%,#ef8fae 45%,#a993e6 100%);color:#1d1d1f}
+#viewPage.is-rewards .pg__cta p{color:#2c2742}
+@media (max-width:900px){#viewPage.is-rewards{--art-h:1180px}#viewPage.is-rewards::before{background-position:72% 85%}}
+@media (max-width:640px){#viewPage.is-rewards{--art-h:1120px}}

@@ -1625,6 +1625,7 @@
       <p class="pg__small">All applications are strictly confidential.</p>
     </article>`).join('');
   const renderPage = slug => {
+    $('#viewPage').classList.toggle('is-rewards', slug === 'iilumo-rewards'); // its own St Kilda sunset look
     if (slug === 'iilumo-rewards') return renderRewards();
     let p = PG[slug];
     if (!p && window.cx.page === slug && window.cx.pageTitle) {
