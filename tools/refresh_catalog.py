@@ -22,6 +22,7 @@ import argparse, json, os, re, shutil, subprocess, sys, tempfile
 STORE = 'iilumolab.myshopify.com'
 THEME = '168316534946'                    # the draft. Never the live theme: see theme_is_draft()
 FILE = 'assets/cx-data-catalog.json'      # the only file this ever pushes
+HIDE = 'assets/cx-data-hidden-images.json'   # read only: photos the theme hides, so the build never picks one as a main photo
 HERE = os.path.dirname(os.path.abspath(__file__))
 # parts that must be there, because a build once lost them: (car, title pattern, what to call it).
 # If the store really stops selling one, delete its line here.
@@ -61,10 +62,12 @@ def staging(folder):
     return os.path.join(folder, FILE)
 
 
-def pull(folder):
+def pull(folder, *also):
+    """The theme's copy of the catalogue (and any other files named), read only."""
     path = staging(folder)
-    cli('pull', '--theme', THEME, '--only', FILE, '--path', folder)
-    if not os.path.exists(path): raise Stop(f'{FILE} is not on the theme.')
+    cli('pull', '--theme', THEME, *[x for f in (FILE, *also) for x in ('--only', f)], '--path', folder)
+    for f in (FILE, *also):
+        if not os.path.exists(os.path.join(folder, f)): raise Stop(f'{f} is not on the theme.')
     return path
 
 
@@ -154,11 +157,11 @@ def main():
     try:
         name = theme_is_draft()
         print(f'theme: {name} #{THEME} (draft). Reading the store through: {source}', flush=True)
-        old = json.load(open(pull(os.path.join(work, 'theme'))))
+        old = json.load(open(pull(os.path.join(work, 'theme'), HIDE)))
         new_path = staging(os.path.join(work, 'new'))
         report = os.path.join(work, 'fitment-report.txt')
         build = subprocess.run([sys.executable, os.path.join(HERE, 'build_catalog.py'), new_path, '--cars', os.path.join(HERE, 'vehicles.json'),
-                                '--featured', os.path.join(HERE, 'curated.json'), '--stock-theme', THEME, '--report', report, '--source', source, '--strict'])
+                                '--featured', os.path.join(HERE, 'curated.json'), '--stock-theme', THEME, '--report', report, '--source', source, '--strict', '--hidden', os.path.join(work, 'theme', HIDE)])
         if build.returncode or not os.path.exists(new_path): raise Stop('The build did not finish (its last lines above say why).')
         new = json.load(open(new_path))
         if a.keep:

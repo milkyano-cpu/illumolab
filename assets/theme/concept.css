@@ -1594,7 +1594,14 @@ html{-webkit-tap-highlight-color:transparent}
 .rc__sheen{position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 90% at var(--mx,22%) var(--my,10%),rgba(255,255,255,.22),transparent 62%);mix-blend-mode:soft-light;transition:background .2s}
 .rc__top{position:absolute;inset:7.5% 7% auto 7%;display:flex;justify-content:space-between;align-items:flex-start}
 .rc__tier b{position:relative;display:block;padding-left:4.2cqw;font:600 4.6cqw/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--foil)}
-.rc__tier b::before{content:"";position:absolute;left:0;top:50%;margin-top:-1.4cqw;border:1.4cqw solid transparent;border-right:2.1cqw solid var(--foil);border-left:0}
+/* holographic prism foil on the tier name and arrow: a rainbow that drifts on its own and follows the cursor on hover */
+.rc{--holo:linear-gradient(105deg,var(--foil) 0%,#9fe9ff 16%,#c7b2ff 30%,#ffb6dc 44%,#fff0a6 58%,#a9ffdf 72%,#9fe9ff 86%,var(--foil) 100%)}
+.rc--gold,.rc--platinum,.rc--diamond{--holo:linear-gradient(105deg,var(--foil) 0%,#2fa7d8 16%,#7a5cf0 30%,#e0479b 44%,#d99a12 58%,#1fb58a 72%,#2fa7d8 86%,var(--foil) 100%)}
+.rc__tier b,.rc__tier b::before{background:var(--holo);background-size:300% 100%;background-position:var(--mx,0%) 0;animation:rcHolo 6s ease-in-out infinite alternate}
+.rc__tier b{-webkit-background-clip:text;background-clip:text;color:transparent}
+.rc:hover .rc__tier b,.rc:hover .rc__tier b::before{animation:none;transition:background-position .2s}
+@keyframes rcHolo{from{background-position:0% 0}to{background-position:100% 0}}
+.rc__tier b::before{content:"";position:absolute;left:0;top:50%;margin-top:-1.4cqw;width:2.1cqw;height:2.8cqw;clip-path:polygon(100% 0,100% 100%,0 50%)}
 .rc__tier span{display:block;margin:1.8cqw 0 0 4.2cqw;font-size:2.5cqw;letter-spacing:.2em;text-transform:uppercase;opacity:.72}
 .rc__brand{display:grid;justify-items:center;text-align:center}
 .rc__cube{width:10.5cqw;aspect-ratio:946/697;background:linear-gradient(160deg,#fff7df 0%,var(--foil) 45%,color-mix(in srgb,var(--foil) 60%,#000) 100%);-webkit-mask:url(cx-logo.png) center/contain no-repeat;mask:url(cx-logo.png) center/contain no-repeat}
@@ -1658,7 +1665,7 @@ html{-webkit-tap-highlight-color:transparent}
   .rw-tease{grid-template-columns:1fr}
   .rw-tabs{flex-wrap:wrap;border-radius:22px}.rw-tab{height:34px;padding:0 11px;font-size:13px}
 }
-@media (prefers-reduced-motion:reduce){.rw-flip .rc{animation:none}}
+@media (prefers-reduced-motion:reduce){.rw-flip .rc,.rc__tier b,.rc__tier b::before{animation:none}}
 
 /* Finder results: "See all N parts" under the first 12 cards */
 .results__more{grid-column:1/-1;display:flex;justify-content:center;padding-top:8px}

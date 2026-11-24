@@ -22,8 +22,10 @@ Fitment comes only from the store's own data, never from guesses:
   OR one of its tags is that car's chassis tag (bmw_g87, g87, 86_zn8, Model_GR86 ZN8 ...),
   OR its title names the chassis (e.g. "... BMW M2 G87 ...").
 Nothing "fits every car" unless the product carries the tag  fits_all  (the client adds it in Shopify).
-Zero Offset products are left out (other dealer). Products Zero Offset supplies under another brand keep the maker's
-photo as their main photo, not Zero Offset's own studio shots (camera file names such as DSC02978.jpg).
+Zero Offset products are left out (other dealer). Main photo (--hidden): the first photo whose file name is not on the
+theme's hide list (assets/cx-data-hidden-images.json: Zero Offset studio shots, picked by background, so a maker's own
+IMG_ / DSC photo on white stays). The list is read at build time, so new entries apply on the next build. A product with
+only hidden photos keeps its first one (the theme swaps in its own photos for it).
 Stock (--stock-theme): units on the shelf from the theme's cx-stock view, so cards can say In stock or Pre-order truthfully.
 """
 import json, os, random, re, sys, time, urllib.request, urllib.error, urllib.parse, http.cookiejar, argparse
@@ -37,7 +39,7 @@ SHOP_TZ = 'Australia/Melbourne'    # the "built" stamp reads the same wherever t
 UA = 'Mozilla/5.0 (Macintosh)'
 PACE = 1.0                         # seconds between storefront requests (plus a little jitter)
 CDN = 'https://cdn.shopify.com/s/files/1/0501/9739/7666/'
-DEALER_SHOT = re.compile(r'^(_?dsc\d|0g7a|img_\d|screenshot)', re.I)   # Zero Offset's own photos, by file name
+HIDE_LIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'iilumolab-theme', 'assets', 'cx-data-hidden-images.json')
 HIDDEN_VENDORS = re.compile(r'^zero\s*offset$', re.I)
 
 # The finder cars. key: [make, model label, first year, last year], collections, tags (lower-case, exact), title pattern
@@ -289,7 +291,11 @@ def published(p):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('out'); ap.add_argument('--cars', required=True); ap.add_argument('--featured'); ap.add_argument('--ids')
     ap.add_argument('--stock-theme'); ap.add_argument('--report'); ap.add_argument('--source', choices=['storefront', 'admin'], default='storefront')
-    ap.add_argument('--strict', action='store_true'); a = ap.parse_args()
+    ap.add_argument('--strict', action='store_true'); ap.add_argument('--hidden', default=HIDE_LIST); a = ap.parse_args()
+    # photos the theme hides, by file name the way the theme compares them (lower case, no query string)
+    try: hidden = {str(x).split('?')[0].rsplit('/', 1)[-1].lower() for x in json.load(open(a.hidden))}
+    except (OSError, ValueError) as e: raise SystemExit(f'the photo hide list {a.hidden} is not readable ({e}): nothing written')
+    print('hidden photos:', len(hidden), file=sys.stderr)
     # every finder car: ours keep their tag and title rules; every other menu car fits by its own collection only
     for k, v in json.load(open(a.cars)).items():
         col = [v[5]] if v[5] else []
@@ -343,11 +349,9 @@ def main():
         v = next((x for x in priced if x.get('available')), min(priced, key=lambda x: float(x['price']), default={}))
         price = float(v.get('price') or 0); compare = float(v.get('compare_at_price') or 0)
         srcs = [i['src'].split('?')[0] for i in p['images']]
-        if 'zero offset' in tags:   # supplied by Zero Offset: the main photo is the maker's, not their studio shot
-            clean = [u for u in srcs if not DEALER_SHOT.match(u.rsplit('/', 1)[-1])]
-            if clean: srcs = clean
-            elif srcs: no_clean.append(p['title'])
-        img = srcs[0] if srcs else ''
+        clean = [u for u in srcs if u.rsplit('/', 1)[-1].lower() not in hidden]
+        if srcs and not clean: no_clean.append(p['title'])
+        img = (clean or srcs or [''])[0]
         if img.startswith(CDN): img = img[len(CDN):]
         row = [keep_id.get(p['handle'], ''), p['handle'], p['vendor'], p['title'], price, category(p), '*' if universal else fits,
                img, 1 if any(x.get('available') for x in p['variants']) else 0, (p.get('published_at') or '')[:10].replace('-', ''),
@@ -366,7 +370,7 @@ def main():
                 f.write(f"\n== {CARS[k][0][0]} {CARS[k][0][1]}: {len(report[k])} parts\n")
                 for t in sorted(report[k])[:400]: f.write('  ' + t + '\n')
     for k in keys: print(f'  {CARS[k][0][0]} {CARS[k][0][1]}: {len(report[k])}', file=sys.stderr)
-    print('only Zero Offset photos (main photo kept as is):', len(no_clean), no_clean, file=sys.stderr)
+    print('only hidden photos (first one kept, the theme swaps in its own):', len(no_clean), no_clean, file=sys.stderr)
     print('no price, left out:', len(skipped), skipped, file=sys.stderr)
 
 
