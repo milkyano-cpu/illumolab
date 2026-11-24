@@ -1708,9 +1708,10 @@
     { k: 'diamond', n: 'Diamond', line: 'For the garage that never stops.' },
     { k: 'black', n: 'Black', line: 'The top card. Few will hold it.' },
   ];
-  // Each card is the designer's finished face (cx-rcard-<tier>.jpg, set in concept.css); the sheen follows the cursor on top
+  // Each card is the designer's finished face (cx-rcard-<tier>.jpg, set in concept.css); the sheen follows the cursor on top,
+  // and the tier name gets the moving prism foil through a mask of its own letters
   const rcard = (t, i, more = '') => `<div class="rc rc--${t.k}" data-tier="${t.k}" style="--i:${i}"${more}>
-      <i class="rc__sheen"></i>
+      <i class="rc__sheen"></i><i class="rc__name" aria-hidden="true"></i>
     </div>`;
   // Cards lean toward the cursor (mouse only; phones and reduced motion keep them still)
   const rcHover = matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce;

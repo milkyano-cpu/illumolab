@@ -1623,6 +1623,18 @@ html{-webkit-tap-highlight-color:transparent}
 .rc--platinum{background:url(cx-rcard-platinum-v2.jpg) center/cover no-repeat}
 .rc--diamond{background:url(cx-rcard-diamond.jpg) center/cover no-repeat}
 .rc--black{background:url(cx-rcard-black.jpg) center/cover no-repeat}
+/* the moving prism foil on the tier name: the designer's own letters (cx-rcard-name-<tier>.png) used as a mask over a sliding rainbow */
+.rc__name{position:absolute;left:4.92%;top:8.15%;height:10.11%;z-index:1;pointer-events:none;
+  background:linear-gradient(105deg,#f5cba9 0%,#ffb6dc 14%,#c7b2ff 28%,#9fe9ff 42%,#c0eae4 56%,#e6e8be 70%,#f5cba9 84%,#ffb6dc 100%);
+  background-size:300% 100%;background-position:var(--mx,0%) 0;animation:rcHolo 6s ease-in-out infinite alternate}
+.rc--gold .rc__name{background-image:linear-gradient(105deg,#a8864a 0%,#d9b97a 14%,#93d3c2 28%,#b9a6e2 42%,#e2a98a 56%,#e9d39a 70%,#a8864a 84%,#93d3c2 100%)}
+.rc:hover .rc__name{animation:none;transition:background-position .2s}
+.rc--premier .rc__name{width:34.23%;-webkit-mask:url(cx-rcard-name-premier.png) 0 0/100% 100% no-repeat;mask:url(cx-rcard-name-premier.png) 0 0/100% 100% no-repeat}
+.rc--gold .rc__name{width:23.63%;-webkit-mask:url(cx-rcard-name-gold.png) 0 0/100% 100% no-repeat;mask:url(cx-rcard-name-gold.png) 0 0/100% 100% no-repeat}
+.rc--platinum .rc__name{width:38.52%;-webkit-mask:url(cx-rcard-name-platinum.png) 0 0/100% 100% no-repeat;mask:url(cx-rcard-name-platinum.png) 0 0/100% 100% no-repeat}
+.rc--diamond .rc__name{width:36.93%;-webkit-mask:url(cx-rcard-name-diamond.png) 0 0/100% 100% no-repeat;mask:url(cx-rcard-name-diamond.png) 0 0/100% 100% no-repeat}
+.rc--black .rc__name{width:27.01%;-webkit-mask:url(cx-rcard-name-black.png) 0 0/100% 100% no-repeat;mask:url(cx-rcard-name-black.png) 0 0/100% 100% no-repeat}
+@media (prefers-reduced-motion:reduce){.rc__name{animation:none}}
 
 /* Home: the five cards fanned out like a hand of cards; hover lifts one and it leans toward the cursor */
 .rw-fan{position:relative;aspect-ratio:2.1;perspective:1800px;margin-right:clamp(0px,2vw,30px)}
