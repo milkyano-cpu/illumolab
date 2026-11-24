@@ -1615,6 +1615,14 @@ html{-webkit-tap-highlight-color:transparent}
 .rc--diamond::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent 28%,rgba(79,195,242,.16) 42%,rgba(143,99,184,.12) 50%,rgba(201,87,159,.12) 58%,transparent 72%) var(--mx,30%) 0/220% 100% no-repeat}
 .rc--diamond{box-shadow:0 28px 46px -22px rgba(29,29,31,.4),0 2px 6px rgba(29,29,31,.1),inset 0 0 0 1px rgba(29,29,31,.08)}
 .rc--black{--foil:#dcc283;--txt:#e9dfc6;--bgc:linear-gradient(135deg,#2c2c31 0%,#141417 45%,#09090b 70%,#1d1d22 100%)}
+/* the five card faces come from the designer's file (iilumo rewards 5 tiers): car, Melbourne skyline, foil type and cube are all in the picture */
+.rc{border-radius:3.4%/5.4%}
+.rc::before,.rc--diamond::after{display:none}
+.rc--premier{background:url(cx-rcard-premier.jpg) center/cover no-repeat}
+.rc--gold{background:url(cx-rcard-gold.jpg) center/cover no-repeat}
+.rc--platinum{background:url(cx-rcard-platinum.jpg) center/cover no-repeat}
+.rc--diamond{background:url(cx-rcard-diamond.jpg) center/cover no-repeat}
+.rc--black{background:url(cx-rcard-black.jpg) center/cover no-repeat}
 
 /* Home: the five cards fanned out like a hand of cards; hover lifts one and it leans toward the cursor */
 .rw-fan{position:relative;aspect-ratio:2.1;perspective:1800px;margin-right:clamp(0px,2vw,30px)}
@@ -1652,7 +1660,7 @@ html{-webkit-tap-highlight-color:transparent}
 .rw-tease p:not(.eyebrow){margin:0;font-size:15px;color:var(--ink-2);line-height:1.55}
 .rw-tease .eyebrow{margin-bottom:10px}
 .rw-tease__art{padding:4% 3%}.rw-tease__art .rc{transform:rotate(-4deg)}
-.rc__stamp{position:absolute;right:6%;bottom:33%;z-index:2;display:grid;place-items:center;width:17cqw;aspect-ratio:1;border-radius:50%;border:.5cqw dashed var(--foil);color:var(--foil);font:700 2.6cqw/1.15 var(--display);letter-spacing:.14em;text-transform:uppercase;text-align:center;transform:rotate(-14deg);background:rgba(255,255,255,.08)}
+.rc__stamp{position:absolute;right:7%;bottom:13%;z-index:2;display:grid;place-items:center;width:17cqw;aspect-ratio:1;border-radius:50%;border:.5cqw dashed var(--foil);color:var(--foil);font:700 2.6cqw/1.15 var(--display);letter-spacing:.14em;text-transform:uppercase;text-align:center;transform:rotate(-14deg);background:rgba(255,255,255,.08)}
 .rw-tease--soon{background:var(--ink);color:#fff}
 .rw-tease--soon p:not(.eyebrow){color:rgba(255,255,255,.72)}
 .rw-tease--soon .eyebrow--dark{color:rgba(255,255,255,.7)}
@@ -1730,6 +1738,10 @@ html{-webkit-tap-highlight-color:transparent}
 .rw-tab i{position:relative;overflow:hidden}
 .rw-tab i::after{content:"";position:absolute;right:9%;top:13%;width:20%;aspect-ratio:946/697;background:var(--swf,#fff);-webkit-mask:url(cx-logo.png) center/contain no-repeat;mask:url(cx-logo.png) center/contain no-repeat;opacity:.95}
 .rw-tab--premier{--swf:#fff}.rw-tab--gold{--swf:#fff5dc}.rw-tab--platinum{--swf:#fdf7e8}.rw-tab--diamond{--swf:#a8894c}.rw-tab--black{--swf:#dcc283}
+/* mini cards show a small copy of each card face (cube included), so no drawn cube on top */
+.rw-tab i::after{display:none}
+.rw-tab--premier i{background:url(cx-rcard-premier-s.jpg) center/cover}.rw-tab--gold i{background:url(cx-rcard-gold-s.jpg) center/cover}.rw-tab--platinum i{background:url(cx-rcard-platinum-s.jpg) center/cover}
+.rw-tab--diamond i{background:url(cx-rcard-diamond-s.jpg) center/cover}.rw-tab--black i{background:url(cx-rcard-black-s.jpg) center/cover}
 
 /* ================= iilumo Rewards page: its own look. A St Kilda sunset across the top that fades into dusk,
    and the rest of the page on that dusk. Same layout as every content page. ================= */

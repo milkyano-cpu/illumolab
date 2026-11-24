@@ -1708,18 +1708,9 @@
     { k: 'diamond', n: 'Diamond', line: 'For the garage that never stops.' },
     { k: 'black', n: 'Black', line: 'The top card. Few will hold it.' },
   ];
-  // Engraved line art on every card: a coupe side-on (front to the right), drawn as one stroke set
-  const RC_ART = `<svg class="rc__art" viewBox="0 0 400 132" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 104 22 88Q26 78 52 75L120 70Q160 42 206 37L250 36Q286 38 318 60L362 68Q388 72 392 86L390 104H352A28 28 0 0 0 296 104H126A28 28 0 0 0 70 104Z"/>
-    <path d="M140 68Q168 48 205 44L244 43Q270 45 292 62Z M222 44 218 66"/>
-    <path d="M74 86Q200 77 372 80 M150 72 148 100 M262 68Q266 84 262 102 M366 74 386 78 M24 86 40 83 M284 60 292 56"/>
-    <circle cx="98" cy="104" r="22"/><circle cx="98" cy="104" r="12"/><circle cx="324" cy="104" r="22"/><circle cx="324" cy="104" r="12"/>
-    <path d="M10 127H390" opacity=".45"/></g></svg>`;
+  // Each card is the designer's finished face (cx-rcard-<tier>.jpg, set in concept.css); the sheen follows the cursor on top
   const rcard = (t, i, more = '') => `<div class="rc rc--${t.k}" data-tier="${t.k}" style="--i:${i}"${more}>
       <i class="rc__sheen"></i>
-      <div class="rc__top"><div class="rc__tier"><b>${t.n}</b><span>Tier 0${i + 1} of 05</span></div>
-        <div class="rc__brand"><i class="rc__cube"></i><b>iilumo</b><span>Rewards</span></div></div>
-      ${RC_ART}
     </div>`;
   // Cards lean toward the cursor (mouse only; phones and reduced motion keep them still)
   const rcHover = matchMedia('(hover:hover) and (pointer:fine)').matches && !reduce;
