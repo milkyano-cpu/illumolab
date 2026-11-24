@@ -1752,7 +1752,7 @@
         <div class="rw-hero__copy">
           <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><b>iilumo Rewards</b></nav>
           <p class="eyebrow eyebrow--dark">iilumo Rewards <span class="soon">Coming soon</span></p>
-          <h1 class="pg__title">Five cards.<br>One garage.</h1>
+          <h1 class="pg__title">Every build,<br>rewarded.</h1>
           <div class="pg__lead"><p>Every order and install moves you closer to the next card, and every card gives you more back. Join the early list and be first in when it opens.</p></div>
           <div class="pg__ctas"><button type="button" class="btn btn--amber" data-club>Get early access <i>&rarr;</i></button></div>
         </div>

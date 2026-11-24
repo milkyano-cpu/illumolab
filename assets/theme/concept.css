@@ -1734,7 +1734,7 @@ html{-webkit-tap-highlight-color:transparent}
 /* ================= iilumo Rewards page: its own look. A St Kilda sunset across the top that fades into dusk,
    and the rest of the page on that dusk. Same layout as every content page. ================= */
 #viewPage.is-rewards{--dusk:#1b1631;--art-h:clamp(760px,60vw,980px);position:relative;isolation:isolate;overflow-x:clip;background:var(--dusk)}
-#viewPage.is-rewards::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:0;height:var(--art-h);background:url(cx-rewards-stkilda-poster.jpg) 60% 75%/cover no-repeat;-webkit-mask:linear-gradient(#000 72%,transparent);mask:linear-gradient(#000 72%,transparent)}
+#viewPage.is-rewards::before{content:"";position:absolute;z-index:-1;left:0;right:0;top:0;height:var(--art-h);background:url(cx-rewards-stkilda-v3.jpg) 50% 80%/cover no-repeat;-webkit-mask:linear-gradient(#000 72%,transparent);mask:linear-gradient(#000 72%,transparent)}
 #viewPage.is-rewards .pg__title,#viewPage.is-rewards .crumbs b{color:#1d1d1f}
 #viewPage.is-rewards .pg__lead p{color:#2c2742}
 #viewPage.is-rewards .crumbs a,#viewPage.is-rewards .crumbs span{color:#4b4366}
