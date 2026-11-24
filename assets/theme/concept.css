@@ -1596,7 +1596,8 @@ html{-webkit-tap-highlight-color:transparent}
 .rc__tier b{position:relative;display:block;padding-left:4.2cqw;font:600 4.6cqw/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--foil)}
 /* holographic prism foil on the tier name and arrow: a rainbow that drifts on its own and follows the cursor on hover */
 .rc{--holo:linear-gradient(105deg,var(--foil) 0%,#9fe9ff 16%,#c7b2ff 30%,#ffb6dc 44%,#fff0a6 58%,#a9ffdf 72%,#9fe9ff 86%,var(--foil) 100%)}
-.rc--gold,.rc--platinum,.rc--diamond{--holo:linear-gradient(105deg,var(--foil) 0%,#2fa7d8 16%,#7a5cf0 30%,#e0479b 44%,#d99a12 58%,#1fb58a 72%,#2fa7d8 86%,var(--foil) 100%)}
+.rc--gold,.rc--platinum,.rc--diamond{--holo:linear-gradient(105deg,var(--ink-foil) 0%,#1f8fbf 16%,#6a4ee0 30%,#c93a87 44%,#b97f0c 58%,#17946f 72%,#1f8fbf 86%,var(--ink-foil) 100%)}
+.rc--gold{--ink-foil:#6e5420}.rc--platinum{--ink-foil:#4b525c}.rc--diamond{--ink-foil:#8a6d34}
 .rc__tier b,.rc__tier b::before{background:var(--holo);background-size:300% 100%;background-position:var(--mx,0%) 0;animation:rcHolo 6s ease-in-out infinite alternate}
 .rc__tier b{-webkit-background-clip:text;background-clip:text;color:transparent}
 .rc:hover .rc__tier b,.rc:hover .rc__tier b::before{animation:none;transition:background-position .2s}
@@ -1707,3 +1708,21 @@ html{-webkit-tap-highlight-color:transparent}
   .ct__list li{grid-template-columns:56px minmax(0,1fr) auto auto;gap:12px;padding:14px 0}
   .ct__list li > :first-child{width:56px;height:56px}
 }
+
+/* Rewards page tier picker: five mini cards in the real card colours, name underneath; the chosen one lifts with a fine ring */
+.rw-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(10px,1.4vw,16px);width:min(520px,100%);padding:0;border-radius:0;background:none;box-shadow:none}
+.rw-tab{display:flex;flex-direction:column;align-items:stretch;gap:10px;height:auto;padding:0;border-radius:0;background:none;font:600 11px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;text-align:center;color:var(--grey);white-space:nowrap}
+.rw-tab i{display:block;width:100%;height:auto;aspect-ratio:1.586;border-radius:9%/14%;background:var(--sw);box-shadow:0 8px 16px -10px rgba(29,29,31,.5),inset 0 0 0 1px rgba(255,255,255,.18);transition:transform .4s var(--ease),box-shadow .4s var(--ease)}
+.rw-tab:hover{color:var(--ink-2)}
+.rw-tab:hover i{transform:translateY(-3px)}
+.rw-tab[aria-selected="true"]{background:none;color:var(--ink)}
+.rw-tab[aria-selected="true"] i{transform:translateY(-5px);box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--ink),0 14px 22px -10px rgba(29,29,31,.55)}
+.rw-tab:focus-visible{outline:none}
+.rw-tab:focus-visible i{box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--amber)}
+.rw-tab--premier{--sw:linear-gradient(120deg,#67c8f2 0%,#8998cd 26%,#9280bc 42%,#b055a1 62%,#d55f8d 80%,#f26d70 100%)}
+.rw-tab--gold{--sw:linear-gradient(135deg,#9c8248 0%,#cdb67a 38%,#e2d09a 52%,#b89d5d 75%,#8d7440 100%)}
+.rw-tab--platinum{--sw:linear-gradient(135deg,#8d949e 0%,#c3c8cf 38%,#dfe3e8 52%,#adb3bb 75%,#848b95 100%)}
+.rw-tab--diamond{--sw:linear-gradient(135deg,#f2f2f0 0%,#ffffff 40%,#f6f6f4 60%,#e6e7ea 100%)}
+.rw-tab--diamond i{box-shadow:0 8px 16px -10px rgba(29,29,31,.35),inset 0 0 0 1px rgba(29,29,31,.1)}
+.rw-tab--black{--sw:linear-gradient(135deg,#2c2c31 0%,#141417 45%,#09090b 70%,#1d1d22 100%)}
+@media (max-width:640px){.rw-tabs{gap:8px}.rw-tab{gap:8px;font-size:9.5px;letter-spacing:.1em}}
