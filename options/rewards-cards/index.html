@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>iilumo Rewards card options</title>
+<link rel="preload" as="image" href="cx-rcard-premier.jpg"><link rel="preload" as="image" href="cx-rcard-gold.jpg">
+<link rel="preload" as="image" href="cx-rcard-platinum-v2.jpg"><link rel="preload" as="image" href="cx-rcard-diamond.jpg"><link rel="preload" as="image" href="cx-rcard-black.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--amber:#ffb74a;--ink:#1d1d1f;--ink-2:#3a3d42;--grey:#86868b;--bg:#f5f5f7;--ease:cubic-bezier(.2,.7,.1,1);--spring:cubic-bezier(.22,1.2,.36,1);
+  --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Helvetica Neue",Arial,sans-serif;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Helvetica Neue",Arial,sans-serif;
+  /* warm shadows so the cards sit on the amber, not on grey smudges */
+  --sh:inset 0 0 0 1px rgba(255,255,255,.16),0 1px 2px rgba(80,45,0,.16),0 14px 26px -12px rgba(80,45,0,.32),0 46px 70px -34px rgba(80,45,0,.5);
+  --sh-up:inset 0 0 0 1px rgba(255,255,255,.2),0 2px 4px rgba(80,45,0,.14),0 24px 40px -14px rgba(80,45,0,.36),0 70px 90px -40px rgba(80,45,0,.55)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{width:min(1180px,calc(100% - 32px));margin-inline:auto}
+.top{padding:40px 0 0}.top h1{font:600 28px/1.15 var(--display);letter-spacing:-.02em}
+.opt-head{padding:56px 0 16px}
+.opt-head b{display:inline-flex;align-items:center;gap:8px;font:600 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--grey)}
+.opt-head b i{font-style:normal;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:#fff;letter-spacing:0}
+.opt-head b em{font-style:normal;color:var(--amber);background:var(--ink);padding:3px 8px;border-radius:999px;letter-spacing:.08em;font-size:10px}
+.opt-head h2{margin-top:10px;font:600 20px/1.25 var(--display);letter-spacing:-.01em}
+
+/* the amber band, as on the home page */
+.club{background:var(--amber);padding-block:clamp(56px,8vw,110px);overflow:hidden}
+.club__wrap{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:clamp(28px,5vw,72px);align-items:center}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.soon{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;border-radius:999px;background:var(--ink);color:#fff;font-size:11px;font-weight:500}
+.soon::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber)}
+.club h3{margin-top:14px;font:600 clamp(38px,5vw,60px)/1.02 var(--display);letter-spacing:-.035em}
+.club__lede{margin-top:18px;max-width:34ch;font-size:15px;color:var(--ink-2)}
+.ctas{display:flex;align-items:center;gap:22px;margin-top:26px}
+.btn{display:inline-flex;align-items:center;gap:10px;height:46px;padding:0 22px;border:0;border-radius:999px;background:var(--ink);color:#fff;font:500 14px/1 var(--body);cursor:pointer;white-space:nowrap}
+.lnk{font-size:14px;font-weight:500;color:var(--ink);text-decoration:none;white-space:nowrap}
+
+/* one card: the designer's face, the prism sliding through the name letters, a soft glare following the pointer */
+.card{position:relative;aspect-ratio:1.586;border-radius:3.4%/5.4%;overflow:hidden;background:#2a2a2e center/cover no-repeat;box-shadow:var(--sh);
+  transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .7s var(--ease),box-shadow .5s var(--ease);
+  -webkit-tap-highlight-color:transparent;backface-visibility:hidden}
+.card.is-tilt{transition:transform .12s linear,box-shadow .5s var(--ease)}
+.card[data-k=premier]{background-image:url(cx-rcard-premier.jpg)}
+.card[data-k=gold]{background-image:url(cx-rcard-gold.jpg)}
+.card[data-k=platinum]{background-image:url(cx-rcard-platinum-v2.jpg)}
+.card[data-k=diamond]{background-image:url(cx-rcard-diamond.jpg)}
+.card[data-k=black]{background-image:url(cx-rcard-black.jpg)}
+.nm{position:absolute;left:4.92%;top:8.15%;height:10.11%;overflow:hidden;pointer-events:none}
+.nm i{position:absolute;inset:0 auto 0 0;width:300%;will-change:transform;
+  background:linear-gradient(105deg,#f5cba9 0%,#ffb6dc 14%,#c7b2ff 28%,#9fe9ff 42%,#c0eae4 56%,#e6e8be 70%,#f5cba9 84%,#ffb6dc 100%);
+  animation:holo 6s ease-in-out infinite alternate}
+.card.is-tilt .nm i{animation:none;transform:translateX(var(--hx,0%));transition:transform .2s linear}
+@keyframes holo{to{transform:translateX(-66.667%)}}
+.card[data-k=gold] .nm i{background-image:linear-gradient(105deg,#a8864a 0%,#d9b97a 14%,#93d3c2 28%,#b9a6e2 42%,#e2a98a 56%,#e9d39a 70%,#a8864a 84%,#93d3c2 100%)}
+.card[data-k=premier] .nm{width:34.23%;-webkit-mask:url(cx-rcard-name-premier.png) 0 0/100% 100%;mask:url(cx-rcard-name-premier.png) 0 0/100% 100%}
+.card[data-k=gold] .nm{width:23.63%;-webkit-mask:url(cx-rcard-name-gold.png) 0 0/100% 100%;mask:url(cx-rcard-name-gold.png) 0 0/100% 100%}
+.card[data-k=platinum] .nm{width:38.52%;-webkit-mask:url(cx-rcard-name-platinum.png) 0 0/100% 100%;mask:url(cx-rcard-name-platinum.png) 0 0/100% 100%}
+.card[data-k=diamond] .nm{width:36.93%;-webkit-mask:url(cx-rcard-name-diamond.png) 0 0/100% 100%;mask:url(cx-rcard-name-diamond.png) 0 0/100% 100%}
+.card[data-k=black] .nm{width:27.01%;-webkit-mask:url(cx-rcard-name-black.png) 0 0/100% 100%;mask:url(cx-rcard-name-black.png) 0 0/100% 100%}
+.gl{position:absolute;left:-50%;top:-50%;width:200%;height:200%;pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(closest-side,rgba(255,255,255,.26),rgba(255,255,255,0));transform:translate(var(--gx,0%),var(--gy,0%))}
+.card.is-tilt .gl{opacity:1}
+/* nothing animates while its section is off screen */
+.club:not(.in) .nm i,.club:not(.in) .marquee__track{animation-play-state:paused}
+
+/* caption: which tier is showing */
+.cap{margin-top:24px;text-align:center;height:66px}
+.cap small{display:block;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(29,29,31,.6)}
+.cap strong{display:block;margin-top:6px;font:600 20px/1.2 var(--display)}
+.cap span{display:block;margin-top:2px;font-size:14px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cap.swap>*{animation:capIn .4s var(--ease) both}.cap.swap>:nth-child(2){animation-delay:.04s}.cap.swap>:nth-child(3){animation-delay:.08s}
+@keyframes capIn{from{opacity:0;transform:translateY(5px)}}
+
+/* ============ A · Wallet stack ============ */
+.wallet-box{width:min(420px,100%);margin-inline:auto;container-type:inline-size}
+.wallet{position:relative;height:calc(100cqw / 1.586 + 4 * 11.5cqw)}
+.wallet .slot{position:absolute;inset:0 0 auto;transform:translateY(calc(var(--p) * 11.5cqw));transition:transform .7s var(--spring)}
+.wallet .slot:not(.is-front) .card{cursor:pointer}
+.wallet .slot:not(.is-front):hover{transform:translateY(calc(var(--p) * 11.5cqw - 8px))}
+.wallet .slot.is-front .card{box-shadow:var(--sh-up)}
+
+/* ============ B · Spotlight carousel ============ */
+.flow{position:relative;height:clamp(250px,25vw,330px);perspective:1300px;touch-action:pan-y;user-select:none;cursor:grab}
+.flow.is-drag{cursor:grabbing}
+.flow .slot{position:absolute;left:50%;top:50%;width:clamp(240px,24vw,340px);
+  transform:translate(-50%,-50%) translateX(calc(var(--o) * 64%)) translateZ(calc(var(--a) * -110px)) rotateY(calc(var(--o) * -30deg));
+  opacity:var(--op,1);z-index:var(--z);transition:transform .75s var(--ease),opacity .5s var(--ease)}
+.flow.is-drag .slot{transition:none}
+.flow .slot:not(.is-on) .card{cursor:pointer}
+.flow .slot.is-on .card{box-shadow:var(--sh-up)}
+.nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px}
+.nav button{border:0;background:rgba(29,29,31,.08);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px;color:var(--ink);transition:background .25s,transform .25s var(--ease)}
+.nav button:hover{background:rgba(29,29,31,.15)}.nav button:active{transform:scale(.92)}
+.dots{display:flex;gap:7px}
+.dots i{width:7px;height:7px;border-radius:999px;background:rgba(29,29,31,.25);transition:width .45s var(--ease),background .45s}
+.dots i.on{width:22px;background:var(--ink)}
+
+/* ============ C · Open fan ============ */
+.fan{position:relative;height:clamp(250px,25vw,330px);container-type:inline-size}
+.fan .slot{position:absolute;left:50%;bottom:6%;width:min(320px,56cqw);transform-origin:50% 170%;z-index:var(--z);
+  transform:translateX(-50%) rotate(calc(var(--o) * 5deg)) translateY(var(--ly,0px));transition:transform .65s var(--spring)}
+.fan:hover .slot,.fan.is-open .slot{transform:translateX(-50%) rotate(calc(var(--o) * 9deg)) translateY(var(--ly,0px))}
+.fan .slot:hover{--ly:-14px}
+.fan .slot.is-pick{--ly:-22px;z-index:20}
+.fan .slot.is-pick .card{box-shadow:var(--sh-up)}
+.fan .card{cursor:pointer}
+
+/* ============ D · Card flip with tier picker ============ */
+.flip{width:min(420px,100%);margin-inline:auto;perspective:1400px}
+.flip__in{position:relative;aspect-ratio:1.586;transform-style:preserve-3d;transition:transform .9s var(--ease)}
+.flip__in .card{position:absolute;inset:0}
+.flip__in .card.back{transform:perspective(1000px) rotateY(180deg) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
+.pick{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:min(420px,100%);margin:26px auto 0}
+.pick button{display:grid;gap:8px;border:0;background:none;padding:0;cursor:pointer;font:600 10px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:rgba(29,29,31,.55);transition:color .3s}
+.pick button i{display:block;aspect-ratio:1.586;border-radius:8%/13%;background:center/cover;box-shadow:0 6px 12px -6px rgba(80,45,0,.45),inset 0 0 0 1px rgba(255,255,255,.18);transition:transform .45s var(--spring),box-shadow .35s}
+.pick button:hover i{transform:translateY(-3px)}
+.pick button.on{color:var(--ink)}
+.pick button.on i{transform:translateY(-5px);box-shadow:0 0 0 2px var(--amber),0 0 0 3.5px var(--ink),0 12px 18px -8px rgba(80,45,0,.5)}
+
+/* ============ E · Card line (marquee) ============ */
+.club--line .club__wrap{grid-template-columns:1fr;text-align:center;justify-items:center}
+.club--line .eyebrow,.club--line .ctas{justify-content:center}
+.club--line .club__lede{margin-inline:auto}
+.marquee{margin-top:clamp(40px,5vw,64px);overflow:hidden;padding:34px 0 46px;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.marquee__track{display:flex;gap:28px;width:max-content;animation:line 42s linear infinite;will-change:transform}
+.marquee:hover .marquee__track{animation-play-state:paused}
+@keyframes line{to{transform:translateX(calc(-50% - 14px))}}
+.marquee .item{width:clamp(220px,22vw,300px);flex:none;text-align:left}
+.marquee .item .card{transition:transform .5s var(--spring),box-shadow .5s var(--ease)}
+.marquee .item:hover .card{transform:perspective(1000px) translateY(-10px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));box-shadow:var(--sh-up)}
+.marquee .item p{margin-top:14px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(29,29,31,.6)}
+.marquee .item p b{color:var(--ink);letter-spacing:.06em;margin-left:6px}
+
+@media (max-width:860px){
+  .club__wrap{grid-template-columns:1fr}
+  .club h3{font-size:40px}
+  .flow{height:250px}.flow .slot{width:min(68vw,300px)}
+  .flow .slot{transform:translate(-50%,-50%) translateX(calc(var(--o) * 52%)) translateZ(calc(var(--a) * -120px)) rotateY(calc(var(--o) * -26deg))}
+  .fan{height:min(64vw,300px)}.fan .slot{width:52cqw}
+  .fan:hover .slot,.fan.is-open .slot{transform:translateX(-50%) rotate(calc(var(--o) * 7deg)) translateY(var(--ly,0px))}
+  .pick{gap:8px}.pick button{font-size:9px;letter-spacing:.08em}
+}
+@media (prefers-reduced-motion:reduce){.nm i,.marquee__track{animation:none!important}.slot,.card,.flip__in,.cap.swap>*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap top"><h1>iilumo Rewards: five ways to show the cards</h1></div>
+
+<div class="wrap opt-head"><b><i>A</i>Wallet stack <em>Polished</em></b><h2>Cards stacked like a phone wallet. Tap one to bring it to the front.</h2></div>
+<section class="club" data-opt="A"><div class="wrap club__wrap"><div class="copy"></div>
+  <div><div class="wallet-box"><div class="wallet" id="wallet"></div></div><div class="cap" id="capA"></div></div></div></section>
+
+<div class="wrap opt-head"><b><i>B</i>Spotlight carousel <em>Polished</em></b><h2>One card in the spotlight. Drag, swipe or use the arrows.</h2></div>
+<section class="club" data-opt="B"><div class="wrap club__wrap"><div class="copy"></div>
+  <div><div class="flow" id="flow"></div>
+    <div class="nav"><button type="button" id="prev" aria-label="Previous card">&larr;</button><div class="dots" id="dots"></div><button type="button" id="next" aria-label="Next card">&rarr;</button></div>
+    <div class="cap" id="capB"></div></div></div></section>
+
+<div class="wrap opt-head"><b><i>C</i>Open fan <em>Polished</em></b><h2>Today's fan. It opens on hover and you can pick a card.</h2></div>
+<section class="club" data-opt="C"><div class="wrap club__wrap"><div class="copy"></div>
+  <div><div class="fan" id="fan"></div><div class="cap" id="capC"></div></div></div></section>
+
+<div class="wrap opt-head"><b><i>D</i>Card flip <em>New</em></b><h2>One big card. Pick a tier below and it flips over to that card.</h2></div>
+<section class="club" data-opt="D"><div class="wrap club__wrap"><div class="copy"></div>
+  <div><div class="flip"><div class="flip__in" id="flip"></div></div><div class="pick" id="pick"></div><div class="cap" id="capD"></div></div></div></section>
+
+<div class="wrap opt-head"><b><i>E</i>Card line <em>New</em></b><h2>All five cards gliding past in a slow line. Hover to stop and lift one.</h2></div>
+<section class="club club--line" data-opt="E"><div class="wrap club__wrap"><div class="copy"></div></div>
+  <div class="marquee"><div class="marquee__track" id="line"></div></div></section>
+<div style="height:80px"></div>
+
+<script>
+const T=[{k:'premier',n:'Premier',l:'Your first card. Every member starts here.'},{k:'gold',n:'Gold',l:'For the regulars. More back on every build.'},
+  {k:'platinum',n:'Platinum',l:'For serious builds. Priority at the lab.'},{k:'diamond',n:'Diamond',l:'For the garage that never stops.'},
+  {k:'black',n:'Black',l:'The top card. Few will hold it.'}];
+const IMG={premier:'cx-rcard-premier.jpg',gold:'cx-rcard-gold.jpg',platinum:'cx-rcard-platinum-v2.jpg',diamond:'cx-rcard-diamond.jpg',black:'cx-rcard-black.jpg'};
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches, fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
+const card=(t,cls='')=>`<div class="card ${cls}" data-k="${t.k}"><span class="nm"><i></i></span><i class="gl"></i></div>`;
+const slot=(t,i)=>`<div class="slot" data-i="${i}" role="button" tabindex="0" aria-label="${t.n} card">${card(t)}</div>`;
+const copy=`<p class="eyebrow">iilumo Rewards <span class="soon">Coming soon</span></p><h3>Build more.<br>Pay less.</h3>
+  <p class="club__lede">Free to join. Five cards, from Premier to Black. The more you build, the higher you go.</p>
+  <div class="ctas"><button class="btn" type="button">Get early access <span>&rarr;</span></button><a class="lnk" href="#">See the five cards &rarr;</a></div>`;
+$$('.copy').forEach(c=>c.innerHTML=copy);
+const cap=(el,i)=>{el.classList.remove('swap');void el.offsetWidth;el.classList.add('swap');
+  el.innerHTML=`<small>Tier 0${i+1} of 05</small><strong>${T[i].n}</strong><span>${T[i].l}</span>`};
+
+// the card leans toward the pointer; glare and prism follow it. One update per frame.
+function tilt(c,max=9){ if(!fine||reduce) return; let raf=0,ev=null;
+  c.addEventListener('pointermove',e=>{ev=e;if(raf) return;raf=requestAnimationFrame(()=>{raf=0;if(c.dataset.still) return;
+    const r=c.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width,y=(ev.clientY-r.top)/r.height;
+    c.classList.add('is-tilt');c.style.setProperty('--rx',((.5-y)*max).toFixed(2)+'deg');c.style.setProperty('--ry',((x-.5)*max).toFixed(2)+'deg');
+    c.style.setProperty('--gx',((x-.5)*50).toFixed(1)+'%');c.style.setProperty('--gy',((y-.5)*50).toFixed(1)+'%');c.style.setProperty('--hx',(-x*66.667).toFixed(1)+'%')})});
+  c.addEventListener('pointerleave',()=>{c.classList.remove('is-tilt');c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')});
+}
+// pause everything in a band while it is off screen
+const seen=new Map();
+const io=new IntersectionObserver(es=>es.forEach(e=>{e.target.classList.toggle('in',e.isIntersecting);seen.get(e.target)?.(e.isIntersecting)}),{rootMargin:'80px'});
+$$('.club').forEach(s=>io.observe(s));
+const key=(el,fn)=>el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fn()}});
+
+/* A · wallet */
+{ const w=$('#wallet'); w.innerHTML=T.map(slot).join(''); let order=[0,1,2,3,4]; const els=$$('.slot',w);
+  const paint=()=>{order.forEach((i,p)=>{const s=els[i],front=p===order.length-1;s.style.setProperty('--p',p);s.style.zIndex=p+1;s.classList.toggle('is-front',front);
+      const c=s.firstElementChild; if(front) delete c.dataset.still; else {c.dataset.still=1;c.classList.remove('is-tilt');c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')}});
+    cap($('#capA'),order[order.length-1])};
+  els.forEach(s=>{tilt(s.firstElementChild);const go=()=>{const i=+s.dataset.i;if(order.at(-1)===i) return;order=order.filter(x=>x!==i).concat(i);paint()};s.addEventListener('click',go);key(s,go)});
+  paint();
+}
+
+/* B · spotlight carousel: drag follows the finger, arrows, dots, slow autoplay until touched */
+{ const f=$('#flow'); f.innerHTML=T.map(slot).join(''); const els=$$('.slot',f),N=T.length; let cur=2,auto=null,touched=false;
+  $('#dots').innerHTML=T.map(()=>'<i></i>').join('');
+  const place=(shift=0)=>els.forEach((s,j)=>{let o=((j-cur+N+2)%N)-2+shift;const a=Math.abs(o);
+    s.style.setProperty('--o',o.toFixed(3));s.style.setProperty('--a',a.toFixed(3));s.style.setProperty('--op',a>1.6?0:1);s.style.setProperty('--z',10-Math.round(a));
+    const on=Math.round(o)===0;s.classList.toggle('is-on',on);const c=s.firstElementChild;if(on) delete c.dataset.still; else {c.dataset.still=1;c.classList.remove('is-tilt');c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')}});
+  const go=i=>{cur=(i+N)%N;place();$$('#dots i').forEach((d,j)=>d.classList.toggle('on',j===cur));cap($('#capB'),cur)};
+  const stop=()=>{touched=true;clearInterval(auto);auto=null};
+  const play=on=>{clearInterval(auto);auto=null;if(on&&!touched&&!reduce) auto=setInterval(()=>go(cur+1),4200)};
+  seen.set(f.closest('.club'),play);
+  let sx=null,moved=false;const step=()=>els[0].offsetWidth*.64;
+  els.forEach(s=>{tilt(s.firstElementChild);s.addEventListener('click',()=>{if(moved) return;stop();go(+s.dataset.i)});key(s,()=>{stop();go(+s.dataset.i)})});
+  $('#prev').onclick=()=>{stop();go(cur-1)};$('#next').onclick=()=>{stop();go(cur+1)};
+  f.addEventListener('pointerdown',e=>{sx=e.clientX;moved=false});
+  f.addEventListener('pointermove',e=>{if(sx==null) return;const d=e.clientX-sx;if(!moved&&Math.abs(d)<6) return;if(!moved){moved=true;stop();f.classList.add('is-drag');f.setPointerCapture(e.pointerId)}place(d/step())});
+  const end=e=>{if(sx==null) return;const d=e.clientX-sx;sx=null;f.classList.remove('is-drag');if(moved){go(cur-Math.round(d/step()));setTimeout(()=>moved=false,0)}};
+  f.addEventListener('pointerup',end);f.addEventListener('pointercancel',end);
+  go(cur);
+}
+
+/* C · open fan */
+{ const f=$('#fan'); f.innerHTML=T.map(slot).join(''); const els=$$('.slot',f); let pick=4;
+  const paint=()=>{els.forEach((s,j)=>{s.style.setProperty('--o',j-2);s.style.setProperty('--z',j+1);s.classList.toggle('is-pick',j===pick)});cap($('#capC'),pick)};
+  els.forEach(s=>{tilt(s.firstElementChild,6);const go=()=>{pick=+s.dataset.i;f.classList.add('is-open');paint()};s.addEventListener('click',go);key(s,go)});
+  f.addEventListener('pointerleave',()=>f.classList.remove('is-open'));
+  paint();
+}
+
+/* D · card flip with a tier picker */
+{ const fl=$('#flip'); let cur=4,deg=0,face=0;
+  fl.innerHTML=card(T[cur])+card(T[cur],'back'); const faces=$$('.card',fl); faces.forEach(c=>tilt(c,10));
+  $('#pick').innerHTML=T.map((t,i)=>`<button type="button" data-i="${i}" aria-label="${t.n} card"><i style="background-image:url(${IMG[t.k]})"></i>${t.n}</button>`).join('');
+  const mark=()=>{$$('#pick button').forEach((b,j)=>b.classList.toggle('on',j===cur));cap($('#capD'),cur)};
+  $$('#pick button').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i;if(i===cur) return;const dir=i>cur?1:-1;cur=i;face^=1;
+    faces[face].dataset.k=T[i].k;deg+=180*dir;fl.style.transform=`rotateY(${deg}deg)`;mark()}));
+  mark();
+}
+
+/* E · card line: one set, doubled so it loops without a seam */
+{ const one=T.map((t,i)=>`<div class="item">${card(t)}<p>Tier 0${i+1}<b>${t.n}</b></p></div>`).join('');
+  $('#line').innerHTML=one+one; $$('#line .card').forEach(c=>tilt(c,8));
+}
+</script>
+</body>
+</html>

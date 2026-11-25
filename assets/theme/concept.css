@@ -1636,12 +1636,33 @@ html{-webkit-tap-highlight-color:transparent}
 .rc--black .rc__name{width:27.01%;-webkit-mask:url(cx-rcard-name-black.png) 0 0/100% 100% no-repeat;mask:url(cx-rcard-name-black.png) 0 0/100% 100% no-repeat}
 @media (prefers-reduced-motion:reduce){.rc__name{animation:none}}
 
-/* Home: the five cards fanned out like a hand of cards; hover lifts one and it leans toward the cursor */
-.rw-fan{position:relative;aspect-ratio:2.1;perspective:1800px;margin-right:clamp(0px,2vw,30px)}
-.rw-fan .rc{position:absolute;top:22%;left:calc(var(--i) * 15.5%);width:38%;z-index:var(--i);cursor:pointer;outline:none;
-  transform:translateY(calc(var(--i) * -3%)) rotateZ(-7deg) rotateY(-8deg) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
-.rw-fan .rc:hover,.rw-fan .rc:focus-visible{z-index:9;transform:translateY(-20%) rotateZ(-3deg) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) scale(1.04);box-shadow:0 40px 60px -24px rgba(29,29,31,.6),0 2px 6px rgba(29,29,31,.12),inset 0 0 0 1px rgba(255,255,255,.2)}
+/* Home: the five cards held as a fan. Hover opens the fan and lifts the card under the cursor; tap picks a card
+   (the line under the fan says which tier it is), tap the picked card again to open it on the Rewards page */
+.rw-fan{position:relative;height:clamp(260px,26vw,340px);container-type:inline-size;margin-right:clamp(0px,2vw,30px)}
+.rw-fan__slot{position:absolute;left:50%;bottom:6%;width:min(330px,56cqw);transform-origin:50% 170%;z-index:var(--z);
+  transform:translateX(-50%) rotate(calc(var(--o) * 5deg)) translateY(var(--ly,0px));transition:transform .65s cubic-bezier(.22,1.2,.36,1)}
+.rw-fan:hover .rw-fan__slot,.rw-fan.is-open .rw-fan__slot{transform:translateX(-50%) rotate(calc(var(--o) * 9deg)) translateY(var(--ly,0px))}
+.rw-fan__slot:hover{--ly:-14px}
+.rw-fan__slot.is-pick{z-index:20}
+/* the picked card only lifts while the fan is open; closed, it sits flush on top of the stack */
+.rw-fan:hover .rw-fan__slot.is-pick,.rw-fan.is-open .rw-fan__slot.is-pick{--ly:-22px}
+/* warm shadows so the cards sit on the amber band */
+.rw-fan .rc{cursor:pointer;outline:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 1px 2px rgba(80,45,0,.16),0 14px 26px -12px rgba(80,45,0,.32),0 46px 70px -34px rgba(80,45,0,.5)}
+.rw-fan__slot.is-pick .rc{box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 2px 4px rgba(80,45,0,.14),0 24px 40px -14px rgba(80,45,0,.36),0 70px 90px -40px rgba(80,45,0,.55)}
 .rw-fan .rc:focus-visible{box-shadow:0 0 0 3px var(--ink)}
+.rw-fan__cap{margin:22px clamp(0px,2vw,30px) 0 0;text-align:center;height:66px}
+.rw-fan__cap small{display:block;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(29,29,31,.6)}
+.rw-fan__cap strong{display:block;margin-top:6px;font:600 20px/1.2 var(--display)}
+.rw-fan__cap span{display:block;margin-top:2px;font-size:14px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rw-fan__cap.swap>*{animation:rwCapIn .4s var(--ease) both}.rw-fan__cap.swap>:nth-child(2){animation-delay:.04s}.rw-fan__cap.swap>:nth-child(3){animation-delay:.08s}
+@keyframes rwCapIn{from{opacity:0;transform:translateY(5px)}}
+@media (max-width:900px){
+  /* phones: bigger cards, a tighter fan so it still fits the screen, and the box only as tall as the cards need */
+  .rw-fan{margin:0;height:calc((100vw - 32px) * .74 / 1.586 + 58px)}.rw-fan__cap{margin:14px 0 0}
+  .rw-fan__slot{width:74cqw;bottom:10px;transform-origin:50% 150%;transform:translateX(-50%) rotate(calc(var(--o) * 4deg)) translateY(var(--ly,0px))}
+  .rw-fan:hover .rw-fan__slot,.rw-fan.is-open .rw-fan__slot{transform:translateX(-50%) rotate(calc(var(--o) * 5.5deg)) translateY(var(--ly,0px))}
+}
+@media (prefers-reduced-motion:reduce){.rw-fan__slot,.rw-fan__cap.swap>*{transition:none;animation:none}}
 
 /* The Rewards page */
 .rw-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(28px,5vw,80px);align-items:center;padding:6px 0 clamp(48px,6vw,90px)}
@@ -1681,7 +1702,7 @@ html{-webkit-tap-highlight-color:transparent}
 .rw-tease__lock svg{width:44px;height:44px;fill:none;stroke:var(--amber);stroke-width:1.6;stroke-linecap:round}
 @media (max-width:1100px){.rw-tab{padding:0 10px;font-size:13px}.rw-teases{grid-template-columns:1fr}.rw-tier h3{font-size:20px}.rw-tier p{font-size:14px}}
 @media (max-width:860px){.rw-tiers{grid-template-columns:1fr;gap:18px}.rw-tier{display:grid;grid-template-columns:minmax(0,44%) minmax(0,1fr);column-gap:18px;align-content:center}.rw-tier__card{grid-row:1 / span 3;margin:0;align-self:center}.rw-tier__no{align-self:end}}
-@media (max-width:900px){.rw-hero{grid-template-columns:1fr}.rw-fan{margin:10px 0 0}}
+@media (max-width:900px){.rw-hero{grid-template-columns:1fr}}
 @media (max-width:640px){
   .rw-tease{grid-template-columns:1fr}
   .rw-tabs{flex-wrap:wrap;border-radius:22px}.rw-tab{height:34px;padding:0 11px;font-size:13px}

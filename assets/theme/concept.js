@@ -1730,13 +1730,31 @@
   let rwStart = 'premier';
   const fan = $('#rwFan');
   if (fan && fan.isConnected) {
-    fan.innerHTML = TIERS.map((t, i) => rcard(t, i, ` role="link" tabindex="0" aria-label="${t.n} card"`)).join('');
-    $$('.rc', fan).forEach(c => {
+    fan.innerHTML = TIERS.map((t, i) => `<div class="rw-fan__slot" style="--o:${i - 2};--z:${i + 1}">${rcard(t, i, ` role="button" tabindex="0" aria-label="${t.n} card"`)}</div>`).join('');
+    const cap = document.createElement('div');
+    cap.className = 'rw-fan__cap'; cap.setAttribute('aria-live', 'polite');
+    const box = document.createElement('div');  // fan and its line share one grid cell
+    fan.before(box); box.append(fan, cap);
+    let pick = TIERS.length - 1;
+    const paint = () => {
+      $$('.rw-fan__slot', fan).forEach((s, j) => s.classList.toggle('is-pick', j === pick));
+      const t = TIERS[pick];
+      cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');
+      cap.innerHTML = `<small>Tier 0${pick + 1} of 05</small><strong>${t.n}</strong><span>${t.line}</span>`;
+    };
+    $$('.rc', fan).forEach((c, i) => {
       rcTilt(c);
-      const go = () => { rwStart = c.dataset.tier; location.hash = '#/pages/iilumo-rewards'; };
+      // first tap picks the card; tapping the picked card opens it on the Rewards page
+      const go = () => {
+        if (pick === i) { rwStart = c.dataset.tier; location.hash = '#/pages/iilumo-rewards'; return; }
+        pick = i; fan.classList.add('is-open'); paint();
+      };
       c.addEventListener('click', go);
       c.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
     });
+    // a mouse leaving closes the fan; on phones it stays open after a tap so the picked card stays lifted
+    fan.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') fan.classList.remove('is-open'); });
+    paint();
   }
   const renderRewards = () => {
     $('#pgBody').innerHTML = `
