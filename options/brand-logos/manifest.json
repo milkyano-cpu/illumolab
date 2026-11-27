@@ -1,0 +1,373 @@
+{
+  "flow-designs": {
+    "name": "Flow Designs",
+    "file": "flow-designs.png",
+    "source": "https://flowdesignsaustralia.com/cdn/shop/files/flow-black-logo.png",
+    "kind": "png",
+    "note": "Orange F + black wordmark, transparent, 5948px wide. dark logo, fine on the light grey tile. Official site is flowdesignsaustralia.com (flowdesigns.com.au is a parked domain)."
+  },
+  "ast": {
+    "name": "AST Suspension",
+    "file": "ast.png",
+    "source": "https://ast-suspension.com/cdn/shop/files/ASTxMOTON_website_61c7df6b-fd42-41d4-94cf-9b536c62636e.png",
+    "kind": "png",
+    "note": "Combined 'AST x MOTON' lockup from the site header, orange/black, 500x61 (small, wide). dark logo, fine on the light grey tile. No AST-only logo on the site."
+  },
+  "radium-engineering": {
+    "name": "Radium Engineering",
+    "file": "radium-engineering.png",
+    "source": "https://www.radiumauto.com/cdn/shop/files/ra-logo-full.png",
+    "kind": "png",
+    "note": "Green 'ra' block + dark grey 'dium ENGINEERING', transparent, 2338x1327 (has padding). dark logo, fine on the light grey tile."
+  },
+  "dixcel": {
+    "name": "DIXCEL",
+    "file": "dixcel.svg",
+    "source": "https://www.dixcel.co.jp/images/logo.svg",
+    "kind": "svg",
+    "note": "Black wordmark with 'Advanced Brake Technology' tagline; no fill set (defaults to black). dark logo, fine on the light grey tile."
+  },
+  "xforce": {
+    "name": "XForce",
+    "file": "xforce.png",
+    "source": "https://xforce.com.au/cdn/shop/files/Xforce_Logo_Final_Black.png",
+    "kind": "png",
+    "note": "Red X + white FORCE on a solid black rectangle baked into the PNG (black badge), 799x227. Reads as a black badge on the light tile. Alternative white-background JPG exists: https://xforce.com.au/cdn/shop/files/XFORCE_LOGO_COLOUR_BLACK_RGB_LRG.jpg"
+  },
+  "maxton-design": {
+    "name": "Maxton Design",
+    "file": "maxton-design.svg",
+    "source": "https://maxtondesign.com/cdn/shop/files/maxton-logo.svg",
+    "kind": "svg",
+    "note": "MD mark + 'MAXTON DESIGN', black. dark logo, fine on the light grey tile. A white version exists on the site (logo_white.svg)."
+  },
+  "fi-exhaust": {
+    "name": "Fi Exhaust",
+    "file": "fi-exhaust.svg",
+    "source": "https://www.fi-exhaust.com/web/images/fi-logo.svg",
+    "kind": "svg",
+    "note": "Red 'Fi' mark only (#BB141B), no wordmark text. Fine on light tile."
+  },
+  "adro": {
+    "name": "ADRO",
+    "file": "adro.png",
+    "source": "https://adro.com/cdn/shop/files/adro_logo_white_2026_Topaz_Gigapixel_4x_scale.png",
+    "kind": "png",
+    "note": "white/light logo, needs a dark tile. Transparent, 6512x2296 (AI-upscaled file from their site). Only a white version found."
+  },
+  "paragon": {
+    "name": "Paragon Performance Brakes",
+    "file": "paragon.png",
+    "source": "https://cdn11.bigcommerce.com/s-8pb2bpl705/product_images/uploaded_images/paragon-full-logo-blkis-500120.png",
+    "kind": "png",
+    "note": "Red 'P Paragon PERFORMANCE' wordmark, transparent, 500x120. Fine on light tile. From paragonbrakes.com (US Paragon Performance, the brand AU retailers stock) - no AU brand site found."
+  },
+  "sooqoo": {
+    "name": "Sooqoo",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - sooqoo.com is a for-sale domain; no official brand site found."
+  },
+  "moton-suspension": {
+    "name": "Moton Suspension",
+    "file": "moton-suspension.png",
+    "source": "https://ast-suspension.com/cdn/shop/files/ASTxMOTON_website_61c7df6b-fd42-41d4-94cf-9b536c62636e.png",
+    "kind": "png",
+    "note": "Same 'AST x MOTON' combined lockup as ast.png (motonsuspension.com redirects to ast-suspension.com). dark logo, fine on the light grey tile. No Moton-only logo found."
+  },
+  "zaero-designs": {
+    "name": "Zaero Designs",
+    "file": "zaero-designs.svg",
+    "source": "https://zaero-design-shop.b-cdn.net/media/ab/90/55/1681218078/zaero-design-logo-white.svg",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (fill #FFFFFF). Wide wordmark 'ZAERO DESIGN'."
+  },
+  "koyorad": {
+    "name": "Koyorad",
+    "file": "koyorad.jpg",
+    "source": "https://koyorad.com/wp-content/uploads/2024/04/Koyo-Logo.jpeg",
+    "kind": "jpg",
+    "note": "Blue icon + dark grey 'KOYORAD' on a white JPG background, 1143x162, wide. dark logo, fine on the light grey tile (white box will show). Transparent PNG only exists at 200px: https://koyorad.com/wp-content/uploads/2024/04/Logo-M.png"
+  },
+  "ohlins": {
+    "name": "Öhlins",
+    "file": "ohlins.svg",
+    "source": "https://www.ohlins.com/storage/FE2ED2DC5780C0293A89BD63699E3848B6052719B33E2566E244EB86C39B08FA/4e5e2943ed134cd1a9426cc222cf6c0a/svg/media/48cd69eb94ed478c98d35b3e9581f707/logo_ohlins.svg",
+    "kind": "svg",
+    "note": "Yellow/blue badge. Works on any background."
+  },
+  "korsh": {
+    "name": "Korsh",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - korsh.com.au doesn't resolve, korsh.com is parked, no brand site found."
+  },
+  "vland": {
+    "name": "VLAND",
+    "file": "vland.png",
+    "source": "https://www.vlandus.com/cdn/shop/files/logo111.png",
+    "kind": "png",
+    "note": "Silver/blue V icon + dark teal 'VLAND', transparent, 1836x471. dark logo, fine on the light grey tile. From vlandus.com (vlandshop.com is a closed store)."
+  },
+  "platinum-potions": {
+    "name": "Platinum Potions",
+    "file": "platinum-potions.png",
+    "source": "https://www.platinumpotions.com.au/images/platinum-potions.png",
+    "kind": "png",
+    "note": "Black wordmark + gold crown, transparent, 800x267. dark logo, fine on the light grey tile. White version also on site: /images/platinum-potions-white.png"
+  },
+  "invidia": {
+    "name": "Invidia",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - invidia.com refuses connections; invidia.com.au is an unrelated web agency."
+  },
+  "alpha-n": {
+    "name": "Alpha-N Performance",
+    "file": "alpha-n.svg",
+    "source": "https://cdn4.site-media.eu/images/0/9799760/Alpha-N_Logo_Weiss.svg",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (Weiss = white). From alpha-n.de (alpha-n.com is an unrelated Japanese site)."
+  },
+  "h-r": {
+    "name": "H&R Springs",
+    "file": "h-r.svg",
+    "source": "https://www.h-r.com/ (inline header SVG)",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (fill #fff via internal style). Saved from the inline header SVG."
+  },
+  "osram": {
+    "name": "OSRAM",
+    "file": "osram.png",
+    "source": "https://look.ams-osram.com/transform/2f3e8012-68d3-4dc2-8719-14e23820a091/Logo-rgb-without-bounding-box-orange-transparent-background",
+    "kind": "png",
+    "note": "Orange wordmark, transparent, 976x216. Fine on light tile."
+  },
+  "blackvue": {
+    "name": "BlackVue",
+    "file": "blackvue.svg",
+    "source": "https://blackvue.com/cdn/shop/files/BlackVue_logo.svg",
+    "kind": "svg",
+    "note": "Black icon + wordmark, no fill set (defaults to black). dark logo, fine on the light grey tile."
+  },
+  "eibach": {
+    "name": "Eibach",
+    "file": "eibach.svg",
+    "source": "https://www.eibach.com/storage/img/eibach-header-logo.svg",
+    "kind": "svg",
+    "note": "Red slanted bar with white 'Eibach' text inside. Works on light tile."
+  },
+  "leyo": {
+    "name": "LEYO Motorsport",
+    "file": "leyo.png",
+    "source": "https://static.wixstatic.com/media/adcde2_84e4af1e80a9484c8c717f9134141c83~mv2.png",
+    "kind": "png",
+    "note": "Grey 'LEYO MOTORSPORT', transparent, 1254x544. Readable on light and dark (mid-grey, so contrast on light grey is a bit low). From leyo-motorsport.com."
+  },
+  "hcmotionz": {
+    "name": "HCMotionz",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - no official site, only eBay stores."
+  },
+  "stanceparts": {
+    "name": "Stanceparts",
+    "file": "stanceparts.png",
+    "source": "https://www.stanceparts.com/wp-content/uploads/Logo-HR.png",
+    "kind": "png",
+    "note": "White 'STANCEPARTS' with black + teal outline, transparent, 476x100. Works on light tile. Brand is Dutch (stanceparts.com); stanceparts.com.au is in a redirect loop."
+  },
+  "aeroflow-dynamics": {
+    "name": "Aeroflow Dynamics",
+    "file": "aeroflow-dynamics.png",
+    "source": "https://www.aeroflowdynamics.com/cdn/shop/files/afd_logo_black_new_web_header.png",
+    "kind": "png",
+    "note": "White AF DYNAMICS on a solid black rectangle (no transparency), 1846x602. Reads as a black badge. From aeroflowdynamics.com (US store, USD); no Australian site found."
+  },
+  "mst-performance": {
+    "name": "MST Performance",
+    "file": "mst-performance.png",
+    "source": "https://shoplineimg.com/54ffd3f8039055ef95000026/61711413f1ebb7001d6b82f8/original.png",
+    "kind": "png",
+    "note": "Round black/orange/white badge, transparent corners, 1063x1066 (square). Works on light tile."
+  },
+  "hks": {
+    "name": "HKS",
+    "file": "hks.png",
+    "source": "https://www.hks-power.co.jp/hks/images/common/logo.png",
+    "kind": "png",
+    "note": "Black letters in white boxes, 184x71 - SMALL (under 300px), largest on site."
+  },
+  "akrapovic": {
+    "name": "Akrapovič",
+    "file": "akrapovic.svg",
+    "source": "https://akrapovic.azureedge.net/assets/images/ak-logo.svg",
+    "kind": "svg",
+    "note": "Red scorpion + black 'AKRAPOVIC' wordmark. dark logo, fine on the light grey tile."
+  },
+  "titan-suspension": {
+    "name": "TITAN Suspension",
+    "file": "titan-suspension.png",
+    "source": "https://titansuspension.com.au/cdn/shop/files/TITAN_AUS_Website_Logo.png",
+    "kind": "png",
+    "note": "Orange TITAN + 'SUSPENSION AUSTRALIA', transparent, 680x244. Fine on light tile (from titansuspension.com.au, the AU site)."
+  },
+  "cobb-tuning": {
+    "name": "COBB Tuning",
+    "file": "cobb-tuning.svg",
+    "source": "https://www.cobbtuning.com/wp/content/themes/cobb/assets/images/COBB_Tuning_logo_black.svg",
+    "kind": "svg",
+    "note": "Black wordmark. dark logo, fine on the light grey tile. White version also exists (COBB_Tuning_logo_white.svg)."
+  },
+  "ghozt-lighting": {
+    "name": "Ghozt Lighting",
+    "file": "ghozt-lighting.png",
+    "source": "https://ghoztlighting.com/wp-content/uploads/2023/03/ghozt-whitelogo-redtrim-small.png",
+    "kind": "png",
+    "note": "White letters with black/red outline, transparent, 449x126. Works on light and dark."
+  },
+  "eventuri": {
+    "name": "Eventuri",
+    "file": "eventuri.svg",
+    "source": "https://www.eventuri.net/wp-content/uploads/2025/09/Logo-1.svg",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (white letters, red V). Note: the SVG only wraps a 398x42 embedded PNG, so it is not a true vector."
+  },
+  "corsomotion": {
+    "name": "Corsomotion",
+    "file": "corsomotion.jpg",
+    "source": "https://corsomotion.com/cdn/shop/files/3-2.png",
+    "kind": "jpg",
+    "note": "Black script 'CorsoMotion' oval on a white JPG background (file is named .png on their CDN but is JPEG), 2000x1000. dark logo, fine on the light grey tile (white box will show)."
+  },
+  "hardrace": {
+    "name": "Hardrace",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - hardrace.com returns 404; only distributor sites found."
+  },
+  "jb-weld": {
+    "name": "J-B Weld",
+    "file": "jb-weld.png",
+    "source": "https://octanecdn.com/jbweldcom/jbweldcom_294558229.png",
+    "kind": "png",
+    "note": "Red/black/white oval badge, transparent, 392x261. Works on light tile."
+  },
+  "diode-dynamics": {
+    "name": "Diode Dynamics",
+    "file": "diode-dynamics.svg",
+    "source": "https://www.diodedynamics.com/cdn/shop/files/Diode_Dynamics_PLT_Logo.svg",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile ('DIODE DYNAMICS Performance Lighting Technology', fill white). Header logo is only the D icon (diode_logo.svg)."
+  },
+  "alpharex": {
+    "name": "AlphaRex",
+    "file": "alpharex.png",
+    "source": "https://alpharexusa.com/cdn/shop/files/alpharex-logo_70h_1.png",
+    "kind": "png",
+    "note": "white/light logo, needs a dark tile. 233x70 - SMALL (under 300px), largest on site."
+  },
+  "obdeleven": {
+    "name": "OBDeleven",
+    "file": "obdeleven.svg",
+    "source": "https://obdeleven.com/ (inline header SVG)",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (fill #fff). Saved from the inline header SVG."
+  },
+  "armytrix": {
+    "name": "Armytrix",
+    "file": "armytrix.png",
+    "source": "https://www.armytrix.com/v2/img/logo_armytrix.png",
+    "kind": "png",
+    "note": "Green icon + white wordmark, 250x38 - SMALL (under 300px). white/light logo, needs a dark tile."
+  },
+  "kw-suspensions": {
+    "name": "KW Suspensions",
+    "file": "kw-suspensions.svg",
+    "source": "https://dsahg7sfz-res.cloudinary.com/image/upload/v1793701423/KW_Logo_2026_RGB_hwy0y2.svg",
+    "kind": "svg",
+    "note": "Chequered flag + purple/yellow KW. Works on light tile."
+  },
+  "bc-racing": {
+    "name": "BC Racing",
+    "file": "bc-racing.svg",
+    "source": "https://bcracing-na.com/wp-content/uploads/2024/08/bc-racing-na-logo.svg",
+    "kind": "svg",
+    "note": "Gold BC + black 'RACING CUSTOM COILOVERS'. dark logo, fine on the light grey tile. From BC Racing North America (bcracing.com is parked). AU site bcracing.com.au has a white-text version."
+  },
+  "dahler": {
+    "name": "dÄHLer",
+    "file": "dahler.png",
+    "source": "https://www.daehler.com/wp-content/uploads/2022/09/daehler-logo-quality.png",
+    "kind": "png",
+    "note": "white/light logo, needs a dark tile (white wordmark + 'Swiss innovation' line + red Swiss flag), transparent, 442x108."
+  },
+  "ctap": {
+    "name": "CTAP",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - ctap.com.au is an unrelated printing company; no brand site found."
+  },
+  "valenti": {
+    "name": "Valenti",
+    "file": "valenti.svg",
+    "source": "https://valentijapan.com/wp-content/themes/idolcorp/images/common/logo_wh.svg",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (fill #fff). Wide script wordmark."
+  },
+  "jcsl": {
+    "name": "JCSL",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - jcsl.jp / jcsl.co.jp are unrelated; no brand site found."
+  },
+  "plateless": {
+    "name": "Plateless",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - plateless.com.au doesn't resolve; no brand site found."
+  },
+  "bilstein": {
+    "name": "Bilstein",
+    "file": "bilstein.svg",
+    "source": "https://bilstein.com/en/ (inline header SVG)",
+    "kind": "svg",
+    "note": "Blue BILSTEIN bar + yellow spring block. Works on light tile."
+  },
+  "ftp-motorsport": {
+    "name": "FTP Motorsport",
+    "file": "ftp-motorsport.png",
+    "source": "https://cdn.store-assets.com/s/1414934/f/15813591.webp",
+    "kind": "png",
+    "note": "Black 'FTP motorsport' on a white background (no transparency), 613x280. Converted from WebP to PNG (no other changes). dark logo, fine on the light grey tile (white box will show). From ftpmotorsport.com.tw."
+  },
+  "voltex": {
+    "name": "Voltex",
+    "file": null,
+    "source": "",
+    "kind": null,
+    "note": "MISSING - voltex-japan.com doesn't connect; only retailer pages found."
+  },
+  "airtekk-engineering": {
+    "name": "Airtekk Engineering",
+    "file": null,
+    "source": "https://www.airtekk.com/",
+    "kind": null,
+    "note": "MISSING - airtekk.com header has no logo image (text only)."
+  },
+  "integrated-engineering": {
+    "name": "Integrated Engineering",
+    "file": "integrated-engineering.svg",
+    "source": "https://cdn.shopify.com/s/files/1/0054/2605/3231/files/logo.svg",
+    "kind": "svg",
+    "note": "white/light logo, needs a dark tile (white + off-white #F1EFEE). Icon mark 'IE' only, no wordmark text."
+  }
+}

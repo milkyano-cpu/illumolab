@@ -464,23 +464,103 @@
   };
   if (slides.length) go(0);
 
-  /* ---------- Finder ---------- */
-  const selMake = $('#selMake'), selModel = $('#selModel'), selYear = $('#selYear');
+  /* ---------- Finder: Make, then Model (one "M2", not one per chassis), then Generation (G87, F87 ...) ---------- */
+  const selMake = $('#selMake'), selModel = $('#selModel'), selYear = $('#selYear'); // selYear holds the generation (a car id)
   const opt = (v, t) => Object.assign(document.createElement('option'), { value: v, textContent: t });
+  // "M2 (G87)" -> model M2, generation G87; "Ghibli M157" -> Ghibli, M157; "911" -> 911 with no generation
+  const carSplit = id => {
+    const n = VEHICLES[id][1], m = n.match(/^(.*?)\s*\((.+)\)\s*$/) || n.match(/^(.+?)\s+([A-Z]\d{3})$/);
+    return m ? [m[1].trim(), m[2].trim()] : [n, ''];
+  };
+  const genNote = id => { const [, , a, b] = VEHICLES[id]; return a ? (a === b ? `${a}` : `${a}–${b}`) : ''; };
   [...new Set(Object.values(VEHICLES).map(v => v[0]))].sort().forEach(m => selMake.append(opt(m, m)));
   const fillModels = make => {
     selModel.replaceChildren(opt('', selModel.dataset.empty || 'Select model'));
-    Object.entries(VEHICLES).filter(([, v]) => v[0] === make).forEach(([id, v]) => selModel.append(opt(id, v[1])));
+    [...new Set(Object.keys(VEHICLES).filter(id => VEHICLES[id][0] === make).map(id => carSplit(id)[0]))]
+      .sort((x, y) => x.localeCompare(y, 'en', { numeric: true })).forEach(m => selModel.append(opt(m, m)));
     selModel.disabled = !make;
-    fillYears('');
+    fillGens('');
   };
-  const fillYears = id => {
-    selYear.replaceChildren(opt('', selYear.dataset.empty || 'Select year'));
-    if (id) { const [, , a, b] = VEHICLES[id]; if (!a) selYear.append(opt(0, 'All years')); else for (let y = b; y >= a; y--) selYear.append(opt(y, y)); }
-    selYear.disabled = !id;
+  const fillGens = model => {
+    selYear.replaceChildren(opt('', selYear.dataset.empty || 'Select generation'));
+    if (model) Object.keys(VEHICLES).filter(id => VEHICLES[id][0] === selMake.value && carSplit(id)[0] === model).forEach(id => {
+      const g = carSplit(id)[1] || 'All generations', note = genNote(id), o = opt(id, note ? `${g} · ${note}` : g);
+      o.dataset.short = g; if (note) o.dataset.note = note; selYear.append(o);
+    });
+    selYear.disabled = !model;
   };
-  selMake.addEventListener('change', () => { fillModels(selMake.value); if (selMake.value) selModel.focus(); });
-  selModel.addEventListener('change', () => { fillYears(selModel.value); if (selModel.value) selYear.focus(); });
+
+  // Each list opens as a panel under its field, with a search box at the top when the list is long.
+  // Picking one opens the next list by itself: Make, then Model, then Generation, then the Search button.
+  const escF = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); // the shared esc() is defined further down
+  const pickers = [];
+  const picker = sel => {
+    const field = sel.closest('.search__field');
+    sel.classList.add('pick__native'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'pick__btn' });
+    btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', field.querySelector('.search__label').textContent);
+    const pop = Object.assign(document.createElement('div'), { className: 'pick__pop' });
+    pop.innerHTML = `<label class="pick__find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input type="search" placeholder="Search" aria-label="Search ${escF(field.querySelector('.search__label').textContent.toLowerCase())}" enterkeyhint="go"></label><div class="pick__list" role="listbox"></div>`;
+    field.append(btn, pop);
+    const find = $('input', pop), list = $('.pick__list', pop);
+    let act = -1;
+    const opts = () => [...sel.options].filter(o => o.value !== '');
+    const sync = () => {
+      const o = sel.selectedOptions[0], on = o && o.value !== '';
+      btn.innerHTML = `<span>${escF(on ? o.dataset.short || o.textContent : (sel.options[0] || {}).textContent || '')}</span>`;
+      btn.classList.toggle('is-empty', !on); btn.disabled = sel.disabled; field.classList.toggle('is-off', sel.disabled);
+    };
+    const draw = () => {
+      const q = find.value.trim().toLowerCase(), shown = opts().filter(o => !q || o.textContent.toLowerCase().includes(q));
+      list.innerHTML = shown.length ? shown.map(o => `<button type="button" role="option" class="pick__opt${o.value === sel.value ? ' is-on' : ''}" data-v="${escF(o.value)}" aria-selected="${o.value === sel.value}"><span>${escF(o.dataset.short || o.textContent)}</span>${o.dataset.note ? `<small>${escF(o.dataset.note)}</small>` : ''}</button>`).join('') : '<p class="pick__none">No match</p>';
+      act = -1;
+    };
+    const mark = i => { const its = $$('.pick__opt', list); if (!its.length) return; act = (i + its.length) % its.length; its.forEach((x, j) => x.classList.toggle('is-act', j === act)); its[act].scrollIntoView({ block: 'nearest' }); };
+    const api = {
+      sel, sync,
+      open() {
+        if (sel.disabled) return; pickers.forEach(p => p !== api && p.close());
+        find.value = ''; pop.classList.toggle('has-find', opts().length > 8); draw();
+        field.classList.add('is-open'); btn.setAttribute('aria-expanded', 'true');
+        const on = $('.pick__opt.is-on', list); if (on) on.scrollIntoView({ block: 'center' });
+        if (fine && opts().length > 8) setTimeout(() => find.focus({ preventScroll: true }), 30);
+        // a list that would open below the screen brings itself into view
+        requestAnimationFrame(() => { const r = pop.getBoundingClientRect(); if (r.bottom > innerHeight - 16) scrollBy({ top: r.bottom - innerHeight + 24, behavior: reduce ? 'auto' : 'smooth' }); });
+      },
+      close() { if (!field.classList.contains('is-open')) return; field.classList.remove('is-open'); btn.setAttribute('aria-expanded', 'false'); },
+      pick(v) { sel.value = v; api.close(); sel.dispatchEvent(new Event('change', { bubbles: true })); syncPickers(); }
+    };
+    btn.addEventListener('click', () => field.classList.contains('is-open') ? api.close() : api.open());
+    find.addEventListener('input', () => { draw(); if (find.value.trim()) mark(0); });
+    list.addEventListener('click', e => { const o = e.target.closest('.pick__opt'); if (o) api.pick(o.dataset.v); });
+    pop.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); mark(act + (e.key === 'ArrowDown' ? 1 : -1)); }
+      else if (e.key === 'Enter') { const o = $$('.pick__opt', list)[act < 0 ? 0 : act]; if (o) { e.preventDefault(); api.pick(o.dataset.v); } }
+      else if (e.key === 'Escape') { api.close(); btn.focus(); }
+    });
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); api.open(); mark(0); $$('.pick__opt', list)[0] && find.focus({ preventScroll: true }); }
+      else if (e.key.length === 1 && /\S/.test(e.key)) { api.open(); find.value = e.key; find.focus({ preventScroll: true }); draw(); mark(0); e.preventDefault(); }
+    });
+    pickers.push(api); sync();
+    return api;
+  };
+  const fine = matchMedia('(hover:hover) and (pointer:fine)').matches;
+  const syncPickers = () => pickers.forEach(p => p.sync());
+  const [pkMake, pkModel, pkGen] = [selMake, selModel, selYear].map(picker);
+  document.addEventListener('click', e => { pickers.forEach(p => { if (!p.sel.closest('.search__field').contains(e.target)) p.close(); }); });
+  const toSearch = () => { const go = $('.search__go'); go.focus({ preventScroll: true }); go.classList.remove('is-ready'); void go.offsetWidth; go.classList.add('is-ready'); };
+  selMake.addEventListener('change', () => { fillModels(selMake.value); syncPickers(); if (selMake.value) setTimeout(() => pkModel.open(), 160); });
+  selModel.addEventListener('change', () => {
+    fillGens(selModel.value);
+    const gens = [...selYear.options].filter(o => o.value);
+    if (gens.length === 1) selYear.value = gens[0].value; // one generation only: picked for them
+    syncPickers(); syncClear();
+    if (!selModel.value) return;
+    if (gens.length === 1) toSearch(); else setTimeout(() => pkGen.open(), 160);
+  });
+  selYear.addEventListener('change', () => { if (selYear.value) toSearch(); });
 
   let mode = 'parts', filter = 'All';
   const toggle = $('.toggle');
@@ -501,16 +581,16 @@
     e.preventDefault();
     if (!selMake.value || !selModel.value || !selYear.value) {
       const f = $('#searchForm'); f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake');
-      (!selMake.value ? selMake : !selModel.value ? selModel : selYear).focus();
+      (!selMake.value ? pkMake : !selModel.value ? pkModel : pkGen).open();
       return;
     }
-    setVehicle(selModel.value, +selYear.value, true);
+    setVehicle(selYear.value, 0, true);
   });
 
   const setVehicle = (id, year, scroll) => {
     vehicle = { id, year }; store.set('vehicle', vehicle);
     garage = [vehicle, ...garage.filter(g => !(g.id === id && g.year === year))]; saveGarage();
-    selMake.value = VEHICLES[id][0]; fillModels(selMake.value); selModel.value = id; fillYears(id); selYear.value = year;
+    selMake.value = VEHICLES[id][0]; fillModels(selMake.value); selModel.value = carSplit(id)[0]; fillGens(selModel.value); selYear.value = id; syncPickers();
     filter = 'All';
     renderResults(); updateVehicleUI(); showViewer(id);
     if (scroll) glide('#results');
@@ -569,16 +649,16 @@
   });
   const resetFinder = () => {
     $('#results').hidden = true; showViewer(null); vehicle = null; store.set('vehicle', null);
-    selMake.value = ''; fillModels(''); updateVehicleUI(); syncClear();
+    selMake.value = ''; fillModels(''); syncPickers(); updateVehicleUI(); syncClear();
   };
   $('#resultsClear').addEventListener('click', () => {
     resetFinder();
-    glide('#finder', () => selMake.focus({ preventScroll: true }));
+    glide('#finder', () => pkMake.open());
   });
   // Clear only shows once something is picked
   const syncClear = () => { $('#searchClear').hidden = !selMake.value; };
   [selMake, selModel, selYear].forEach(sel => sel.addEventListener('change', syncClear));
-  $('#searchClear').addEventListener('click', () => { resetFinder(); selMake.focus({ preventScroll: true }); });
+  $('#searchClear').addEventListener('click', () => { resetFinder(); pkMake.open(); });
 
   const updateVehicleUI = () => {
     const btn = $('#myVehicleBtn');
@@ -590,7 +670,7 @@
     renderCartPage();
   };
   const garagePanel = $('#garagePanel'), garageBtn = $('#myVehicleBtn');
-  const goFinder = () => glide('#finder', () => selMake.focus({ preventScroll: true }));
+  const goFinder = () => glide('#finder', () => pkMake.open());
   const renderGarage = () => {
     $('#garageList').innerHTML = garage.map((g, i) => {
       const on = vehicle && vehicle.id === g.id && vehicle.year === g.year;
@@ -1494,19 +1574,33 @@
 
   /* ---------- Header search: bar on desktop, magnifier on phones ---------- */
   const qs = $('#qs'), qsIn = $('#qsInput'), qsPanel = $('#qsPanel');
-  const qsHay = p => `${p.brand} ${p.title} ${p.h || ''} ${p.cat} ${p.sub || ''} ${p.fits === '*' ? '' : p.fits.map(id => VEHICLES[id][0] + ' ' + VEHICLES[id][1]).join(' ')}`.toLowerCase();
+  const qsHay = p => `${p.brand} ${p.title} ${p.h || ''} ${p.cat} ${p.sub || ''} ${p.sku || ''} ${p.fits === '*' ? '' : p.fits.map(id => VEHICLES[id][0] + ' ' + VEHICLES[id][1]).join(' ')}`.toLowerCase();
+  // Search words: every word has to be found, in any order. Filler words are dropped, a plural also finds the single
+  // ("drls"), and shop words find their other spellings ("daytime running light" finds the DRL kits, "muffler" the exhausts)
+  const Q_STOP = new Set(['for', 'the', 'a', 'an', 'and', 'to', 'of', 'with', 'in', 'on']);
+  const Q_SAME = [['drl', 'daytime'], ['headlight', 'head light', 'headlamp'], ['taillight', 'tail light', 'tail-light', 'tail lamp'],
+    ['exhaust', 'muffler', 'catback', 'cat-back'], ['spoiler', 'wing'], ['carbon', 'cf '], ['fibre', 'fiber'], ['rotor', 'disc'],
+    ['coilover', 'coil-over'], ['indicator', 'blinker', 'turn signal'], ['grille', 'grill'], ['tyre', 'tire'], ['colour', 'color']];
+  const qAlts = w => Q_SAME.find(g => g.includes(w)) || [w];
+  const qWords = q => q.toLowerCase().replace(/\b(day ?time )?running lights?\b/g, 'drl').replace(/\bday ?time lights?\b/g, 'drl')
+    .replace(/[,"'()]/g, ' ').split(/\s+/).filter(w => w && !Q_STOP.has(w)); // "daytime running lights" is one word: DRL
+  const qWordIn = (h, w) => qAlts(w).some(a => h.includes(a)) || (w.length > 3 && w.endsWith('s') && qAlts(w.slice(0, -1)).some(a => h.includes(a)));
+  const qMatch = (p, q) => { const h = qsHay(p); return qWords(q).every(w => qWordIn(h, w)); };
+  // a pasted SKU finds exactly that one product (staff look parts up this way)
+  const SKU = new Map();
+  const skuHit = q => { const k = String(q || '').trim().toUpperCase().replace(/\s+/g, ''); return k.length > 2 ? SKU.get(k) || null : null; };
   const qsRender = () => {
     const q = qsIn.value.trim();
     if (!q) { qsPanel.hidden = true; return; }
-    const words = q.toLowerCase().split(/\s+/);
     // the whole store catalogue once it's loaded (the curated parts until then); parts for your car first
     if (!CAT || !CAT.length) loadCatalog().then(() => { if (qsIn.value.trim() === q) qsRender(); });
     const pool = CAT && CAT.length ? CAT : PARTS, mine = p => vehicle && fitsCar(p, vehicle.id) ? 0 : 1;
-    const hits = [...pool, ...INSTALLS].filter(p => { const h = qsHay(p); return words.every(w => h.includes(w)); }).sort((a, b) => mine(a) - mine(b)).slice(0, 6);
+    const sku = skuHit(q);
+    const hits = sku ? [sku] : [...pool, ...INSTALLS].filter(p => qMatch(p, q)).sort((a, b) => mine(a) - mine(b)).slice(0, 6);
     qsPanel.innerHTML = (hits.length
       ? hits.map(p => `<button type="button" class="qs__item" data-pdp="${p.id}"><img src="${src(p.img)}" alt=""><span><small>${esc(p.brand)}</small>${esc(p.title)}</span><b>${p.from ? '<small>from</small> ' : ''}${money(p.price)}</b></button>`).join('')
       : `<p class="qs__none">No quick matches. Call <a href="tel:0483939304">our team</a> and we'll source it.</p>`)
-      + `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`;
+      + (sku ? '' : `<a class="qs__all" href="#/parts?q=${encodeURIComponent(q)}">See all results for "${esc(q)}" <i>&rarr;</i></a>`);
     qsPanel.hidden = false;
   };
   // Phones: the field grows out of the magnifier (CSS transition); tell it, in exact pixels, where the button sits
@@ -1626,6 +1720,7 @@
     </article>`).join('');
   const renderPage = slug => {
     $('#viewPage').classList.toggle('is-rewards', slug === 'iilumo-rewards'); // its own St Kilda sunset look
+    $('#viewPage').classList.remove('is-brands');
     if (slug === 'iilumo-rewards') return renderRewards();
     let p = PG[slug];
     if (!p && window.cx.page === slug && window.cx.pageTitle) {
@@ -1699,6 +1794,153 @@
     $('#cmBody').innerHTML = `<div class="cm__done"><div class="inst__icon inst__icon--ok"><svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg></div><b>You're on the list</b><span>We'll email ${esc(em.value)} the moment iilumo Rewards opens.</span></div>`;
   });
 
+
+  /* ---------- Google reviews: the row moves on one card every few seconds; it rests while someone is reading or swiping,
+     while it's off screen, and for anyone who asked for less motion. The arrows step it by hand. ---------- */
+  const rvTrack = $('#rvTrack');
+  if (rvTrack) {
+    const step = dir => {
+      const cards = $$('.rv__card', rvTrack); if (!cards.length) return;
+      const pad = parseFloat(getComputedStyle(rvTrack).scrollPaddingLeft) || 0, x = rvTrack.scrollLeft;
+      const at = cards.findIndex(c => c.offsetLeft - pad >= x - 4); const i = Math.max(0, at < 0 ? cards.length - 1 : at);
+      const end = x + rvTrack.clientWidth >= rvTrack.scrollWidth - 4;
+      const to = dir > 0 && end ? 0 : Math.max(0, Math.min(cards.length - 1, i + dir));
+      rvTrack.scrollTo({ left: cards[to].offsetLeft - pad, behavior: reduce ? 'auto' : 'smooth' });
+    };
+    $$('[data-rv]').forEach(b => b.addEventListener('click', () => { rest = Date.now() + 12000; step(+b.dataset.rv); }));
+    let rest = 0, seen = false;
+    ['pointerenter', 'pointerdown', 'focusin', 'wheel', 'touchstart'].forEach(ev => rvTrack.addEventListener(ev, () => { rest = Date.now() + 9000; }, { passive: true }));
+    new IntersectionObserver(es => { seen = es[0].isIntersecting; }, { threshold: .25 }).observe(rvTrack);
+    if (!reduce) setInterval(() => { if (seen && !document.hidden && Date.now() > rest) step(1); }, 4200);
+  }
+
+  /* ---------- Brands: a dropdown under Brands in the top bar, the A to Z page (#/brands) and a page per brand (#/brands/<slug>) ---------- */
+  // the store's vendor names, cleaned up for display (several are typed in capitals or with the shop's name in them)
+  const BRAND_FIX = { 'DIXCEL Shop Australia': 'DIXCEL', 'FI EXHAUST': 'Fi Exhaust', iilumolab: 'iilumo', 'PLATINUM POTIONS': 'Platinum Potions', BLACKVUE: 'BlackVue',
+    GhoztLighting: 'Ghozt Lighting', CORSOMOTION: 'Corsomotion', 'JB WELD': 'J-B Weld', 'DIODE DYNAMICS': 'Diode Dynamics', ALPHAREX: 'AlphaRex', ARMYTRIX: 'Armytrix',
+    VALENTI: 'Valenti', VOLTEX: 'Voltex', HCMOTIONZ: 'HCMotionz', AST: 'AST Suspension', 'TITAN Suspension': 'Titan Suspension', dAHLer: 'dÄHLer' };
+  const brandName = v => BRAND_FIX[(v || '').trim()] || (v || '').trim();
+  const brandSlug = n => n.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  // logo files in the theme's assets (cx-brand-<file>), from each brand's own site; 'mono' shows the logo in black, 'grey' is a badge
+  // or a logo on a white square shown in greys, 'color' keeps its colours (iilumo's own cube)
+  const LOGOS = { adro: ['adro.png', 'mono'], 'aeroflow-dynamics': ['aeroflow-dynamics.png', 'mono'], akrapovic: ['akrapovic.svg', 'mono'], 'alpha-n': ['alpha-n.svg', 'mono'], alpharex: ['alpharex.png', 'mono'], armytrix: ['armytrix.png', 'mono'], 'ast-suspension': ['ast-suspension.png', 'mono'], 'bc-racing': ['bc-racing.svg', 'grey'], bilstein: ['bilstein.svg', 'grey'], blackvue: ['blackvue.svg', 'mono'], 'cobb-tuning': ['cobb-tuning.svg', 'mono'], corsomotion: ['corsomotion.jpg', 'grey'], dahler: ['dahler.png', 'mono'], 'diode-dynamics': ['diode-dynamics.svg', 'mono'], dixcel: ['dixcel.svg', 'mono'], eibach: ['eibach.svg', 'grey'], eventuri: ['eventuri.svg', 'mono'], 'fi-exhaust': ['fi-exhaust.svg', 'mono'], 'flow-designs': ['flow-designs.png', 'mono'], 'ftp-motorsport': ['ftp-motorsport.png', 'grey'], 'ghozt-lighting': ['ghozt-lighting.png', 'grey'], 'h-r': ['h-r.svg', 'mono'], hks: ['hks.png', 'grey'], iilumo: ['iilumo.png', 'color'], 'integrated-engineering': ['integrated-engineering.svg', 'mono'], invidia: ['invidia.jpg', 'grey'], 'j-b-weld': ['j-b-weld.png', 'grey'], koyorad: ['koyorad.jpg', 'grey'], 'kw-suspensions': ['kw-suspensions.svg', 'grey'], leyo: ['leyo.png', 'mono'], 'maxton-design': ['maxton-design.svg', 'mono'], 'moton-suspension': ['moton-suspension.png', 'mono'], 'mst-performance': ['mst-performance.png', 'grey'], obdeleven: ['obdeleven.svg', 'mono'], ohlins: ['ohlins.svg', 'grey'], osram: ['osram.png', 'mono'], paragon: ['paragon.png', 'mono'], 'platinum-potions': ['platinum-potions.png', 'mono'], 'radium-engineering': ['radium-engineering.png', 'grey'], stanceparts: ['stanceparts.png', 'grey'], 'titan-suspension': ['titan-suspension.png', 'mono'], valenti: ['valenti.svg', 'mono'], vland: ['vland.png', 'mono'], xforce: ['xforce.png', 'mono'], 'zaero-designs': ['zaero-designs.svg', 'mono'] };
+  const BRAND_COLS = [['Body kits & aero', ['Body kits']], ['Exhausts', ['Exhaust']], ['Suspension', ['Suspension']], ['Brakes', ['Brakes']],
+    ['Lighting', ['Lighting']], ['Performance', ['Performance']], ['Interior & care', ['Interior', 'Accessories']]];
+  let BRANDS_ALL = null;
+  const brandList = () => {
+    if (BRANDS_ALL) return BRANDS_ALL;
+    const m = new Map();
+    (CAT || []).forEach(p => {
+      if (p.gone) return;
+      const n = brandName(p.brand); if (!n) return;
+      const k = brandSlug(n); if (!m.has(k)) m.set(k, { n, s: k, parts: [], cats: {} });
+      const b = m.get(k); b.parts.push(p); b.cats[p.cat] = (b.cats[p.cat] || 0) + 1;
+    });
+    BRANDS_ALL = [...m.values()].map(b => Object.assign(b, { main: Object.entries(b.cats).sort((x, y) => y[1] - x[1])[0][0] }))
+      .sort((a, b) => a.n.localeCompare(b.n, 'en', { sensitivity: 'base' }));
+    return BRANDS_ALL;
+  };
+  CAT_HOOKS.push(() => { BRANDS_ALL = null; });
+  const brandMark = b => LOGOS[b.s] ? `<img class="bl bl--${LOGOS[b.s][1] || 'mono'}" src="${window.cx.assets}cx-brand-${LOGOS[b.s][0]}" alt="${esc(b.n)}" loading="lazy">` : `<span class="bl bl--word">${esc(b.n)}</span>`;
+  const brandLetter = b => { const c = b.n.normalize('NFD')[0].toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; }; // Öhlins files under O
+  const brandTile = b => `<a class="bt" href="#/brands/${b.s}" data-n="${esc(b.n.toLowerCase())}"><span class="bt__logo">${brandMark(b)}</span><span class="bt__name">${esc(b.n)}</span><span class="bt__meta">${b.parts.length} ${b.parts.length === 1 ? 'part' : 'parts'}</span></a>`;
+
+  // the Brands links in the top bar, menu and footer open the brands page (the home page's brand reel keeps #brands)
+  $$('.top a[href="#brands"], .menu a[href="#brands"], footer a[href="#brands"]').forEach(a => a.setAttribute('href', '#/brands'));
+  // computers: hovering Brands in the top bar opens the dropdown (featured logos, brands by kind of part, see all)
+  const bmLink = $$('.top__nav a').find(a => a.getAttribute('href') === '#/brands');
+  if (bmLink && fine) {
+    const bm = Object.assign(document.createElement('div'), { className: 'bm', id: 'brandMenu' });
+    $('#top').append(bm);
+    const fill = () => {
+      const all = brandList(); if (!all.length) { bm.innerHTML = '<div class="wrap bm__in"><p class="bm__k">Loading the brands&hellip;</p></div>'; return; }
+      const feat = all.filter(b => LOGOS[b.s]).sort((a, b) => b.parts.length - a.parts.length).slice(0, 8);
+      const cols = BRAND_COLS.map(([t, cats]) => [t, all.filter(b => cats.includes(b.main)).sort((a, b) => b.parts.length - a.parts.length).slice(0, 7)]).filter(([, l]) => l.length);
+      bm.innerHTML = `<div class="wrap bm__in">
+        ${feat.length ? `<p class="bm__k">Featured brands</p><div class="bm__feat">${feat.map(b => `<a class="bm__tile" href="#/brands/${b.s}" aria-label="${esc(b.n)}">${brandMark(b)}</a>`).join('')}</div>` : ''}
+        <div class="bm__cols">${cols.map(([t, l]) => `<div class="bm__col"><p class="bm__k">${t}</p>${l.map(b => `<a href="#/brands/${b.s}">${esc(b.n)}</a>`).join('')}</div>`).join('')}</div>
+        <a class="bm__all" href="#/brands">See all ${all.length} brands <i>&rarr;</i></a></div>`;
+    };
+    let t = 0;
+    const set = on => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (on && !bm.dataset.ready) { fill(); if (CAT) bm.dataset.ready = 1; else loadCatalog().then(() => { fill(); bm.dataset.ready = 1; }); }
+        bm.classList.toggle('is-open', on); bmLink.classList.toggle('is-on', on); bmLink.setAttribute('aria-expanded', on);
+      }, on ? 90 : 200);
+    };
+    bmLink.setAttribute('aria-haspopup', 'true'); bmLink.setAttribute('aria-expanded', 'false');
+    [bmLink, bm].forEach(el => { el.addEventListener('pointerenter', () => set(true)); el.addEventListener('pointerleave', () => set(false)); });
+    bmLink.addEventListener('focus', () => set(true));
+    bm.addEventListener('focusout', e => { if (!bm.contains(e.relatedTarget) && e.relatedTarget !== bmLink) set(false); });
+    const shut = () => { clearTimeout(t); bm.classList.remove('is-open'); bmLink.classList.remove('is-on'); bmLink.setAttribute('aria-expanded', 'false'); };
+    bm.addEventListener('click', e => { if (e.target.closest('a')) shut(); });
+    bmLink.addEventListener('click', shut);
+    addEventListener('keydown', e => { if (e.key === 'Escape' && bm.classList.contains('is-open')) { shut(); bmLink.focus(); } });
+    CAT_HOOKS.push(() => { if (bm.dataset.ready) fill(); });
+  }
+
+  // #/brands: every brand A to Z, with a search box and letter jumps
+  const renderBrands = slug => {
+    const vp = $('#viewPage'); vp.classList.remove('is-rewards'); vp.classList.add('is-brands');
+    if (!CAT) {
+      $('#pgBody').innerHTML = '<div class="empty bx__wait">Loading the brands&hellip;</div>';
+      loadCatalog().then(() => { if (location.hash.startsWith('#/brands')) renderBrands(slug); });
+      return;
+    }
+    const all = brandList();
+    if (slug) return renderBrand(all.find(b => b.s === slug));
+    const letters = [...new Set(all.map(brandLetter))];
+    $('#pgBody').innerHTML = `
+      <header class="pg__hero pg__hero--plain"><div class="pg__intro">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><b>Brands</b></nav>
+        <h1 class="pg__title">Brands</h1><div class="pg__lead"><p>Every brand we stock and fit at the lab, from A to Z.</p></div>
+      </div></header>
+      <div class="bx__bar">
+        <label class="pg__find"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input type="search" id="bxFind" placeholder="Search brands" aria-label="Search brands"></label>
+        <nav class="bx__az" aria-label="Jump to a letter">${letters.map(l => `<button type="button" data-az="${l}">${l}</button>`).join('')}</nav>
+      </div>
+      <div class="bx">${letters.map(l => `<section class="bx__sec" id="bx-${l === '#' ? 'num' : l}"><h2 class="bx__l">${l}</h2><div class="bx__grid">${all.filter(b => brandLetter(b) === l).map(brandTile).join('')}</div></section>`).join('')}
+        <p class="pg__none" id="bxNone" hidden>No brand by that name yet. Call <a href="tel:0483939304">our team</a> and we'll source it.</p></div>`;
+    document.title = 'Brands | iilumolab';
+    $('#bxFind').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase(); let any = false;
+      $$('.bx__sec').forEach(sec => { let n = 0; $$('.bt', sec).forEach(x => { const on = !q || x.dataset.n.includes(q); x.hidden = !on; n += on; }); sec.hidden = !n; any = any || n > 0; });
+      $('#bxNone').hidden = any;
+    });
+    $('.bx__az').addEventListener('click', e => { const a = e.target.closest('[data-az]'); if (a) glide('#bx-' + (a.dataset.az === '#' ? 'num' : a.dataset.az)); });
+  };
+
+  // #/brands/<slug>: one brand's parts, one kind of part at a time (its biggest range first), optionally only for my car
+  const renderBrand = b => {
+    if (!b) { location.hash = '#/brands'; return; }
+    let cat = '', mine = false, shown = 24;
+    const sum = Object.entries(b.cats).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([k]) => k.toLowerCase()).join(', ');
+    $('#pgBody').innerHTML = `
+      <header class="bh">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a><span>/</span><a href="#/brands">Brands</a><span>/</span><b>${esc(b.n)}</b></nav>
+        <div class="bh__row"><span class="bh__logo">${brandMark(b)}</span>
+          <div><h1 class="pg__title bh__title">${esc(b.n)}</h1><p class="bh__sub">${b.parts.length} ${b.parts.length === 1 ? 'part' : 'parts'} · ${esc(sum)}</p></div></div>
+      </header>
+      <div class="bh__bar"><div class="bh__chips" id="bhChips"></div>
+        ${vehicle ? `<label class="bh__mine"><input type="checkbox" id="bhMine"><span>Fits my ${esc(modelName(vehicle.id))}</span></label>` : ''}</div>
+      <div class="grid" id="bhGrid"></div><div class="bh__more" id="bhMore"></div>`;
+    const paint = () => {
+      const pool = b.parts.filter(p => !mine || fitsCar(p, vehicle.id)), n = {};
+      pool.forEach(p => { n[p.cat] = (n[p.cat] || 0) + 1; });
+      const keys = Object.keys(n).sort((x, y) => n[y] - n[x]);
+      if (!cat || (cat !== 'All' && !n[cat])) cat = keys.length > 1 ? keys[0] : 'All';
+      $('#bhChips').innerHTML = keys.length > 1 ? [...keys.map(k => [k, n[k]]), ['All', pool.length]].map(([k, c]) => `<button type="button" class="chip${k === cat ? ' is-on' : ''}" data-cat="${esc(k)}">${esc(k)}<b>${c}</b></button>`).join('') : '';
+      const list = pool.filter(p => cat === 'All' || p.cat === cat).sort(SORTS.featured);
+      $('#bhGrid').innerHTML = list.length ? list.slice(0, shown).map(card).join('') : `<div class="empty">Nothing from ${esc(b.n)} for your car yet. Call <a href="tel:0483939304">our team</a> and we'll check.</div>`;
+      $('#bhMore').innerHTML = list.length > shown ? `<button type="button" class="btn btn--black" id="bhMoreBtn">Show more <i>${list.length - shown} more</i></button>` : '';
+    };
+    $('#bhChips').addEventListener('click', e => { const c = e.target.closest('[data-cat]'); if (!c) return; cat = c.dataset.cat; shown = 24; paint(); });
+    $('#bhMore').addEventListener('click', e => { if (e.target.closest('#bhMoreBtn')) { shown += 24; paint(); } });
+    const m = $('#bhMine'); if (m) m.addEventListener('change', () => { mine = m.checked; shown = 24; paint(); });
+    paint();
+    document.title = `${b.n} | iilumolab`;
+  };
 
   /* ---------- iilumo Rewards (coming soon): five tier cards, a fan on the home page and the #/pages/iilumo-rewards page ---------- */
   const TIERS = [
@@ -1952,7 +2194,7 @@
   const loadCatalog = () => catLoading || (catLoading = fetch((window.cx.data || {}).catalog || src('data/catalog.json')).then(r => r.json()).then(j => {
     const seen = new Set(), featured = Object.fromEntries(PARTS.filter(p => p.h).map(p => [p.h, p]));
     CAT = [];
-    j.rows.forEach(([id, h, b, t, pr, ci, fi, img, inStock, d, cmp, q]) => {
+    j.rows.forEach(([id, h, b, t, pr, ci, fi, img, inStock, d, cmp, q], ri) => {
       if (HIDDEN_BRANDS.test(b)) return; // brands the redesign doesn't feature
       id = id || 'h:' + h; const pic = /^https?:/.test(img) ? img : j.cdn + img;
       const fits = fi === '*' ? '*' : fi.map(k => j.veh[k]); // '*' = the store marks it as fitting every car
@@ -1963,6 +2205,7 @@
       if (seen.has(p.id)) return;
       if (PHOTO_SWAP[h]) p.img = src(PHOTO_SWAP[h][0]);
       p.date = d; p.compare = cmp || 0; p.gone = false; setStock(p.id, inStock, q);
+      p.sku = (j.skus && j.skus[ri]) || ''; p.sku.split(' ').forEach(k => k && SKU.set(k.toUpperCase(), p));
       CAT.push(p); seen.add(p.id);
     });
     // a featured part the store no longer sells is dropped everywhere, the build included
@@ -1981,7 +2224,7 @@
     && (skip === 'brand' || !F.brands.size || F.brands.has(p.brand))
     && (skip === 'stock' || !F.stock.size || F.stock.has(stockOf(p.id)))
     && (F.min == null || p.price >= F.min) && (F.max == null || p.price <= F.max)
-    && (!F.q || F.q.split(/\s+/).every(w => qsHay(p).includes(w))); // every word, any order ("g87 drl")
+    && (!F.q || (sk => sk ? p === sk : qMatch(p, F.q))(skuHit(F.q))); // a SKU finds its one part; words in any order ("g87 drl")
   const isFeatured = p => !p.remote && /^p\d+$/.test(p.id);
   const SORTS = {
     // sold out goes last; then the featured parts, then what's on the shelf before what is ordered in, dearest first
@@ -2185,6 +2428,7 @@
     if (h.startsWith('#/parts')) { const was = current; showView('parts'); if (was !== 'parts') scrollTo(0, 0); openParts(); }
     else if (h.startsWith('#/product/')) { showView('product'); scrollTo(0, 0); openProductPage(h.slice(10)); }
     else if (h.startsWith('#/pages/')) { showView('page'); scrollTo(0, 0); renderPage(decodeURIComponent(h.slice(8))); }
+    else if (h === '#/brands' || h.startsWith('#/brands/')) { showView('page'); scrollTo(0, 0); renderBrands(decodeURIComponent(h.slice(9))); }
     else if (h === '#/' || h === '' || h === '#') { const was = current; showView('home'); if (was !== 'home') scrollTo(0, 0); }
   };
   addEventListener('hashchange', route);

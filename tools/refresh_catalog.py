@@ -101,6 +101,9 @@ def check(new, old, accept=False):
               and r[8] in (0, 1) and re.fullmatch(r'\d{8}|', r[9]) and isinstance(r[10], (int, float)) and r[10] >= 0
               and (len(r) == 11 or r[11] is None or isinstance(r[11], int)))
         if not ok: bad.append(f'row {n} is not in the format the theme reads: {json.dumps(r)[:160]}'); break
+    # SKUs (for the site search): one string per row, beside the rows
+    if 'skus' in new and not (isinstance(new['skus'], list) and len(new['skus']) == len(new['rows']) and all(isinstance(x, str) for x in new['skus'])):
+        bad.append('the SKU list does not line up with the rows')
     if bad: return bad
     handles = [r[1] for r in new['rows']]
     if len(set(handles)) != len(handles): bad.append('the same product is listed twice')

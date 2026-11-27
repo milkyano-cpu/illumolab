@@ -194,7 +194,7 @@ def storefront_data(stock_theme, strict):
 # ---- Admin API source: one bulk export instead of ~350 storefront requests ----
 BULK = '''{ products(query: "status:active") { edges { node {
   id handle title vendor productType tags status publishedAt
-  variants { edges { node { id position price compareAtPrice availableForSale inventoryQuantity inventoryItem { tracked } } } }
+  variants { edges { node { id position sku price compareAtPrice availableForSale inventoryQuantity inventoryItem { tracked } } } }
   media { edges { node { ... on MediaImage { id image { url } } } } }
   collections { edges { node { id handle } } }
 } } } }'''
@@ -276,7 +276,7 @@ def admin_data():
         if v: stock[n['handle']] = v.get('inventoryQuantity') if (v.get('inventoryItem') or {}).get('tracked') else None
         prods.append({'handle': n['handle'], 'title': n['title'], 'vendor': n.get('vendor') or '', 'product_type': n.get('productType') or '',
                       'tags': n.get('tags') or [], 'published_at': when.astimezone(tz).isoformat(),
-                      'variants': [{'price': x.get('price'), 'compare_at_price': x.get('compareAtPrice'), 'available': bool(x.get('availableForSale'))} for x in vs],
+                      'variants': [{'price': x.get('price'), 'compare_at_price': x.get('compareAtPrice'), 'available': bool(x.get('availableForSale')), 'sku': x.get('sku') or ''} for x in vs],
                       'images': [{'src': k['image']['url']} for k in mine if '/MediaImage/' in k.get('id', '') and k.get('image')]})
     print('store products:', len(prods), file=sys.stderr)
     return prods, members, stock
@@ -328,7 +328,7 @@ def main():
         if m and codes[k] and not any(c[0] in set(re.findall(r'[efgu]', m.group(1))) for c in codes[k]): return True
         if not codes[k] or not said or said & codes[k]: return False   # no chassis code to judge by (VA, 911 ...): keep
         return not (models[k] and re.search(models[k], t))
-    rows, report, no_clean, skipped = [], {k: [] for k in keys}, [], []
+    rows, skus, report, no_clean, skipped = [], [], {k: [] for k in keys}, [], []
     for p in prods:
         if HIDDEN_VENDORS.match(p.get('vendor') or ''): continue
         # not parts: the options app's helper products, shipping protection, and anything with no price (quote-only)
@@ -358,10 +358,12 @@ def main():
                compare if compare > price else 0]
         if p['handle'] in stock: row.append(stock[p['handle']])   # units on the shelf, None = not tracked; missing = unknown
         rows.append(row)
+        # every option's SKU, so a pasted SKU finds its product in the site search
+        skus.append(' '.join(dict.fromkeys(str(x.get('sku') or '').strip() for x in p['variants'] if str(x.get('sku') or '').strip())))
         for i in fits: report[keys[i]].append(p['title'])
     # written in one move, and only now that everything was read: a build that stops half way leaves the old file alone
     with open(a.out + '.part', 'w') as f:
-        json.dump({'cats': CATS, 'veh': keys, 'cdn': CDN, 'rows': rows, 'built': datetime.now(ZoneInfo(SHOP_TZ)).strftime('%Y-%m-%d %H:%M')}, f, separators=(',', ':'))
+        json.dump({'cats': CATS, 'veh': keys, 'cdn': CDN, 'rows': rows, 'skus': skus, 'built': datetime.now(ZoneInfo(SHOP_TZ)).strftime('%Y-%m-%d %H:%M')}, f, separators=(',', ':'))
     os.replace(a.out + '.part', a.out)
     print('catalogue rows:', len(rows), file=sys.stderr)
     if a.report:
