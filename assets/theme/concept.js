@@ -1847,6 +1847,8 @@
 
   // the Brands links in the top bar, menu and footer open the brands page (the home page's brand reel keeps #brands)
   $$('.top a[href="#brands"], .menu a[href="#brands"], footer a[href="#brands"]').forEach(a => a.setAttribute('href', '#/brands'));
+  // the moving logo strip under the hero: each logo opens its brand's page (a brand the store doesn't sell opens the A to Z page)
+  $$('.tl__a[data-brand]').forEach(a => a.setAttribute('href', '#/brands/' + brandSlug(brandName(a.dataset.brand))));
   // computers: hovering Brands in the top bar opens the dropdown (featured logos, brands by kind of part, see all)
   const bmLink = $$('.top__nav a').find(a => a.getAttribute('href') === '#/brands');
   if (bmLink && fine) {
